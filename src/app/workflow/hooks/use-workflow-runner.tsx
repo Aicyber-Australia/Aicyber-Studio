@@ -9,6 +9,7 @@ import { AppNode } from '@/app/workflow/components/nodes';
 import { AppEdge } from '@/app/workflow/components/edges';
 import { AppStore } from '@/app/workflow/store/app-store';
 import { useToast } from '@/components/toast-provider';
+import { nodeRunnerRegistry } from '@/app/workflow/runners/registry';
 
 const selector = (state: AppStore) => ({
   getNodes: state.getNodes,
@@ -74,28 +75,11 @@ export function useWorkflowRunner() {
     async (node: AppNode) => {
       updateNodeStatus(node.id, 'loading');
       setLogMessages((prev) => [...prev, `${node.data.title} processing...`]);
-
-      // 获取当前节点的数据
-      const currentNode = getNode(node.id);
+      // 收集输入数据
       const inputEdges = getReactFlowEdges().filter(edge => edge.target === node.id);
       console.log(`Input edges for ${node.id}:`, inputEdges);
 
-      if (inputEdges.length === 0) {
-        if (!currentNode?.data?.imageUrl) {
-          console.log(`Node ${node.id} is a start node but has no image data, error...`);
-          updateNodeStatus(node.id, 'error');
-          setLogMessages((prev) => [...prev, `❌ ${node.data.title} has no image data!`]);
-          showToast({
-            title: "节点错误",
-            description: `${node.data.title} 没有图片数据`,
-            variant: "error"
-          });
-          throw new Error(`Node ${node.id} has no image data`);
-        }
-      }
-  
-
-      const inputDataList = [];
+      const inputDataList: any[] = [];
       for (const edge of inputEdges) {
         const sourceNode = getNode(edge.source);
         if (sourceNode?.data) {
@@ -104,53 +88,37 @@ export function useWorkflowRunner() {
         }
       }
 
+      // 获取对应的 runner（若未注册则使用默认）
+      const runner = nodeRunnerRegistry.getRunner(node.type as string);
 
-      
-      // 如果没有输入数据，检查当前节点是否有数据
-      if (inputDataList.length === 0) {
-        if (!currentNode?.data?.imageUrl) {
-          console.log(`Node ${node.id} has no input data and no local data, error...`);
-          updateNodeStatus(node.id, 'error');
-          setLogMessages((prev) => [...prev, `❌ ${node.data.title} has no image data!`]);
-          showToast({
-            title: "节点错误",
-            description: `${node.data.title} 没有图片数据`,
-            variant: "error"
-          });
-          throw new Error(`Node ${node.id} has no image data`);
-        }
-        // 如果有本地数据，继续处理
-        console.log(`Node ${node.id} using local data...`);
+      // 验证输入
+      const validation = runner.validate(node, inputDataList);
+      if (!validation.isValid) {
+        updateNodeStatus(node.id, 'error');
+        setLogMessages((prev) => [...prev, `❌ ${validation.error}`]);
+        showToast({
+          title: "节点错误",
+          description: validation.error || `${node.data.title} 校验失败`,
+          variant: "error",
+        });
+        throw new Error(validation.error || 'Validation failed');
       }
-      
-      // 模拟处理时间
-      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-     
+      // 执行对应的 runner
+      const processedData = await runner.run(node, inputDataList);
 
-      // 使用输入数据或当前节点数据
-      const sourceData = inputDataList.length > 0 ? inputDataList[0] : currentNode?.data;
-      
-      const processedData = {
-        imageUrl: sourceData?.imageUrl,
-        fileName: `processed-${sourceData?.fileName || 'image'}`,
-        timestamp: Date.now()
-      };
-
-    
+      // 合并输出到节点 data
       setReactFlowNodes(nodes => nodes.map(n => 
         n.id === node.id 
-          ? { ...n, data: { ...n.data, ...processedData } }  // 直接合并到 data
+          ? { ...n, data: { ...n.data, ...processedData } }
           : n
       ));
 
       updateNodeStatus(node.id, 'success');
       setLogMessages((prev) => [...prev, `✅ ${node.data.title} completed successfully!`]);
       console.log(`Node ${node.id} processing completed successfully!`);
-
-      // 准备要传递的数据
     },
-    [updateNodeStatus, resetNodeStatus, getNode, getReactFlowEdges, setReactFlowNodes],
+    [updateNodeStatus, getNode, getReactFlowEdges, setReactFlowNodes, showToast],
   );
 
   const runWorkflow = useCallback(

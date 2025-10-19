@@ -1,0 +1,10 @@
+export type RunnerValidation = { isValid: boolean; error?: string };
+
+export interface NodeRunner<NodeType = any> {
+  nodeType: string;
+  canRun: (node: NodeType) => boolean;
+  validate: (node: NodeType, inputDataList: any[]) => RunnerValidation;
+  run: (node: NodeType, inputDataList: any[]) => Promise<any>;
+}
+
+
