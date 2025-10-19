@@ -6,12 +6,12 @@ import {
   ReactFlow,
   ConnectionLineType,
   ColorMode,
+  MarkerType,
 } from '@xyflow/react';
 import { useShallow } from 'zustand/react/shallow';
 import { useTheme } from 'next-themes';
 
 import { nodeTypes } from '@/app/workflow/components/nodes';
-import { WorkflowEdge } from '@/app/workflow/components/edges/workflow-edge';
 import { useAppStore } from '@/app/workflow/store';
 import { WorkflowControls } from './controls';
 import FlowContextMenu from '@/app/workflow/components/flow-context-menu';
@@ -20,11 +20,12 @@ import { useDragAndDrop } from '@/app/workflow/hooks/useDragAndDrop';
 import { FlowRunButton } from '@/app/workflow/components/flow-run-button';
 import { DebugPanel } from './debug-panel';
 
-const edgeTypes = {
-  workflow: WorkflowEdge,
+const defaultEdgeOptions = { 
+  type: 'default',
+  markerEnd: {
+    type: MarkerType.Arrow,
+  },
 };
-
-const defaultEdgeOptions = { type: 'workflow' };
 
 const selector = (state: AppStore) => ({
   nodes: state.nodes,
@@ -50,7 +51,6 @@ export default function Workflow() {
       onConnect={store.onConnect}
       connectionLineType={ConnectionLineType.SmoothStep}
       nodeTypes={nodeTypes}
-      edgeTypes={edgeTypes}
       onDragOver={onDragOver}
       onDrop={onDrop}
       onNodeDragStart={store.onNodeDragStart}

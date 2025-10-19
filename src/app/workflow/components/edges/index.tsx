@@ -1,6 +1,6 @@
 import { type Edge } from '@xyflow/react';
 
-export type AppEdge = Edge<Record<string, never>, 'workflow'>;
+export type AppEdge = Edge<Record<string, never>, 'default'>;
 
 export const createEdge = (
   source: string,
@@ -13,6 +13,6 @@ export const createEdge = (
   target,
   sourceHandle: sourceHandleId,
   targetHandle: targetHandleid,
-  type: 'workflow',
+  type: 'default',
   animated: true,
 });

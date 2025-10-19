@@ -1,6 +1,7 @@
 import { ReactFlowProvider } from '@xyflow/react';
 
 import { ThemeProvider } from '@/components/theme-provider';
+import { ToastProvider } from '@/components/toast-provider';
 import { AppStoreProvider } from '@/app/workflow/store';
 
 import './globals.css';
@@ -24,7 +25,9 @@ export default async function WorkflowLayout({
               enableSystem
               disableTransitionOnChange
             >
-              {children}
+              <ToastProvider>
+                {children}
+              </ToastProvider>
             </ThemeProvider>
           </ReactFlowProvider>
         </AppStoreProvider>

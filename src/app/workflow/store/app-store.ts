@@ -200,7 +200,7 @@ export function createAppStore(
       onConnect: (connection) => {
         const newEdge: AppEdge = {
           ...connection,
-          type: 'workflow',
+          type: 'default',
           id: `${connection.source}-${connection.target}`,
           animated: true,
         };

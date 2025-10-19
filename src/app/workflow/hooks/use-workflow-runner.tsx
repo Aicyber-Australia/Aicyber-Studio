@@ -8,6 +8,7 @@ import { useAppStore } from '@/app/workflow/store';
 import { AppNode } from '@/app/workflow/components/nodes';
 import { AppEdge } from '@/app/workflow/components/edges';
 import { AppStore } from '@/app/workflow/store/app-store';
+import { useToast } from '@/components/toast-provider';
 
 const selector = (state: AppStore) => ({
   getNodes: state.getNodes,
@@ -25,6 +26,7 @@ export function useWorkflowRunner() {
   const isRunning = useRef(false);
   const { getNodes, setNodes, getEdges } = useAppStore(useShallow(selector));
   const { getNode, setNodes: setReactFlowNodes, getEdges: getReactFlowEdges } = useReactFlow();
+  const { showToast } = useToast();
 
   const stopWorkflow = useCallback(() => {
     isRunning.current = false;
@@ -80,10 +82,15 @@ export function useWorkflowRunner() {
 
       if (inputEdges.length === 0) {
         if (!currentNode?.data?.imageUrl) {
-          console.log(`Node ${node.id} is a start node but has no image data, skipping...`);
+          console.log(`Node ${node.id} is a start node but has no image data, error...`);
           updateNodeStatus(node.id, 'error');
-          setLogMessages((prev) => [...prev, `${node.data.title} has no data to process!`]);
-          return;
+          setLogMessages((prev) => [...prev, `❌ ${node.data.title} has no image data!`]);
+          showToast({
+            title: "节点错误",
+            description: `${node.data.title} 没有图片数据`,
+            variant: "error"
+          });
+          throw new Error(`Node ${node.id} has no image data`);
         }
       }
   
@@ -99,11 +106,21 @@ export function useWorkflowRunner() {
 
 
       
-      // 如果没有数据，跳过处理
+      // 如果没有输入数据，检查当前节点是否有数据
       if (inputDataList.length === 0) {
-        console.log(`Node ${node.id} has no input data, skipping...`);
-        updateNodeStatus(node.id, 'success');
-        return;
+        if (!currentNode?.data?.imageUrl) {
+          console.log(`Node ${node.id} has no input data and no local data, error...`);
+          updateNodeStatus(node.id, 'error');
+          setLogMessages((prev) => [...prev, `❌ ${node.data.title} has no image data!`]);
+          showToast({
+            title: "节点错误",
+            description: `${node.data.title} 没有图片数据`,
+            variant: "error"
+          });
+          throw new Error(`Node ${node.id} has no image data`);
+        }
+        // 如果有本地数据，继续处理
+        console.log(`Node ${node.id} using local data...`);
       }
       
       // 模拟处理时间
@@ -111,9 +128,12 @@ export function useWorkflowRunner() {
 
      
 
+      // 使用输入数据或当前节点数据
+      const sourceData = inputDataList.length > 0 ? inputDataList[0] : currentNode?.data;
+      
       const processedData = {
-        imageUrl: inputDataList[0]?.imageUrl, // 现在应该能正确访问
-        fileName: `processed-${inputDataList[0]?.fileName || 'image'}`,
+        imageUrl: sourceData?.imageUrl,
+        fileName: `processed-${sourceData?.fileName || 'image'}`,
         timestamp: Date.now()
       };
 
@@ -125,6 +145,7 @@ export function useWorkflowRunner() {
       ));
 
       updateNodeStatus(node.id, 'success');
+      setLogMessages((prev) => [...prev, `✅ ${node.data.title} completed successfully!`]);
       console.log(`Node ${node.id} processing completed successfully!`);
 
       // 准备要传递的数据
@@ -155,11 +176,24 @@ export function useWorkflowRunner() {
 
       for (const node of nodesToProcess) {
         if (!isRunning.current) break;
-        await processNode(node);
+        
+        try {
+          await processNode(node);
+        } catch (error) {
+          console.error(`Node ${node.id} processing failed:`, error);
+          setLogMessages((prev) => [...prev, `❌ Workflow stopped due to error in ${node.data.title}`]);
+          showToast({
+            title: "工作流错误",
+            description: `工作流在 ${node.data.title} 节点处停止`,
+            variant: "error"
+          });
+          isRunning.current = false;
+          return; // 停止工作流
+        }
       }
 
       if (isRunning.current) {
-        setLogMessages((prev) => [...prev, 'Workflow processing complete.']);
+        setLogMessages((prev) => [...prev, '✅ Workflow processing complete.']);
       }
 
       isRunning.current = false;
