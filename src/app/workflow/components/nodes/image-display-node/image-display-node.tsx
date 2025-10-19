@@ -118,18 +118,21 @@ function ImageDisplayNode({ id, data }: WorkflowNodeProps) {
           >
             {imageUrl && !imageError ? (
               <>
-                {/* 节点处理时的加载动画 */}
-                {isProcessing && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-10">
-                    <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-500 border-t-transparent"></div>
-                  </div>
-                )}
                 <img
                   src={imageUrl}
                   alt="Display"
                   className="w-full h-full object-cover rounded-md"
                   onError={handleImageError}
                 />
+                {/* 节点处理时的加载动画 - 在图片区域正中间 */}
+                {isProcessing && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-10 rounded-md">
+                    <div className="flex flex-col items-center space-y-2">
+                      <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div>
+                      <div className="text-blue-600 text-xs font-medium">处理中...</div>
+                    </div>
+                  </div>
+                )}
               </>
             ) : imageError ? (
               <div className="text-red-500 text-xs text-center">加载失败</div>
