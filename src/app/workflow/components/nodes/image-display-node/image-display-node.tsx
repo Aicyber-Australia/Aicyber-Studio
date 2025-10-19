@@ -81,7 +81,7 @@ function ImageDisplayNode({ id, data }: WorkflowNodeProps) {
 
   return (
     <NodeStatusIndicator status={data?.status}>
-      <BaseNode style={{ width: NODE_SIZE.width, height: 200 }}>
+      <BaseNode style={{ width: NODE_SIZE.width, height: 203 }}>
         <BaseNodeHeader>
           <BaseNodeHeaderTitle>{data?.title}</BaseNodeHeaderTitle>
           <Button 
@@ -113,7 +113,7 @@ function ImageDisplayNode({ id, data }: WorkflowNodeProps) {
         <div className="w-full flex-1 flex items-center justify-center p-3">
           {/* 图片显示区域 - 居中显示 */}
           <div 
-            className="w-80 h-34 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-hidden cursor-pointer hover:border-gray-400 transition-colors relative"
+            className="w-80 h-37 -mt-4 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-hidden cursor-pointer hover:border-gray-400 transition-colors relative"
             onClick={() => document.getElementById(`image-upload-${id}`)?.click()}
           >
             {imageUrl && !imageError ? (
