@@ -130,19 +130,19 @@ function ImageSet({ id, data, selected }: WorkflowNodeProps) {
         <div className="w-full flex-1 flex items-center justify-center p-3 min-h-0 nodrag">
           {/* 多图网格显示区域 - 自适应节点尺寸 */}
           <div
-            className="nodrag w-full h-full border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-hidden cursor-pointer hover:border-gray-400 transition-colors relative"
+            className="nodrag nopan nowheel w-full h-full border-2 border-dashed border-gray-300 rounded-lg overflow-auto cursor-pointer hover:border-gray-400 transition-colors relative"
             onClick={() => document.getElementById(`image-upload-${id}`)?.click()}
+            onWheel={(e) => e.stopPropagation()}
           >
           {imageList.length > 0 ? (
             <>
-              {/* 网格布局显示多张图片 - 自适应容器尺寸 */}
+              {/* 网格布局显示多张图片 - 图片保持1:1比例，完整显示 */}
               <div
                 className={`nodrag grid ${getGridLayout(imageList.length)} gap-1 p-2`}
                 style={{
-                  width: '100%',
-                  height: '100%',
-                  alignContent: 'center',
-                  justifyContent: 'center'
+                  minWidth: '100%',
+                  minHeight: 'fit-content',
+                  gridAutoRows: 'minmax(0, 1fr)'
                 }}
               >
                 {imageList.map((image, index) => (
@@ -151,7 +151,8 @@ function ImageSet({ id, data, selected }: WorkflowNodeProps) {
                     className="nodrag relative overflow-hidden group rounded"
                     style={{
                       aspectRatio: '1/1',
-                      width: '100%'
+                      minWidth: 0,
+                      minHeight: 0
                     }}
                     onMouseEnter={() => setHoveredIndex(index)}
                     onMouseLeave={() => setHoveredIndex(null)}
