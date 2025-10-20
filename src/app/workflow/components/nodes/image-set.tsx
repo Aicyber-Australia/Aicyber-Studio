@@ -90,18 +90,19 @@ function ImageSet({ id, data, selected }: WorkflowNodeProps) {
 
   return (
     <WorkflowNode id={id} data={data} onRefresh={handleRefresh} selected={selected}>
-      <div className="w-full flex-1 flex items-center justify-center p-3">
-        {/* 多图网格显示区域 */}
+      <div className="w-full flex-1 flex items-center justify-center p-3 min-h-0">
+        {/* 多图网格显示区域 - 正方形，随节点缩放 */}
         <div
-          className="w-full h-full min-h-[148px] border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-hidden cursor-pointer hover:border-gray-400 transition-colors relative"
+          className="aspect-square w-full border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-auto cursor-pointer hover:border-gray-400 transition-colors relative"
+          style={{ maxHeight: '100%' }}
           onClick={() => document.getElementById(`image-upload-${id}`)?.click()}
         >
           {imageList.length > 0 ? (
             <>
-              {/* 网格布局显示多张图片 */}
+              {/* 网格布局显示多张图片 - 每个图片都是正方形 */}
               <div className={`grid ${getGridLayout(imageList.length)} gap-1 w-full h-full p-2`}>
                 {imageList.map((image, index) => (
-                  <div key={index} className="relative">
+                  <div key={index} className="relative overflow-hidden aspect-square">
                     <img
                       src={image.url}
                       alt={image.fileName}

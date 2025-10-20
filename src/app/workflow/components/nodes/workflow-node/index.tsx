@@ -13,7 +13,7 @@ import {
   BaseNodeHeaderTitle,
 } from '@/components/base-node';
 import { NodeStatusIndicator } from '@/components/node-status-indicator';
-import { NODE_SIZE } from '@/app/workflow/config';
+import { IMAGE_NODE_SIZE } from '@/app/workflow/config';
 
 // This is an example of how to implement the WorkflowNode component. All the nodes in the Workflow Builder example
 // are variations on this CustomNode defined in the index.tsx file.
@@ -43,8 +43,8 @@ function WorkflowNode({
       <NodeResizer
         color="#3b82f6"
         isVisible={selected}
-        minWidth={NODE_SIZE.width}
-        minHeight={NODE_SIZE.height}
+        minWidth={IMAGE_NODE_SIZE.width}
+        minHeight={IMAGE_NODE_SIZE.height}
       />
       <BaseNode style={{ width: '100%', height: '100%' }}>
         <BaseNodeHeader>

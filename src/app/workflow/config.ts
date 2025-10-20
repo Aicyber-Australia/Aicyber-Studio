@@ -3,6 +3,9 @@ import { AppNodeType, NodeConfig } from './components/nodes';
 
 export const NODE_SIZE = { width: 260, height: 50 };
 
+// Image nodes need square dimensions for image display
+export const IMAGE_NODE_SIZE = { width: 280, height: 280 };
+
 // Action node needs more height for the UI elements
 export const ACTION_NODE_SIZE = { width: 280, height: 220 };
 
@@ -16,13 +19,13 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
         type: 'target',
         position: Position.Left,
         x: 0,
-        y: 90, // 节点高度的一半 (180 / 2)
+        y: IMAGE_NODE_SIZE.height * 0.5,
       },
       {
         type: 'source',
         position: Position.Right,
-        x: NODE_SIZE.width, // 节点宽度
-        y: 90, // 节点高度的一半 (180 / 2)
+        x: IMAGE_NODE_SIZE.width,
+        y: IMAGE_NODE_SIZE.height * 0.5,
       },
     ],
     icon: 'Image',
@@ -36,13 +39,13 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
         type: 'target',
         position: Position.Left,
         x: 0,
-        y: 90, // 节点高度的一半 (180 / 2)
+        y: IMAGE_NODE_SIZE.height * 0.5,
       },
       {
         type: 'source',
         position: Position.Right,
-        x: NODE_SIZE.width, // 节点宽度
-        y: 90, // 节点高度的一半 (180 / 2)
+        x: IMAGE_NODE_SIZE.width,
+        y: IMAGE_NODE_SIZE.height * 0.5,
       },
     ],
     icon: 'Images',

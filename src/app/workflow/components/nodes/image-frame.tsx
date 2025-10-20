@@ -80,10 +80,11 @@ function ImageFrame({ id, data, selected }: WorkflowNodeProps) {
 
   return (
     <WorkflowNode id={id} data={data} onRefresh={handleRefresh} selected={selected}>
-      <div className="w-full flex-1 flex items-center justify-center p-3">
-        {/* 图片显示区域 - 居中显示 */}
+      <div className="w-full flex-1 flex items-center justify-center p-3 min-h-0">
+        {/* 图片显示区域 - 正方形，随节点缩放 */}
         <div
-          className="w-full h-full min-h-[148px] border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-hidden cursor-pointer hover:border-gray-400 transition-colors relative"
+          className="aspect-square w-full border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-auto cursor-pointer hover:border-gray-400 transition-colors relative"
+          style={{ maxHeight: '100%' }}
           onClick={() => document.getElementById(`image-upload-${id}`)?.click()}
         >
           {imageUrl && !imageError ? (

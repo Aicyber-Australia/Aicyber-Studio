@@ -1,7 +1,7 @@
 import { Node, NodeProps, XYPosition } from '@xyflow/react';
 import { nanoid } from 'nanoid';
 
-import { NODE_SIZE, nodesConfig } from '../../config';
+import { NODE_SIZE, IMAGE_NODE_SIZE, ACTION_NODE_SIZE, nodesConfig } from '../../config';
 import { iconMapping } from '@/app/workflow/utils/icon-mapping';
 import ImageFrame from './image-frame';
 import ImageSet from './image-set';
@@ -68,6 +68,14 @@ export const createNodeByType = ({
 }): AppNode => {
   const node = nodesConfig[type];
 
+  // Determine the size based on node type
+  let nodeSize = NODE_SIZE;
+  if (type === 'image-frame' || type === 'image-set') {
+    nodeSize = IMAGE_NODE_SIZE;
+  } else if (type === 'text-to-image-node' || type === 'image-to-image-node') {
+    nodeSize = ACTION_NODE_SIZE;
+  }
+
   const newNode: AppNode = {
     id: id ?? nanoid(),
     data: data ?? {
@@ -76,15 +84,14 @@ export const createNodeByType = ({
       icon: node.icon,
     },
     position: {
-      x: position.x - NODE_SIZE.width * 0.5,
-      y: position.y - NODE_SIZE.height * 0.5,
+      x: position.x - nodeSize.width * 0.5,
+      y: position.y - nodeSize.height * 0.5,
     },
     type,
 
-    // If you want to render nodes and edges on the server, you need to uncomment the following lines
-
-    // width: NODE_SIZE.width,
-    // height: NODE_SIZE.height,
+    // Set explicit width and height to control initial size
+    width: nodeSize.width,
+    height: nodeSize.height,
     // handles: node.handles,
   };
 
