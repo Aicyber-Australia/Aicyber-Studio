@@ -6,9 +6,13 @@ import { WorkflowNodeProps } from '@/app/workflow/components/nodes';
 import { nodesConfig } from '../../config';
 import { NodeHandle } from './workflow-node/node-handle';
 import WorkflowNode from './workflow-node';
+import { Eye, Trash2 } from 'lucide-react';
+import { ImagePreviewDialog } from './image-preview-dialog';
 
 function ImageSet({ id, data, selected }: WorkflowNodeProps) {
   const [imageError, setImageError] = useState<boolean>(false);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [previewImage, setPreviewImage] = useState<{ url: string; fileName: string } | null>(null);
   
   // 使用 ReactFlow 官方 API
   const { getNode, setNodes, getEdges } = useReactFlow();
@@ -80,6 +84,38 @@ function ImageSet({ id, data, selected }: WorkflowNodeProps) {
     setImageError(true);
   };
 
+  const handleDeleteImage = (index: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updatedImageList = imageList.filter((_, i) => i !== index);
+
+    setNodes(nodes => nodes.map(node =>
+      node.id === id
+        ? {
+            ...node,
+            data: {
+              ...node.data,
+              media: { imageList: updatedImageList },
+              title: updatedImageList.length > 0 ? `Image Set (${updatedImageList.length})` : 'Image Set'
+            }
+          }
+        : node
+    ));
+  };
+
+  const handlePreviewMouseDown = (image: { url: string; fileName: string }, e: React.MouseEvent) => {
+    // Only trigger on left mouse button (button 0)
+    if (e.button !== 0) return;
+
+    e.stopPropagation();
+    console.log('Preview mousedown triggered for:', image.fileName);
+    setPreviewImage(image);
+  };
+
+  const handlePreviewClose = () => {
+    console.log('Preview closed');
+    setPreviewImage(null);
+  };
+
   // 计算网格布局
   const getGridLayout = (count: number) => {
     if (count <= 1) return 'grid-cols-1';
@@ -89,30 +125,64 @@ function ImageSet({ id, data, selected }: WorkflowNodeProps) {
   };
 
   return (
-    <WorkflowNode id={id} data={data} onRefresh={handleRefresh} selected={selected}>
-      <div className="w-full flex-1 flex items-center justify-center p-3 min-h-0">
-        {/* 多图网格显示区域 - 正方形，随节点缩放 */}
-        <div
-          className="aspect-square w-full border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-auto cursor-pointer hover:border-gray-400 transition-colors relative"
-          style={{ maxHeight: '100%' }}
-          onClick={() => document.getElementById(`image-upload-${id}`)?.click()}
-        >
+    <>
+      <WorkflowNode id={id} data={data} onRefresh={handleRefresh} selected={selected}>
+        <div className="w-full flex-1 flex items-center justify-center p-3 min-h-0 nodrag">
+          {/* 多图网格显示区域 - 正方形，随节点缩放 */}
+          <div
+            className="nodrag aspect-square w-full border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-auto cursor-pointer hover:border-gray-400 transition-colors relative"
+            style={{ maxHeight: '100%' }}
+            onClick={() => document.getElementById(`image-upload-${id}`)?.click()}
+          >
           {imageList.length > 0 ? (
             <>
               {/* 网格布局显示多张图片 - 每个图片都是正方形 */}
-              <div className={`grid ${getGridLayout(imageList.length)} gap-1 w-full h-full p-2`}>
+              <div className={`nodrag grid ${getGridLayout(imageList.length)} gap-1 w-full h-full p-2`}>
                 {imageList.map((image, index) => (
-                  <div key={index} className="relative overflow-hidden aspect-square">
+                  <div
+                    key={index}
+                    className="nodrag relative overflow-hidden aspect-square group"
+                    onMouseEnter={() => setHoveredIndex(index)}
+                    onMouseLeave={() => setHoveredIndex(null)}
+                    draggable={false}
+                  >
                     <img
                       src={image.url}
                       alt={image.fileName}
                       className="w-full h-full object-cover rounded"
                       onError={handleImageError}
+                      draggable={false}
                     />
                     {/* 图片序号 */}
                     <div className="absolute top-1 left-1 bg-black/50 text-white text-xs px-1 rounded">
                       {index + 1}
                     </div>
+
+                    {/* 悬停时显示的按钮 */}
+                    {hoveredIndex === index && (
+                      <div
+                        className="nodrag absolute inset-0 bg-black/40 flex items-center justify-center gap-2 rounded"
+                        onClick={(e) => e.stopPropagation()}
+                        draggable={false}
+                      >
+                        <button
+                          onMouseDown={(e) => handlePreviewMouseDown(image, e)}
+                          className="nodrag p-2 bg-white/90 hover:bg-white rounded-full transition-colors select-none"
+                          title="Preview (hold to view)"
+                          draggable={false}
+                        >
+                          <Eye className="w-4 h-4 text-gray-700 pointer-events-none" />
+                        </button>
+                        <button
+                          onClick={(e) => handleDeleteImage(index, e)}
+                          className="nodrag p-2 bg-white/90 hover:bg-white rounded-full transition-colors select-none"
+                          title="Delete"
+                          draggable={false}
+                        >
+                          <Trash2 className="w-4 h-4 text-red-600 pointer-events-none" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -132,31 +202,35 @@ function ImageSet({ id, data, selected }: WorkflowNodeProps) {
               <div className="text-xs mt-1">支持拖拽多文件</div>
             </div>
           )}
+          </div>
+
+          {/* 隐藏的文件上传输入 - 支持多文件 */}
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleImageUpload}
+            className="hidden"
+            id={`image-upload-${id}`}
+          />
         </div>
-        
-        {/* 隐藏的文件上传输入 - 支持多文件 */}
-        <input
-          type="file"
-          accept="image/*"
-          multiple
-          onChange={handleImageUpload}
-          className="hidden"
-          id={`image-upload-${id}`}
-        />
-      </div>
-      
-      {/* Handle 配置 */}
-      {nodesConfig['image-set'].handles.map((handle: any) => (
-        <NodeHandle
-          key={`${handle.type}-${handle.id}`}
-          id={handle.id}
-          type={handle.type}
-          position={handle.position}
-          x={handle.x}
-          y={handle.y}
-        />
-      ))}
-    </WorkflowNode>
+
+        {/* Handle 配置 */}
+        {nodesConfig['image-set'].handles.map((handle: any) => (
+          <NodeHandle
+            key={`${handle.type}-${handle.id}`}
+            id={handle.id}
+            type={handle.type}
+            position={handle.position}
+            x={handle.x}
+            y={handle.y}
+          />
+        ))}
+      </WorkflowNode>
+
+      {/* 预览对话框 - 使用 Portal 渲染到 body，确保是真正的窗口级别 */}
+      <ImagePreviewDialog image={previewImage} onClose={handlePreviewClose} />
+    </>
   );
 }
 
