@@ -1,6 +1,6 @@
-# Workflow Editor Template
+# Aicyber Studio
 
-The Workflow Editor is a Next.js-based application designed to help you quickly create, manage, and visualize workflows. Built with [React Flow UI](https://reactflow.dev/ui) and styled using [Tailwind CSS](https://tailwindcss.com/) and [shadcn/ui](https://ui.shadcn.com/), this project provides a highly customizable foundation for building and extending workflow editors.
+Aicyber Studio is a Next.js-based application designed to help you quickly create, manage, and visualize AI-powered workflows. Built with [React Flow UI](https://reactflow.dev/ui) and styled using [Tailwind CSS](https://tailwindcss.com/) and [shadcn/ui](https://ui.shadcn.com/), this project provides a highly customizable foundation for building and extending AI workflow editors.
 
 ## Table of Contents
 
