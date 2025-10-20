@@ -14,6 +14,7 @@ import {
   SelectionDragHandler,
   useStoreApi,
   useReactFlow,
+  MiniMap,
 } from '@xyflow/react';
 import { useShallow } from 'zustand/react/shallow';
 import { useTheme } from 'next-themes';
@@ -221,6 +222,7 @@ export default function Workflow() {
       <FlowContextMenu />
       <FlowRunButton />
       <DebugPanel />
+      <MiniMap />
     </ReactFlow>
   );
 }
