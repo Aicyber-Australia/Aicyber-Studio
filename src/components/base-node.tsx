@@ -11,7 +11,7 @@ export const BaseNode = forwardRef<
     className={cn(
       'relative rounded-md border bg-card text-card-foreground',
       'hover:ring-1',
-      'overflow-hidden',
+      'overflow-visible',
       'flex flex-col',
       // React Flow displays node elements inside of a `NodeWrapper` component,
       // which compiles down to a div with the class `react-flow__node`.
