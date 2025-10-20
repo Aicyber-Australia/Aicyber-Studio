@@ -128,20 +128,31 @@ function ImageSet({ id, data, selected }: WorkflowNodeProps) {
     <>
       <WorkflowNode id={id} data={data} onRefresh={handleRefresh} selected={selected}>
         <div className="w-full flex-1 flex items-center justify-center p-3 min-h-0 nodrag">
-          {/* 多图网格显示区域 - 正方形，随节点缩放 */}
+          {/* 多图网格显示区域 - 自适应节点尺寸 */}
           <div
-            className="nodrag aspect-square w-full border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-auto cursor-pointer hover:border-gray-400 transition-colors relative"
-            style={{ maxHeight: '100%' }}
+            className="nodrag w-full h-full border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-hidden cursor-pointer hover:border-gray-400 transition-colors relative"
             onClick={() => document.getElementById(`image-upload-${id}`)?.click()}
           >
           {imageList.length > 0 ? (
             <>
-              {/* 网格布局显示多张图片 - 每个图片都是正方形 */}
-              <div className={`nodrag grid ${getGridLayout(imageList.length)} gap-1 w-full h-full p-2`}>
+              {/* 网格布局显示多张图片 - 自适应容器尺寸 */}
+              <div
+                className={`nodrag grid ${getGridLayout(imageList.length)} gap-1 p-2`}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  alignContent: 'center',
+                  justifyContent: 'center'
+                }}
+              >
                 {imageList.map((image, index) => (
                   <div
                     key={index}
-                    className="nodrag relative overflow-hidden aspect-square group"
+                    className="nodrag relative overflow-hidden group rounded"
+                    style={{
+                      aspectRatio: '1/1',
+                      width: '100%'
+                    }}
                     onMouseEnter={() => setHoveredIndex(index)}
                     onMouseLeave={() => setHoveredIndex(null)}
                     draggable={false}
@@ -149,7 +160,7 @@ function ImageSet({ id, data, selected }: WorkflowNodeProps) {
                     <img
                       src={image.url}
                       alt={image.fileName}
-                      className="w-full h-full object-cover rounded"
+                      className="w-full h-full object-cover"
                       onError={handleImageError}
                       draggable={false}
                     />
