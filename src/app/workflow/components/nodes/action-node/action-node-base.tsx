@@ -118,9 +118,9 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
           </div>
         </BaseNodeHeader>
         
-        <BaseNodeContent className="space-y-4">
+        <BaseNodeContent className="flex-1 flex flex-col space-y-4">
           {/* Model Selection - Small expandable box */}
-          <div className="flex justify-start">
+          <div className="flex justify-start flex-shrink-0 nodrag">
             <Select value={selectedModel} onValueChange={handleModelChange}>
               <SelectTrigger className="w-2/3 h-9">
                 <SelectValue placeholder="Select model:" />
@@ -136,12 +136,12 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
           </div>
 
           {/* Large Text Input Area */}
-          <div className="space-y-2 -mt-4">
+          <div className="flex-1 flex flex-col -mt-4 min-h-0 nodrag">
             <textarea
               value={prompt}
               onChange={(e) => handlePromptChange(e.target.value)}
-              placeholder="Enter your text here..."
-              className="w-full min-h-[100px] p-3 border border-input rounded-md bg-transparent text-sm placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] outline-none resize-none"
+              placeholder="Enter your prompt here..."
+              className="w-full h-full p-3 border border-input rounded-md bg-transparent text-sm placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] outline-none resize-none"
             />
           </div>
         </BaseNodeContent>

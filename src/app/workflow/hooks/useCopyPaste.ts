@@ -25,13 +25,24 @@ export function useCopyPaste<
   const [bufferedEdges, setBufferedEdges] = useState([] as EdgeType[]);
 
   // initialize the copy/paste hook
-  // 1. remove native copy/paste/cut handlers
+  // 1. remove native copy/paste/cut handlers (except for input elements)
   // 2. add mouse move handler to keep track of the current mouse position
   useEffect(() => {
     const events = ['cut', 'copy', 'paste'];
 
     if (rfDomNode) {
-      const preventDefault = (e: Event) => e.preventDefault();
+      const preventDefault = (e: Event) => {
+        // Allow native copy/paste in input elements, textareas, and contenteditable
+        const target = e.target as HTMLElement;
+        if (
+          target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable
+        ) {
+          return;
+        }
+        e.preventDefault();
+      };
 
       const onMouseMove = (event: MouseEvent) => {
         mousePosRef.current = {
