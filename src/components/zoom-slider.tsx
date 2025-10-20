@@ -14,22 +14,18 @@ import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-type ZoomSliderProps = Omit<PanelProps, 'children'>;
+type ZoomSliderProps = Omit<PanelProps, 'children'> & {
+  standalone?: boolean;
+};
 
-export function ZoomSlider({ className, ...props }: ZoomSliderProps) {
+export function ZoomSlider({ className, standalone = true, ...props }: ZoomSliderProps) {
   const { zoom } = useViewport();
   const { zoomTo, zoomIn, zoomOut, fitView } = useReactFlow();
   const minZoom = useStore((state) => state.minZoom);
   const maxZoom = useStore((state) => state.maxZoom);
 
-  return (
-    <Panel
-      className={cn(
-        'flex bg-primary-foreground text-foreground rounded-md gap-1 p-1',
-        className,
-      )}
-      {...props}
-    >
+  const content = (
+    <>
       <Button
         variant="ghost"
         size="icon"
@@ -66,6 +62,22 @@ export function ZoomSlider({ className, ...props }: ZoomSliderProps) {
       >
         <Maximize className="h-4 w-4" />
       </Button>
+    </>
+  );
+
+  if (!standalone) {
+    return content;
+  }
+
+  return (
+    <Panel
+      className={cn(
+        'flex bg-primary-foreground text-foreground rounded-md gap-1 p-1',
+        className,
+      )}
+      {...props}
+    >
+      {content}
     </Panel>
   );
 }

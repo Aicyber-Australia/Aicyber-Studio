@@ -18,6 +18,7 @@ import {
 } from '@xyflow/react';
 import { useShallow } from 'zustand/react/shallow';
 import { useTheme } from 'next-themes';
+import { MousePointer2, Hand, Play, Pause, Trash2, Divide } from 'lucide-react';
 
 import { nodeTypes } from '@/app/workflow/components/nodes';
 import { useAppStore } from '@/app/workflow/store';
@@ -25,10 +26,11 @@ import { WorkflowControls } from './controls';
 import FlowContextMenu from '@/app/workflow/components/flow-context-menu';
 import { AppStore } from '@/app/workflow/store/app-store';
 import { useDragAndDrop } from '@/app/workflow/hooks/useDragAndDrop';
-import { FlowRunButton } from '@/app/workflow/components/flow-run-button';
 import { DebugPanel } from './debug-panel';
 import { useCopyPaste } from '@/app/workflow/hooks/useCopyPaste';
 import { useUndoRedo } from '@/app/workflow/hooks/useUndoRedo';
+import { useWorkflowRunner } from '@/app/workflow/hooks/use-workflow-runner';
+import { Button } from '@/components/ui/button';
 
 const MIN_DISTANCE = 150;
 
@@ -49,6 +51,7 @@ const selector = (state: AppStore) => ({
   onNodeDragStop: state.onNodeDragStop,
   setEdges: state.setEdges,
   getEdges: state.getEdges,
+  setNodes: state.setNodes,
 });
 
 export default function Workflow() {
@@ -58,12 +61,27 @@ export default function Workflow() {
   const reactFlowStore = useStoreApi();
   const { getInternalNode } = useReactFlow();
   const [isSelectMode, setIsSelectMode] = useState(true);
+  const { runWorkflow, stopWorkflow, isRunning } = useWorkflowRunner();
 
   // Initialize undo/redo functionality
   const { takeSnapshot } = useUndoRedo();
 
   // Initialize copy/paste functionality for nodes with undo/redo support
   useCopyPaste(takeSnapshot);
+
+  const handleClearCanvas = useCallback(() => {
+    takeSnapshot();
+    store.setNodes([]);
+    store.setEdges([]);
+  }, [takeSnapshot, store]);
+
+  const handleRunWorkflow = useCallback(() => {
+    if (isRunning) {
+      stopWorkflow();
+    } else {
+      runWorkflow();
+    }
+  }, [isRunning, stopWorkflow, runWorkflow]);
 
   // Proximity connect logic
   const getClosestEdge = useCallback((node: any) => {
@@ -227,24 +245,70 @@ export default function Workflow() {
         <Background />
         <WorkflowControls />
         <FlowContextMenu />
-        <FlowRunButton />
-        <DebugPanel />
-        <MiniMap />
+        {/* <DebugPanel /> */}
+        <MiniMap  />
       </ReactFlow>
 
-      {/* Floating Mode Toggle */}
-      <button
-        onClick={() => setIsSelectMode(!isSelectMode)}
-        className="absolute top-4 left-1/2 -translate-x-1/2 z-10 px-4 py-2 bg-background border border-border rounded-lg shadow-md hover:bg-accent transition-colors flex items-center gap-2"
-        title={isSelectMode ? 'Switch to Pan Mode' : 'Switch to Select Mode'}
-      >
-        <span className="text-sm font-medium">
-          {isSelectMode ? '🖱️ Select Mode' : '✋ Pan Mode'}
-        </span>
-        <span className="text-xs text-muted-foreground">
-          {isSelectMode ? '(Space to pan)' : '(Shift to select)'}
-        </span>
-      </button>
+      {/* Floating Mode Toolbar */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1 bg-card border border-border rounded-lg shadow-md p-1.5">
+        {/* Mode Toggle Group with Sliding Background */}
+        <div className="relative flex items-center gap-1 rounded-md p-1">
+          {/* Sliding Background */}
+          <div
+            className="absolute inset-y-1 w-9 bg-primary dark:bg-accent border border-border rounded-md transition-all duration-300 ease-in-out shadow-sm"
+            style={{
+              transform: isSelectMode ? 'translateX(0)' : 'translateX(2.5rem)',
+            }}
+          />
+
+          <Button
+            onClick={() => setIsSelectMode(true)}
+            variant="ghost"
+            size="icon"
+            className={`relative z-10 h-9 w-9 transition-colors duration-200 ${
+              isSelectMode
+                ? 'text-primary-foreground dark:text-foreground hover:text-primary-foreground dark:hover:text-foreground hover:bg-transparent'
+                : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
+            }`}
+            title="Select Mode (Shift to pan)"
+          >
+            <MousePointer2 className="h-5 w-5" />
+          </Button>
+          <Button
+            onClick={() => setIsSelectMode(false)}
+            variant="ghost"
+            size="icon"
+            className={`relative z-10 h-9 w-9 transition-colors duration-200 ${
+              !isSelectMode
+                ? 'text-primary-foreground dark:text-foreground hover:text-primary-foreground dark:hover:text-foreground hover:bg-transparent'
+                : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
+            }`}
+            title="Pan Mode (Shift to select)"
+          >
+            <Hand className="h-5 w-5" />
+          </Button>
+        </div>
+
+        <div className="h-6 w-px bg-gray-300 dark:bg-gray-600 mx-1" />
+
+        <Button
+          onClick={handleRunWorkflow}
+          variant="ghost"
+          size="icon"
+          title={isRunning ? 'Stop Workflow' : 'Run Workflow'}
+        >
+          {isRunning ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+        </Button>
+
+        <Button
+          onClick={handleClearCanvas}
+          variant="ghost"
+          size="icon"
+          title="Clear Canvas"
+        >
+          <Trash2 className="h-5 w-5" />
+        </Button>
+      </div>
     </>
   );
 }
