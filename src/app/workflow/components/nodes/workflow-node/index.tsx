@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { Play, Trash } from 'lucide-react';
+import { Play, Trash, RotateCcw } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { WorkflowNodeData } from '@/app/workflow/components/nodes';
@@ -21,10 +21,12 @@ function WorkflowNode({
   id,
   data,
   children,
+  onRefresh,
 }: {
   id: string;
   data: WorkflowNodeData;
   children?: React.ReactNode;
+  onRefresh?: () => void;
 }) {
   const { runWorkflow } = useWorkflowRunner();
   const removeNode = useAppStore((s) => s.removeNode);
@@ -39,6 +41,16 @@ function WorkflowNode({
         <BaseNodeHeader>
           {IconComponent ? <IconComponent aria-label={data?.icon} /> : null}
           <BaseNodeHeaderTitle>{data?.title}</BaseNodeHeaderTitle>
+          {onRefresh && (
+            <Button 
+              variant="ghost" 
+              className="nodrag px-1!" 
+              onClick={onRefresh}
+              title="刷新"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </Button>
+          )}
           <Button variant="ghost" className="nodrag px-1!" onClick={onPlay}>
             <Play className="stroke-blue-500 fill-blue-500" />
           </Button>

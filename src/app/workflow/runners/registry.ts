@@ -1,6 +1,7 @@
 import { NodeRunner } from './types';
 import { DefaultNodeRunner } from './default-runner';
 import { ImageFrameNodeRunner } from './image-frame-runner';
+import { ActionNodeRunner } from './action-node-runner';
 
 export class NodeRunnerRegistry {
   private runners: Map<string, NodeRunner> = new Map();
@@ -26,5 +27,8 @@ nodeRunnerRegistry.register(DefaultNodeRunner);
 
 // 注册 Image Frame 节点 Runner
 nodeRunnerRegistry.register(ImageFrameNodeRunner);
+
+// 注册统一的 Action Node Runner
+nodeRunnerRegistry.register(ActionNodeRunner);
 
 

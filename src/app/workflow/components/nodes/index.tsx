@@ -8,7 +8,9 @@ import { InitialNode } from './initial-node';
 import { TransformNode } from './transform-node';
 import { BranchNode } from './branch-node';
 import { JoinNode } from './join-node';
-import { ImageDisplayNode } from './image-display-node';
+import ImageFrame from './image-frame';
+import { TextToImageNode } from './action-node/text-to-image';
+import { ImageToImageNode } from './action-node/image-to-image';
 
 /* WORKFLOW NODE DATA PROPS ------------------------------------------------------ */
 
@@ -18,9 +20,23 @@ export type WorkflowNodeData = {
   icon?: keyof typeof iconMapping;
   status?: 'loading' | 'success' | 'error' | 'initial';
   fileName?: string;
-  imageUrl?: string;
   timestamp?: number;
-  
+  selectedModel?: string;
+  prompt?: string;
+  media?: {
+    imageList?: Array<{
+      url: string;
+      data?: string;
+      fileName: string;
+      timestamp?: number;
+    }>;
+    videoList?: Array<{
+      url: string;
+      data?: string;
+      fileName: string;
+      timestamp?: number;
+    }>;
+  };
 };
 
 export type WorkflowNodeProps = NodeProps<Node<WorkflowNodeData>> & {
@@ -42,7 +58,9 @@ export const nodeTypes = {
   'transform-node': TransformNode,
   'branch-node': BranchNode,
   'join-node': JoinNode,
-  'image-display-node': ImageDisplayNode,
+  'image-frame': ImageFrame,
+  'text-to-image-node': TextToImageNode,
+  'image-to-image-node': ImageToImageNode,
 };
 
 export const createNodeByType = ({
@@ -87,6 +105,8 @@ export type AppNode =
   | Node<WorkflowNodeData, 'join-node'>
   | Node<WorkflowNodeData, 'branch-node'>
   | Node<WorkflowNodeData, 'output-node'>
-  | Node<WorkflowNodeData, 'image-display-node'>;
+  | Node<WorkflowNodeData, 'image-frame'>
+  | Node<WorkflowNodeData, 'text-to-image-node'>
+  | Node<WorkflowNodeData, 'image-to-image-node'>;
 
 export type AppNodeType = NonNullable<AppNode['type']>;

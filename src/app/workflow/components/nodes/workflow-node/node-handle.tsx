@@ -22,7 +22,51 @@ import { useDropdown } from '@/hooks/use-dropdown';
 import { useAppStore } from '@/app/workflow/store';
 import { ButtonHandle } from '@/components/button-handle';
 
-const compatibleNodeTypes = (type: 'source' | 'target') => {
+const compatibleNodeTypes = (type: 'source' | 'target', currentNodeType?: string) => {
+  // Special case for text-to-image-node: source can only be image-frame
+  if (currentNodeType === 'text-to-image-node' && type === 'target') {
+    return (node: NodeConfig) => {
+      return node.id === 'image-frame';
+    };
+  }
+  
+  // Special case for text-to-image-node: output can connect to any node
+  if (currentNodeType === 'text-to-image-node' && type === 'source') {
+    return (node: NodeConfig) => {
+      return (
+        node.id === 'transform-node' ||
+        node.id === 'join-node' ||
+        node.id === 'branch-node' ||
+        node.id === 'output-node' ||
+        node.id === 'image-frame' ||
+        node.id === 'text-to-image-node' ||
+        node.id === 'image-to-image-node'
+      );
+    };
+  }
+
+  // Special case for image-to-image-node: source must be image-frame
+  if (currentNodeType === 'image-to-image-node' && type === 'target') {
+    return (node: NodeConfig) => {
+      return node.id === 'image-frame';
+    };
+  }
+  
+  // Special case for image-to-image-node: output can connect to any node
+  if (currentNodeType === 'image-to-image-node' && type === 'source') {
+    return (node: NodeConfig) => {
+      return (
+        node.id === 'transform-node' ||
+        node.id === 'join-node' ||
+        node.id === 'branch-node' ||
+        node.id === 'output-node' ||
+        node.id === 'image-frame' ||
+        node.id === 'text-to-image-node' ||
+        node.id === 'image-to-image-node'
+      );
+    };
+  }
+  
   if (type === 'source') {
     return (node: NodeConfig) => {
       return (
@@ -30,7 +74,9 @@ const compatibleNodeTypes = (type: 'source' | 'target') => {
         node.id === 'join-node' ||
         node.id === 'branch-node' ||
         node.id === 'output-node' ||
-        node.id === 'image-display-node'
+        node.id === 'image-frame' ||
+        node.id === 'text-to-image-node' ||
+        node.id === 'image-to-image-node'
       );
     };
   }
@@ -40,7 +86,9 @@ const compatibleNodeTypes = (type: 'source' | 'target') => {
       node.id === 'join-node' ||
       node.id === 'branch-node' ||
       node.id === 'initial-node' ||
-      node.id === 'image-display-node'
+      node.id === 'image-frame' ||
+      node.id === 'text-to-image-node' ||
+      node.id === 'image-to-image-node'
     );
   };
 };
@@ -87,6 +135,8 @@ export function NodeHandle({
   y: number;
 }) {
   const nodeId = useNodeId() ?? '';
+  const currentNode = useInternalNode(nodeId);
+  const currentNodeType = currentNode?.type;
 
   const connections = useNodeConnections({
     handleType: type,
@@ -187,7 +237,7 @@ export function NodeHandle({
         >
           <FlowDropdownMenu
             onAddNode={onAddNode}
-            filterNodes={compatibleNodeTypes(type)}
+            filterNodes={compatibleNodeTypes(type, currentNodeType)}
           />
         </div>
       )}
