@@ -141,6 +141,17 @@ export function NodeHandle({
   const nodePosition =
     useInternalNode(nodeId)?.internals.positionAbsolute ?? fallbackPosition;
 
+  // Get actual node dimensions for dynamic handle positioning
+  const nodeWidth = currentNode?.measured?.width;
+  const nodeHeight = currentNode?.measured?.height;
+
+  // Calculate dynamic handle positions based on actual node size
+  // Use measured dimensions if available, otherwise fall back to static positions
+  // For left/right handles, use middle of node height
+  // For x position: 0 for left (target), nodeWidth for right (source)
+  const dynamicX = nodeWidth !== undefined ? (type === 'source' ? nodeWidth : 0) : x;
+  const dynamicY = nodeHeight !== undefined ? nodeHeight * 0.5 : y;
+
   const onClick = () => {
     toggleDropdown();
   };
@@ -155,12 +166,12 @@ export function NodeHandle({
         type: nodeType,
         [type]: nodeId,
         [`${type}HandleId`]: id,
-        position: getIndicatorPostion(nodePosition, x, y, type),
+        position: getIndicatorPostion(nodePosition, dynamicX, dynamicY, type),
       });
 
       toggleDropdown();
     },
-    [nodeId, id, type, nodePosition, x, y, toggleDropdown, addNodeInBetween],
+    [nodeId, id, type, nodePosition, dynamicX, dynamicY, toggleDropdown, addNodeInBetween],
   );
 
   const displayAddButton =
@@ -172,7 +183,7 @@ export function NodeHandle({
   useEffect(() => {
     if (displayAddButton) {
       connectionSites.set(connectionId, {
-        position: getIndicatorPostion(nodePosition, x, y, type),
+        position: getIndicatorPostion(nodePosition, dynamicX, dynamicY, type),
         [type]: {
           node: nodeId,
           handle: id,
@@ -191,8 +202,8 @@ export function NodeHandle({
     id,
     nodeId,
     type,
-    x,
-    y,
+    dynamicX,
+    dynamicY,
     displayAddButton,
   ]);
   return (
@@ -201,7 +212,7 @@ export function NodeHandle({
       position={handlePosition}
       id={id}
       className={clsx('left-[-6px] top-[-6px]', className)}
-      style={{ transform: `translate(${x}px, ${y}px)` }}
+      style={{ transform: `translate(${dynamicX}px, ${dynamicY}px)` }}
       showButton={displayAddButton}
     >
       <Button

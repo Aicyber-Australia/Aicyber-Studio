@@ -122,7 +122,7 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
           {/* Model Selection - Small expandable box */}
           <div className="flex justify-start flex-shrink-0 nodrag">
             <Select value={selectedModel} onValueChange={handleModelChange}>
-              <SelectTrigger className="w-2/3 h-9">
+              <SelectTrigger className="w-full h-9">
                 <SelectValue placeholder="Select model:" />
               </SelectTrigger>
               <SelectContent>

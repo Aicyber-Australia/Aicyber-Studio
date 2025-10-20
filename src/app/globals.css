@@ -154,3 +154,11 @@
     stroke-dashoffset: 0;
   }
 }
+
+.react-flow__node {
+  transition: none !important;
+}
+
+.react-flow__node * {
+  transition: none !important;
+}
