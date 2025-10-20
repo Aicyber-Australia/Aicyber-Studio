@@ -42,9 +42,10 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
   const { runWorkflow } = useWorkflowRunner();
   const removeNode = useAppStore((s) => s.removeNode);
   const { setNodes } = useReactFlow();
-  
+
   const [selectedModel, setSelectedModel] = useState<string>(data?.selectedModel || 'default');
   const [prompt, setPrompt] = useState<string>(data?.prompt || '');
+  const [isTitleEditing, setIsTitleEditing] = useState(false);
 
   const onPlay = useCallback(() => runWorkflow(id), [id, runWorkflow]);
   const onRemove = useCallback(() => removeNode(id), [id, removeNode]);
@@ -55,6 +56,10 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
       )
     );
   }, [id, setNodes]);
+
+  const handleTitleChange = useCallback((newTitle: string) => {
+    updateNodeData({ title: newTitle });
+  }, [updateNodeData]);
 
   const onReset = useCallback(() => {
     setSelectedModel('default');
@@ -89,21 +94,27 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
       />
       <BaseNode style={{ width: '100%', height: '100%' }}>
         <BaseNodeHeader>
-          <BaseNodeHeaderTitle>{data?.title || 'Action Node'}</BaseNodeHeaderTitle>
-          <div className="flex items-center gap-1">
+          <BaseNodeHeaderTitle
+            editable
+            onTitleChange={handleTitleChange}
+            onEditingChange={setIsTitleEditing}
+          >
+            {data?.title || 'Action Node'}
+          </BaseNodeHeaderTitle>
+          <div className="flex items-center gap-1" style={{ visibility: isTitleEditing ? 'hidden' : 'visible' }}>
             {onRefresh && (
-              <Button 
-                variant="ghost" 
-                className="nodrag px-1!" 
+              <Button
+                variant="ghost"
+                className="nodrag px-1!"
                 onClick={onRefresh}
                 title="刷新"
               >
                 <RotateCcw className="w-4 h-4" />
               </Button>
             )}
-            <Button 
-              variant="ghost" 
-              className="nodrag px-1!" 
+            <Button
+              variant="ghost"
+              className="nodrag px-1!"
               onClick={onReset}
               title="重置节点"
             >

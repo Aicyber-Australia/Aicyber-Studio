@@ -1,6 +1,6 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Play, Trash, RotateCcw } from 'lucide-react';
-import { NodeResizer } from '@xyflow/react';
+import { NodeResizer, useReactFlow } from '@xyflow/react';
 
 import { Button } from '@/components/ui/button';
 import { WorkflowNodeData } from '@/app/workflow/components/nodes';
@@ -33,8 +33,18 @@ function WorkflowNode({
 }) {
   const { runWorkflow } = useWorkflowRunner();
   const removeNode = useAppStore((s) => s.removeNode);
+  const { setNodes } = useReactFlow();
+  const [isTitleEditing, setIsTitleEditing] = useState(false);
   const onPlay = useCallback(() => runWorkflow(id), [id, runWorkflow]);
   const onRemove = useCallback(() => removeNode(id), [id, removeNode]);
+
+  const handleTitleChange = useCallback((newTitle: string) => {
+    setNodes((nodes) =>
+      nodes.map((node) =>
+        node.id === id ? { ...node, data: { ...node.data, title: newTitle } } : node
+      )
+    );
+  }, [id, setNodes]);
 
   const IconComponent = data?.icon ? iconMapping[data.icon] : undefined;
 
@@ -49,23 +59,31 @@ function WorkflowNode({
       <BaseNode style={{ width: '100%', height: '100%' }}>
         <BaseNodeHeader>
           {IconComponent ? <IconComponent aria-label={data?.icon} /> : null}
-          <BaseNodeHeaderTitle>{data?.title}</BaseNodeHeaderTitle>
-          {onRefresh && (
-            <Button 
-              variant="ghost" 
-              className="nodrag px-1!" 
-              onClick={onRefresh}
-              title="刷新"
-            >
-              <RotateCcw className="w-4 h-4" />
+          <BaseNodeHeaderTitle
+            editable
+            onTitleChange={handleTitleChange}
+            onEditingChange={setIsTitleEditing}
+          >
+            {data?.title}
+          </BaseNodeHeaderTitle>
+          <div className="flex items-center gap-1" style={{ visibility: isTitleEditing ? 'hidden' : 'visible' }}>
+            {onRefresh && (
+              <Button
+                variant="ghost"
+                className="nodrag px-1!"
+                onClick={onRefresh}
+                title="刷新"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </Button>
+            )}
+            <Button variant="ghost" className="nodrag px-1!" onClick={onPlay}>
+              <Play className="stroke-blue-500 fill-blue-500" />
             </Button>
-          )}
-          <Button variant="ghost" className="nodrag px-1!" onClick={onPlay}>
-            <Play className="stroke-blue-500 fill-blue-500" />
-          </Button>
-          <Button variant="ghost" className="nodrag px-1!" onClick={onRemove}>
-            <Trash />
-          </Button>
+            <Button variant="ghost" className="nodrag px-1!" onClick={onRemove}>
+              <Trash />
+            </Button>
+          </div>
         </BaseNodeHeader>
         {children}
       </BaseNode>

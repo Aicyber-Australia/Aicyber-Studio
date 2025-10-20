@@ -40,7 +40,7 @@ export const BaseNodeHeader = forwardRef<
     ref={ref}
     {...props}
     className={cn(
-      'mx-0 my-0 -mb-1 flex flex-row items-center justify-between gap-2 px-3 py-2',
+      'relative mx-0 my-0 -mb-1 flex flex-row items-center justify-between gap-2 px-3 py-2 min-h-[44px]',
       // Remove or modify these classes if you modify the padding in the
       // `<BaseNode />` component.
       className,
@@ -51,19 +51,42 @@ BaseNodeHeader.displayName = 'BaseNodeHeader';
 
 /**
  * The title text for the node. To maintain a native application feel, the title
- * text is not selectable.
+ * text is not selectable by default, but can be made editable.
  */
 export const BaseNodeHeaderTitle = forwardRef<
   HTMLHeadingElement,
-  HTMLAttributes<HTMLHeadingElement>
->(({ className, ...props }, ref) => (
-  <h3
-    ref={ref}
-    data-slot="base-node-title"
-    className={cn('user-select-none flex-1 font-semibold', className)}
-    {...props}
-  />
-));
+  HTMLAttributes<HTMLHeadingElement> & {
+    editable?: boolean;
+    onTitleChange?: (value: string) => void;
+    onEditingChange?: (isEditing: boolean) => void;
+  }
+>(({ className, editable = false, onTitleChange, onEditingChange, children, ...props }, ref) => {
+  if (editable && onTitleChange && typeof children === 'string') {
+    // Lazy import EditableTitle to avoid circular dependencies
+    const EditableTitle = require('./editable-title').EditableTitle;
+    return (
+      <EditableTitle
+        ref={ref}
+        value={children}
+        onChange={onTitleChange}
+        onEditingChange={onEditingChange}
+        className={className}
+        {...props}
+      />
+    );
+  }
+
+  return (
+    <h3
+      ref={ref}
+      data-slot="base-node-title"
+      className={cn('user-select-none flex-1 font-semibold', className)}
+      {...props}
+    >
+      {children}
+    </h3>
+  );
+});
 BaseNodeHeaderTitle.displayName = 'BaseNodeHeaderTitle';
 
 export const BaseNodeContent = forwardRef<
