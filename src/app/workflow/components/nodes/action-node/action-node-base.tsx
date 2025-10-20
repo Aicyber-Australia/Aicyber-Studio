@@ -15,7 +15,7 @@ import {
 import { WorkflowNodeData } from '@/app/workflow/components/nodes';
 import { useWorkflowRunner } from '@/app/workflow/hooks/use-workflow-runner';
 import { useAppStore } from '@/app/workflow/store';
-import { useReactFlow } from '@xyflow/react';
+import { useReactFlow, NodeResizer } from '@xyflow/react';
 import {
   BaseNode,
   BaseNodeHeader,
@@ -35,9 +35,10 @@ interface ActionNodeBaseProps {
   data: WorkflowNodeData;
   onRefresh?: () => void;
   children?: React.ReactNode;
+  selected?: boolean;
 }
 
-function ActionNodeBase({ id, data, onRefresh, children }: ActionNodeBaseProps) {
+function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeBaseProps) {
   const { runWorkflow } = useWorkflowRunner();
   const removeNode = useAppStore((s) => s.removeNode);
   const { setNodes } = useReactFlow();
@@ -80,7 +81,13 @@ function ActionNodeBase({ id, data, onRefresh, children }: ActionNodeBaseProps) 
 
   return (
     <NodeStatusIndicator status={data?.status}>
-      <BaseNode style={{ ...ACTION_NODE_SIZE }}>
+      <NodeResizer
+        color="#3b82f6"
+        isVisible={selected}
+        minWidth={ACTION_NODE_SIZE.width}
+        minHeight={ACTION_NODE_SIZE.height}
+      />
+      <BaseNode style={{ width: '100%', height: '100%' }}>
         <BaseNodeHeader>
           <BaseNodeHeaderTitle>{data?.title || 'Action Node'}</BaseNodeHeaderTitle>
           <div className="flex items-center gap-1">

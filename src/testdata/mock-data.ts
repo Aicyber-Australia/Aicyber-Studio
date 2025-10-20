@@ -24,16 +24,6 @@ const initialNodes: AppNode[] = [
       title: 'Image Output'
     }
   }),
-  createNodeByType({ 
-    type: 'text-to-image-node', 
-    id: 'textToImageNode_1',
-    data: {
-      title: 'Test1',
-      prompt: 'A cat on the moon',
-      selectedModel: 'default'
-    }
-  }),
- 
 ];
 
 const initialEdges: AppEdge[] = [

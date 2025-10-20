@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
 import { Play, Trash, RotateCcw } from 'lucide-react';
+import { NodeResizer } from '@xyflow/react';
 
 import { Button } from '@/components/ui/button';
 import { WorkflowNodeData } from '@/app/workflow/components/nodes';
@@ -22,11 +23,13 @@ function WorkflowNode({
   data,
   children,
   onRefresh,
+  selected,
 }: {
   id: string;
   data: WorkflowNodeData;
   children?: React.ReactNode;
   onRefresh?: () => void;
+  selected?: boolean;
 }) {
   const { runWorkflow } = useWorkflowRunner();
   const removeNode = useAppStore((s) => s.removeNode);
@@ -37,7 +40,13 @@ function WorkflowNode({
 
   return (
     <NodeStatusIndicator status={data?.status}>
-      <BaseNode style={{ ...NODE_SIZE }}>
+      <NodeResizer
+        color="#3b82f6"
+        isVisible={selected}
+        minWidth={NODE_SIZE.width}
+        minHeight={NODE_SIZE.height}
+      />
+      <BaseNode style={{ width: '100%', height: '100%' }}>
         <BaseNodeHeader>
           {IconComponent ? <IconComponent aria-label={data?.icon} /> : null}
           <BaseNodeHeaderTitle>{data?.title}</BaseNodeHeaderTitle>

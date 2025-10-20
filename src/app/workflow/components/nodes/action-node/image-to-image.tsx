@@ -6,9 +6,9 @@ import { nodesConfig } from '../../../config';
 import ActionNodeBase from './action-node-base';
 import { NodeHandle } from '../workflow-node/node-handle';
 
-export function ImageToImageNode({ id, data }: WorkflowNodeProps) {
+export function ImageToImageNode({ id, data, selected }: WorkflowNodeProps) {
   return (
-    <ActionNodeBase id={id} data={data}>
+    <ActionNodeBase id={id} data={data} selected={selected}>
       {nodesConfig['image-to-image-node'].handles.map((handle: any) => (
         <NodeHandle
           key={`${handle.type}-${handle.id}`}

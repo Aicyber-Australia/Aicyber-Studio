@@ -7,7 +7,7 @@ import { nodesConfig } from '../../config';
 import { NodeHandle } from './workflow-node/node-handle';
 import WorkflowNode from './workflow-node';
 
-function ImageSet({ id, data }: WorkflowNodeProps) {
+function ImageSet({ id, data, selected }: WorkflowNodeProps) {
   const [imageError, setImageError] = useState<boolean>(false);
   
   // 使用 ReactFlow 官方 API
@@ -89,11 +89,11 @@ function ImageSet({ id, data }: WorkflowNodeProps) {
   };
 
   return (
-    <WorkflowNode id={id} data={data} onRefresh={handleRefresh}>
+    <WorkflowNode id={id} data={data} onRefresh={handleRefresh} selected={selected}>
       <div className="w-full flex-1 flex items-center justify-center p-3">
         {/* 多图网格显示区域 */}
-        <div 
-          className="w-80 h-37 -mt-4 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-hidden cursor-pointer hover:border-gray-400 transition-colors relative"
+        <div
+          className="w-full h-full min-h-[148px] border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-hidden cursor-pointer hover:border-gray-400 transition-colors relative"
           onClick={() => document.getElementById(`image-upload-${id}`)?.click()}
         >
           {imageList.length > 0 ? (
