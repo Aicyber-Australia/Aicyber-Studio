@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   Background,
   ReactFlow,
@@ -57,6 +57,7 @@ export default function Workflow() {
   const { theme } = useTheme();
   const reactFlowStore = useStoreApi();
   const { getInternalNode } = useReactFlow();
+  const [isSelectMode, setIsSelectMode] = useState(true);
 
   // Initialize undo/redo functionality
   const { takeSnapshot } = useUndoRedo();
@@ -197,32 +198,53 @@ export default function Workflow() {
   );
 
   return (
-    <ReactFlow
-      nodes={store.nodes}
-      edges={store.edges}
-      onNodesChange={store.onNodesChange}
-      onEdgesChange={store.onEdgesChange}
-      onConnect={handleConnect}
-      connectionLineType={ConnectionLineType.SmoothStep}
-      nodeTypes={nodeTypes}
-      onDragOver={onDragOver}
-      onDrop={handleDrop}
-      onNodeDrag={handleNodeDrag}
-      onNodeDragStart={handleNodeDragStart}
-      onSelectionDragStart={handleSelectionDragStart}
-      onNodesDelete={handleNodesDelete}
-      onEdgesDelete={handleEdgesDelete}
-      onNodeDragStop={handleNodeDragStop}
-      colorMode={theme as ColorMode}
-      defaultEdgeOptions={defaultEdgeOptions}
-      fitView
-    >
-      <Background />
-      <WorkflowControls />
-      <FlowContextMenu />
-      <FlowRunButton />
-      <DebugPanel />
-      <MiniMap />
-    </ReactFlow>
+    <>
+      <ReactFlow
+        nodes={store.nodes}
+        edges={store.edges}
+        onNodesChange={store.onNodesChange}
+        onEdgesChange={store.onEdgesChange}
+        onConnect={handleConnect}
+        connectionLineType={ConnectionLineType.SmoothStep}
+        nodeTypes={nodeTypes}
+        onDragOver={onDragOver}
+        onDrop={handleDrop}
+        onNodeDrag={handleNodeDrag}
+        onNodeDragStart={handleNodeDragStart}
+        onSelectionDragStart={handleSelectionDragStart}
+        onNodesDelete={handleNodesDelete}
+        onEdgesDelete={handleEdgesDelete}
+        onNodeDragStop={handleNodeDragStop}
+        colorMode={theme as ColorMode}
+        defaultEdgeOptions={defaultEdgeOptions}
+        panOnDrag={isSelectMode ? [1, 2] : true}
+        selectionOnDrag={isSelectMode}
+        panOnScroll
+        selectionKeyCode={isSelectMode ? null : 'Shift'}
+        multiSelectionKeyCode="Shift"
+        fitView
+      >
+        <Background />
+        <WorkflowControls />
+        <FlowContextMenu />
+        <FlowRunButton />
+        <DebugPanel />
+        <MiniMap />
+      </ReactFlow>
+
+      {/* Floating Mode Toggle */}
+      <button
+        onClick={() => setIsSelectMode(!isSelectMode)}
+        className="absolute top-4 left-1/2 -translate-x-1/2 z-10 px-4 py-2 bg-background border border-border rounded-lg shadow-md hover:bg-accent transition-colors flex items-center gap-2"
+        title={isSelectMode ? 'Switch to Pan Mode' : 'Switch to Select Mode'}
+      >
+        <span className="text-sm font-medium">
+          {isSelectMode ? '🖱️ Select Mode' : '✋ Pan Mode'}
+        </span>
+        <span className="text-xs text-muted-foreground">
+          {isSelectMode ? '(Space to pan)' : '(Shift to select)'}
+        </span>
+      </button>
+    </>
   );
 }
