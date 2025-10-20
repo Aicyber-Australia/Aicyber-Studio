@@ -21,9 +21,9 @@ const selector = (id: string) => {
 
 const filterNodes = (node: NodeConfig) => {
   return (
-    node.id === 'transform-node' ||
-    node.id === 'join-node' ||
-    node.id === 'branch-node'
+    node.id === 'image-frame' ||
+    node.id === 'text-to-image-node' ||
+    node.id === 'image-to-image-node'
   );
 };
 

@@ -3,12 +3,8 @@ import { nanoid } from 'nanoid';
 
 import { NODE_SIZE, nodesConfig } from '../../config';
 import { iconMapping } from '@/app/workflow/utils/icon-mapping';
-import { OutputNode } from './output-node';
-import { InitialNode } from './initial-node';
-import { TransformNode } from './transform-node';
-import { BranchNode } from './branch-node';
-import { JoinNode } from './join-node';
 import ImageFrame from './image-frame';
+import ImageSet from './image-set';
 import { TextToImageNode } from './action-node/text-to-image';
 import { ImageToImageNode } from './action-node/image-to-image';
 
@@ -53,12 +49,8 @@ export type NodeConfig = {
 };
 
 export const nodeTypes = {
-  'initial-node': InitialNode,
-  'output-node': OutputNode,
-  'transform-node': TransformNode,
-  'branch-node': BranchNode,
-  'join-node': JoinNode,
   'image-frame': ImageFrame,
+  'image-set': ImageSet,
   'text-to-image-node': TextToImageNode,
   'image-to-image-node': ImageToImageNode,
 };
@@ -100,12 +92,8 @@ export const createNodeByType = ({
 };
 
 export type AppNode =
-  | Node<WorkflowNodeData, 'initial-node'>
-  | Node<WorkflowNodeData, 'transform-node'>
-  | Node<WorkflowNodeData, 'join-node'>
-  | Node<WorkflowNodeData, 'branch-node'>
-  | Node<WorkflowNodeData, 'output-node'>
   | Node<WorkflowNodeData, 'image-frame'>
+  | Node<WorkflowNodeData, 'image-set'>
   | Node<WorkflowNodeData, 'text-to-image-node'>
   | Node<WorkflowNodeData, 'image-to-image-node'>;
 

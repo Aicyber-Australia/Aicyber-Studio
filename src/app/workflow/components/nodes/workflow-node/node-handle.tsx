@@ -34,10 +34,6 @@ const compatibleNodeTypes = (type: 'source' | 'target', currentNodeType?: string
   if (currentNodeType === 'text-to-image-node' && type === 'source') {
     return (node: NodeConfig) => {
       return (
-        node.id === 'transform-node' ||
-        node.id === 'join-node' ||
-        node.id === 'branch-node' ||
-        node.id === 'output-node' ||
         node.id === 'image-frame' ||
         node.id === 'text-to-image-node' ||
         node.id === 'image-to-image-node'
@@ -56,10 +52,6 @@ const compatibleNodeTypes = (type: 'source' | 'target', currentNodeType?: string
   if (currentNodeType === 'image-to-image-node' && type === 'source') {
     return (node: NodeConfig) => {
       return (
-        node.id === 'transform-node' ||
-        node.id === 'join-node' ||
-        node.id === 'branch-node' ||
-        node.id === 'output-node' ||
         node.id === 'image-frame' ||
         node.id === 'text-to-image-node' ||
         node.id === 'image-to-image-node'
@@ -70,10 +62,6 @@ const compatibleNodeTypes = (type: 'source' | 'target', currentNodeType?: string
   if (type === 'source') {
     return (node: NodeConfig) => {
       return (
-        node.id === 'transform-node' ||
-        node.id === 'join-node' ||
-        node.id === 'branch-node' ||
-        node.id === 'output-node' ||
         node.id === 'image-frame' ||
         node.id === 'text-to-image-node' ||
         node.id === 'image-to-image-node'
@@ -82,10 +70,6 @@ const compatibleNodeTypes = (type: 'source' | 'target', currentNodeType?: string
   }
   return (node: NodeConfig) => {
     return (
-      node.id === 'transform-node' ||
-      node.id === 'join-node' ||
-      node.id === 'branch-node' ||
-      node.id === 'initial-node' ||
       node.id === 'image-frame' ||
       node.id === 'text-to-image-node' ||
       node.id === 'image-to-image-node'

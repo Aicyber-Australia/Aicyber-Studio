@@ -71,11 +71,9 @@ export function useWorkflowRunner() {
     [setNodes, getNodes, setReactFlowNodes],
   );
 
-  const processNode = useCallback(
-    async (node: AppNode) => {
-      updateNodeStatus(node.id, 'loading');
-      setLogMessages((prev) => [...prev, `${node.data.title} processing...`]);
-      // 收集输入数据
+  // 数据收集函数
+  const collectInputData = useCallback(
+    (node: AppNode) => {
       const inputEdges = getReactFlowEdges().filter(edge => edge.target === node.id);
       console.log(`Input edges for ${node.id}:`, inputEdges);
 
@@ -87,12 +85,18 @@ export function useWorkflowRunner() {
           console.log(`Node ${node.id} received data from ${edge.source}:`, sourceNode.data);
         }
       }
+      return inputDataList;
+    },
+    [getNode, getReactFlowEdges],
+  );
 
-      // 获取对应的 runner（若未注册则使用默认）
-      const runner = nodeRunnerRegistry.getRunner(node.type as string);
-
-      // 验证输入
-      const validation = runner.validate(node, inputDataList);
+  // 自检阶段：只负责类型转换
+  const selfCheckNode = useCallback(
+    async (node: AppNode, inputDataList: any[]) => {
+      console.log('🔄 Self-check - Starting for node:', node.id);
+      let runner = nodeRunnerRegistry.getRunner(node.type as string);
+      const validation = runner.validate(node, inputDataList, setReactFlowNodes);
+      
       if (!validation.isValid) {
         updateNodeStatus(node.id, 'error');
         setLogMessages((prev) => [...prev, `❌ ${validation.error}`]);
@@ -101,11 +105,31 @@ export function useWorkflowRunner() {
           description: validation.error || `${node.data.title} 校验失败`,
           variant: "error",
         });
-        throw new Error(validation.error || 'Validation failed');
+        throw new Error(validation.error || 'Self-check failed');
       }
+      
+      console.log('🔄 Self-check - Completed, node type may have changed');
+    },
+    [updateNodeStatus, setReactFlowNodes, showToast],
+  );
 
-      // 执行对应的 runner
-      const processedData = await runner.run(node, inputDataList);
+  // Run阶段：重新获取类型并执行
+  const processNode = useCallback(
+    async (node: AppNode, inputDataList: any[]) => {
+      updateNodeStatus(node.id, 'loading');
+      setLogMessages((prev) => [...prev, `${node.data.title} processing...`]);
+      
+      // 重新获取节点类型（可能已经被自检阶段修改）
+      const updatedNode = getNode(node.id);
+      const finalNodeType = updatedNode?.type || node.type;
+      console.log('🔄 Process - Original type:', node.type, 'Final type:', finalNodeType);
+      
+      // 根据最终类型选择Runner
+      const runner = nodeRunnerRegistry.getRunner(finalNodeType as string);
+      console.log('🔄 Process - Using runner for type:', finalNodeType);
+
+      // 执行Runner
+      const processedData = await runner.run(updatedNode || node, inputDataList);
 
       // 合并输出到节点 data
       setReactFlowNodes(nodes => nodes.map(n => 
@@ -146,7 +170,17 @@ export function useWorkflowRunner() {
         if (!isRunning.current) break;
         
         try {
-          await processNode(node);
+          // 第一步：收集数据（只收集一次）
+          const inputDataList = collectInputData(node);
+          
+          // 第二步：自检（只负责类型转换）
+          await selfCheckNode(node, inputDataList);
+
+          await new Promise(resolve => setTimeout(resolve, 5));
+          
+          // 第三步：执行（重新获取类型并处理数据）
+          await processNode(node, inputDataList);
+
         } catch (error) {
           console.error(`Node ${node.id} processing failed:`, error);
           setLogMessages((prev) => [...prev, `❌ Workflow stopped due to error in ${node.data.title}`]);
