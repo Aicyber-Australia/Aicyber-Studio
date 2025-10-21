@@ -1,4 +1,4 @@
-import { useCopilotAction } from '@copilotkit/react-core';
+import { useFrontendTool} from '@copilotkit/react-core';
 import { AppStore } from '@/app/workflow/store/app-store';
 import { AppNode } from '@/app/workflow/components/nodes';
 
@@ -36,7 +36,7 @@ export function useCopilotWorkflowActions({
   fitView,
 }: UseCopilotWorkflowActionsProps) {
   // Add node action
-  useCopilotAction({
+  useFrontendTool({
     name: "addNode",
     description: "Add a single STANDALONE node to the workflow without any connections. IMPORTANT: Do NOT use this action if you need to connect nodes - you CANNOT connect nodes after using this action because the node ID is not available. For any workflow with connections, you MUST use createWorkflow instead. Valid types: 'image-frame', 'image-set', 'text-to-image-node', 'image-to-image-node'",
     parameters: [
@@ -125,7 +125,7 @@ export function useCopilotWorkflowActions({
   });
 
   // Delete node action
-  useCopilotAction({
+  useFrontendTool({
     name: "deleteNode",
     description: "Delete a node from the workflow by its ID",
     parameters: [
@@ -166,7 +166,7 @@ export function useCopilotWorkflowActions({
   });
 
   // Delete selected nodes action
-  useCopilotAction({
+  useFrontendTool({
     name: "deleteSelectedNodes",
     description: "Delete all currently selected nodes from the workflow",
     parameters: [],
@@ -205,7 +205,7 @@ export function useCopilotWorkflowActions({
   });
 
   // Add connected node to existing workflow
-  useCopilotAction({
+  useFrontendTool({
     name: "addConnectedNode",
     description: "Add a new node to the existing workflow and automatically connect it. Use this when the user wants to add a node 'to the workflow', 'to the end', 'as output', 'as input', or similar phrases that imply connection. This will automatically find the best connection point based on the node type and existing workflow structure.",
     parameters: [
@@ -367,7 +367,7 @@ export function useCopilotWorkflowActions({
   });
 
   // Replace node action
-  useCopilotAction({
+  useFrontendTool({
     name: "replaceNode",
     description: "Replace an existing node with a new node type while preserving all connections. Use this when the user wants to 'change', 'replace', 'convert', or 'swap' a node type. This action automatically transfers all incoming and outgoing connections from the old node to the new node.",
     parameters: [
@@ -499,7 +499,7 @@ export function useCopilotWorkflowActions({
   });
 
   // Connect nodes action
-  useCopilotAction({
+  useFrontendTool({
     name: "connectNodes",
     description: "Create a connection between two EXISTING nodes that are already on the canvas. CRITICAL: You can ONLY connect nodes that already exist - you cannot connect a node you just created with addNode because you don't have its ID. If you need to create new connected nodes, use createWorkflow instead. This action is ONLY for connecting existing nodes that the user explicitly asks to connect.",
     parameters: [
@@ -572,7 +572,7 @@ export function useCopilotWorkflowActions({
   });
 
   // Get current canvas state action
-  useCopilotAction({
+  useFrontendTool({
     name: "getCurrentCanvas",
     description: "Get the current state of the workflow canvas including all nodes, their connections, and configuration. Use this when the user asks 'explain...', 'what is on the canvas', 'show me the workflow', 'what nodes do I have', or similar queries.",
     parameters: [],
@@ -643,7 +643,7 @@ export function useCopilotWorkflowActions({
   });
 
   // Clear canvas action
-  useCopilotAction({
+  useFrontendTool({
     name: "clearCanvas",
     description: "Clear all nodes and edges from the workflow canvas",
     parameters: [],
@@ -676,7 +676,7 @@ export function useCopilotWorkflowActions({
   });
 
   // Run workflow action
-  useCopilotAction({
+  useFrontendTool({
     name: "runWorkflow",
     description: "Start or stop the workflow execution",
     parameters: [
@@ -728,7 +728,7 @@ export function useCopilotWorkflowActions({
   });
 
   // Update node data action
-  useCopilotAction({
+  useFrontendTool({
     name: "updateNodeData",
     description: "Update data for a specific node (e.g., title, prompt, model). IMPORTANT: Always call getCurrentCanvas first to get the correct node IDs before using this action.",
     parameters: [
@@ -803,7 +803,7 @@ export function useCopilotWorkflowActions({
   });
 
   // Move node action
-  useCopilotAction({
+  useFrontendTool({
     name: "moveNode",
     description: "Move a node to a new position on the canvas",
     parameters: [
@@ -865,7 +865,7 @@ export function useCopilotWorkflowActions({
   });
 
   // Refactor workflow action - intelligently restructure existing workflow
-  useCopilotAction({
+  useFrontendTool({
     name: "refactorWorkflow",
     description: `Intelligently refactor the entire workflow to match a new workflow type. This action analyzes the current workflow and transforms it to a different type while preserving user intent.
 
@@ -1137,7 +1137,7 @@ Use this when the user wants to fundamentally change the workflow type (e.g., "c
   });
 
   // Create workflow action - creates multiple nodes and connects them
-  useCopilotAction({
+  useFrontendTool({
     name: "createWorkflow",
     description: `Create a complete workflow by adding multiple nodes and connecting them. Use this action whenever the user wants to create connected nodes or a workflow pipeline.
 
