@@ -1,5 +1,4 @@
-// 定义API调用函数类型
-export type ApiCallFunction = (node: any, inputDataList: any[]) => Promise<any>;
+import { ApiCallFunction, ServiceNode, InputData, MediaItem } from './types';
 
 // 你的endpoint URL - 请替换为你的实际endpoint
 const YOUR_ENDPOINT = 'https://your-api-endpoint.com/api';
@@ -17,14 +16,14 @@ const getMethodByNodeType = (nodeType: string): string => {
 };
 
 // 提取图片列表 - 只支持新的media格式
-const extractImageList = (inputDataList: any[]) => {
-  const imageList: any[] = [];
-  
+const extractImageList = (inputDataList: InputData[]): MediaItem[] => {
+  const imageList: MediaItem[] = [];
+
   inputDataList.forEach(data => {
     if (!data) return;
-  
+
     if (data.media?.imageList) {
-      data.media.imageList.forEach((img: any) => {
+      data.media.imageList.forEach((img) => {
         imageList.push({
           url: img.url,
           data: img.data,
@@ -32,21 +31,21 @@ const extractImageList = (inputDataList: any[]) => {
         });
       });
     }
-    
+
   });
-  
+
   return imageList;
 };
 
 // 提取视频列表 - 支持新的media格式和旧格式
-const extractVideoList = (inputDataList: any[]) => {
-  const videoList: any[] = [];
-  
+const extractVideoList = (inputDataList: InputData[]): MediaItem[] => {
+  const videoList: MediaItem[] = [];
+
   inputDataList.forEach(data => {
     if (!data) return;
-  
+
     if (data.media?.videoList) {
-      data.media.videoList.forEach((video: any) => {
+      data.media.videoList.forEach((video) => {
         videoList.push({
           url: video.url,
           data: video.data,
@@ -54,14 +53,14 @@ const extractVideoList = (inputDataList: any[]) => {
         });
       });
     }
-    
+
   });
-  
+
   return videoList;
 };
 
 // 通用调用函数
-async function callYourEndpoint(node: any, inputDataList: any[]) {
+async function callYourEndpoint(node: ServiceNode, inputDataList: InputData[]) {
   const { prompt, selectedModel } = node.data;
   const method = getMethodByNodeType(node.type);
   const response = await fetch(YOUR_ENDPOINT, {

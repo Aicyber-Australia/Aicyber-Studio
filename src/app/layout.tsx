@@ -6,7 +6,9 @@ import { ToastProvider } from '@/components/toast-provider';
 import { AppStoreProvider } from '@/app/workflow/store';
 
 import './globals.css';
+import "@copilotkit/react-ui/styles.css";
 import { loadData } from '../testdata/mock-data';
+import { CopilotKit } from "@copilotkit/react-core"; 
 
 export default async function WorkflowLayout({
   children,
@@ -20,20 +22,25 @@ export default async function WorkflowLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        <AppStoreProvider initialState={{ nodes, edges }}>
-          <ReactFlowProvider initialNodes={nodes} initialEdges={edges}>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="system"
-              enableSystem
-              disableTransitionOnChange
-            >
-              <ToastProvider>
-                {children}
-              </ToastProvider>
-            </ThemeProvider>
-          </ReactFlowProvider>
-        </AppStoreProvider>
+        <CopilotKit
+          runtimeUrl="/api/copilotkit"
+          publicLicenseKey={process.env.COPILOT_CLOUD_PUBLIC_LICENSE_KEY!}
+        >
+          <AppStoreProvider initialState={{ nodes, edges }}>
+            <ReactFlowProvider initialNodes={nodes} initialEdges={edges}>
+              <ThemeProvider
+                attribute="class"
+                defaultTheme="system"
+                enableSystem
+                disableTransitionOnChange
+              >
+                <ToastProvider>
+                  {children}
+                </ToastProvider>
+              </ThemeProvider>
+            </ReactFlowProvider>
+          </AppStoreProvider>
+        </CopilotKit>
       </body>
     </html>
   );

@@ -1,8 +1,9 @@
 import { imageServiceMap } from './image-service';
 import { videoServiceMap } from './video-service';
+import { ApiCallFunction } from './types';
 
 // API调用函数注册表 - 存储实际的调用函数
-export const apiCallFunctionRegistry: Record<string, any> = {};
+export const apiCallFunctionRegistry: Record<string, ApiCallFunction> = {};
 
 // 注册所有服务 - 自动注册，无需手动添加
 export function registerAllServices() {

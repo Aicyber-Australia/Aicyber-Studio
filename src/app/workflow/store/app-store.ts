@@ -132,6 +132,9 @@ export function createAppStore(
 
         if (!newNode) return null;
 
+        // Mark as programmatically added to skip proximity auto-connect
+        newNode.data = { ...newNode.data, programmaticallyAdded: true };
+
         get().addNode(newNode);
 
         return newNode.id;
