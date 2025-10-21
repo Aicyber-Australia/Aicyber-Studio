@@ -15,6 +15,7 @@ import {
   useStoreApi,
   useReactFlow,
   MiniMap,
+  useOnSelectionChange,
 } from '@xyflow/react';
 import { useShallow } from 'zustand/react/shallow';
 import { useTheme } from 'next-themes';
@@ -33,6 +34,7 @@ import { useUndoRedo } from '@/app/workflow/hooks/useUndoRedo';
 import { useWorkflowRunner } from '@/app/workflow/hooks/use-workflow-runner';
 import { Button } from '@/components/ui/button';
 import { nodesConfig } from '@/app/workflow/config';
+import { useCopilotWorkflowActions } from '@/app/workflow/hooks/useCopilotWorkflowActions';
 
 const MIN_DISTANCE = 150;
 
@@ -54,6 +56,9 @@ const selector = (state: AppStore) => ({
   setEdges: state.setEdges,
   getEdges: state.getEdges,
   setNodes: state.setNodes,
+  getNodes: state.getNodes,
+  addNodeByType: state.addNodeByType,
+  removeNode: state.removeNode,
 });
 
 export default function Workflow() {
@@ -64,12 +69,20 @@ export default function Workflow() {
   const { getInternalNode } = useReactFlow();
   const [isSelectMode, setIsSelectMode] = useState(true);
   const { runWorkflow, stopWorkflow, isRunning } = useWorkflowRunner();
+  const [selectedNodes, setSelectedNodes] = useState<any[]>([]);
 
   // Initialize undo/redo functionality
   const { takeSnapshot } = useUndoRedo();
 
   // Initialize copy/paste functionality for nodes with undo/redo support
   useCopyPaste(takeSnapshot);
+
+  // Track selected nodes
+  useOnSelectionChange({
+    onChange: useCallback(({ nodes }) => {
+      setSelectedNodes(nodes);
+    }, []),
+  });
 
   // Make workflow state readable for CopilotKit
   useCopilotReadable({
@@ -130,11 +143,54 @@ export default function Workflow() {
     },
   });
 
+  useCopilotReadable({
+    description: 'Currently selected nodes in the workflow',
+    value: selectedNodes.map(node => ({
+      id: node.id,
+      type: node.type,
+      position: node.position,
+      data: {
+        title: node.data.title,
+        status: node.data.status,
+        icon: node.data.icon,
+        prompt: node.data.prompt,
+        selectedModel: node.data.selectedModel,
+        fileName: node.data.fileName,
+        timestamp: node.data.timestamp,
+        hasImages: node.data.media?.imageList && node.data.media.imageList.length > 0,
+        imageCount: node.data.media?.imageList?.length || 0,
+        hasVideos: node.data.media?.videoList && node.data.media.videoList.length > 0,
+        videoCount: node.data.media?.videoList?.length || 0,
+      },
+    })),
+  });
+
   const handleClearCanvas = useCallback(() => {
     takeSnapshot();
     store.setNodes([]);
     store.setEdges([]);
   }, [takeSnapshot, store]);
+
+  // Register Copilot actions for workflow manipulation
+  useCopilotWorkflowActions({
+    store: {
+      nodes: store.nodes,
+      edges: store.edges,
+      addNodeByType: store.addNodeByType,
+      removeNode: store.removeNode,
+      onConnect: store.onConnect,
+      setNodes: store.setNodes,
+      getNodes: store.getNodes,
+      setEdges: store.setEdges,
+      getEdges: store.getEdges,
+    },
+    selectedNodes,
+    takeSnapshot,
+    handleClearCanvas,
+    runWorkflow,
+    stopWorkflow,
+    isRunning,
+  });
 
   const handleRunWorkflow = useCallback(() => {
     if (isRunning) {
