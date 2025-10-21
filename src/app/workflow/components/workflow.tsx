@@ -35,6 +35,7 @@ import { useWorkflowRunner } from '@/app/workflow/hooks/use-workflow-runner';
 import { Button } from '@/components/ui/button';
 import { nodesConfig } from '@/app/workflow/config';
 import { useCopilotWorkflowActions } from '@/app/workflow/hooks/useCopilotWorkflowActions';
+import { useLayout } from '@/app/workflow/hooks/use-layout';
 
 const MIN_DISTANCE = 150;
 
@@ -66,10 +67,11 @@ export default function Workflow() {
   const { onDragOver, onDrop } = useDragAndDrop();
   const { theme } = useTheme();
   const reactFlowStore = useStoreApi();
-  const { getInternalNode } = useReactFlow();
+  const { getInternalNode, fitView } = useReactFlow();
   const [isSelectMode, setIsSelectMode] = useState(true);
   const { runWorkflow, stopWorkflow, isRunning } = useWorkflowRunner();
   const [selectedNodes, setSelectedNodes] = useState<any[]>([]);
+  const runLayout = useLayout();
 
   // Initialize undo/redo functionality
   const { takeSnapshot } = useUndoRedo();
@@ -134,7 +136,7 @@ export default function Workflow() {
   });
 
   useCopilotReadable({
-    description: 'Current workflow execution state',
+    description: 'Current workflow execution state. IMPORTANT: When adding a single node with addNode, do NOT automatically call connectNodes unless explicitly requested by the user.',
     value: {
       isRunning,
       isSelectMode,
@@ -190,6 +192,8 @@ export default function Workflow() {
     runWorkflow,
     stopWorkflow,
     isRunning,
+    runLayout,
+    fitView,
   });
 
   const handleRunWorkflow = useCallback(() => {
@@ -302,6 +306,17 @@ export default function Workflow() {
 
   const handleNodeDragStop = useCallback<OnNodeDrag>(
     (event, node, nodes) => {
+      // Skip proximity auto-connect for programmatically added nodes
+      if ((node as any).data?.programmaticallyAdded) {
+        // Clear the flag after first drag stop
+        const updatedNodes = store.getNodes().map(n =>
+          n.id === node.id ? { ...n, data: { ...n.data, programmaticallyAdded: false } } : n
+        );
+        store.setNodes(updatedNodes);
+        store.onNodeDragStop(event, node as any, nodes as any);
+        return;
+      }
+
       const closeEdge = getClosestEdge(node);
       const currentEdges = store.getEdges();
       const nextEdges = currentEdges.filter((e: any) => e.className !== 'temp');

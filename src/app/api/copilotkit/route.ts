@@ -10,7 +10,10 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const serviceAdapter = new OpenAIAdapter({ openai });
+const serviceAdapter = new OpenAIAdapter({
+  openai,
+  model: "gpt-4o",
+});
 
 const runtime = new CopilotRuntime();
 

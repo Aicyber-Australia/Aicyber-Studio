@@ -19,6 +19,7 @@ export type WorkflowNodeData = {
   timestamp?: number;
   selectedModel?: string;
   prompt?: string;
+  programmaticallyAdded?: boolean;
   media?: {
     imageList?: Array<{
       url: string;
