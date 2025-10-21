@@ -4,13 +4,12 @@ import React, { useCallback, useState } from 'react';
 import { Play, Trash, RotateCcw } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from '@/components/ui/select';
 import { WorkflowNodeData } from '@/app/workflow/components/nodes';
 import { useWorkflowRunner } from '@/app/workflow/hooks/use-workflow-runner';
@@ -23,7 +22,7 @@ import {
   BaseNodeContent,
 } from '@/components/base-node';
 import { NodeStatusIndicator } from '@/components/node-status-indicator';
-import { NODE_SIZE, ACTION_NODE_SIZE } from '@/app/workflow/config';
+import { ACTION_NODE_SIZE } from '@/app/workflow/config';
 
 // Available models for selection
 const MODELS = [

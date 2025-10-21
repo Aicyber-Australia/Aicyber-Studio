@@ -11,7 +11,7 @@ function ImageFrame({ id, data, selected }: WorkflowNodeProps) {
   const [imageError, setImageError] = useState<boolean>(false);
   
   // 使用 ReactFlow 官方 API
-  const { getNode, setNodes, getEdges } = useReactFlow();
+  const { setNodes } = useReactFlow();
 
   // 从 media.imageList[0] 获取图片URL
   const imageData = data?.media?.imageList?.[0];

@@ -15,7 +15,7 @@ function ImageSet({ id, data, selected }: WorkflowNodeProps) {
   const [previewImage, setPreviewImage] = useState<{ url: string; fileName: string } | null>(null);
   
   // 使用 ReactFlow 官方 API
-  const { getNode, setNodes, getEdges } = useReactFlow();
+  const { setNodes } = useReactFlow();
 
   // 从 media.imageList 获取所有图片
   const imageList = data?.media?.imageList || [];

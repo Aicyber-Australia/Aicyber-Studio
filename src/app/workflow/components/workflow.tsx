@@ -19,6 +19,7 @@ import {
 import { useShallow } from 'zustand/react/shallow';
 import { useTheme } from 'next-themes';
 import { MousePointer2, Hand, Play, Pause, Trash2, Divide } from 'lucide-react';
+import { useCopilotReadable } from '@copilotkit/react-core';
 
 import { nodeTypes } from '@/app/workflow/components/nodes';
 import { useAppStore } from '@/app/workflow/store';
@@ -31,6 +32,7 @@ import { useCopyPaste } from '@/app/workflow/hooks/useCopyPaste';
 import { useUndoRedo } from '@/app/workflow/hooks/useUndoRedo';
 import { useWorkflowRunner } from '@/app/workflow/hooks/use-workflow-runner';
 import { Button } from '@/components/ui/button';
+import { nodesConfig } from '@/app/workflow/config';
 
 const MIN_DISTANCE = 150;
 
@@ -68,6 +70,65 @@ export default function Workflow() {
 
   // Initialize copy/paste functionality for nodes with undo/redo support
   useCopyPaste(takeSnapshot);
+
+  // Make workflow state readable for CopilotKit
+  useCopilotReadable({
+    description: 'The current workflow nodes in the canvas',
+    value: store.nodes.map(node => ({
+      id: node.id,
+      type: node.type,
+      position: node.position,
+      data: {
+        title: node.data.title,
+        status: node.data.status,
+        icon: node.data.icon,
+        prompt: node.data.prompt,
+        selectedModel: node.data.selectedModel,
+        fileName: node.data.fileName,
+        timestamp: node.data.timestamp,
+        hasImages: node.data.media?.imageList && node.data.media.imageList.length > 0,
+        imageCount: node.data.media?.imageList?.length || 0,
+        hasVideos: node.data.media?.videoList && node.data.media.videoList.length > 0,
+        videoCount: node.data.media?.videoList?.length || 0,
+      },
+    })),
+  });
+
+  useCopilotReadable({
+    description: 'The connections (edges) between workflow nodes',
+    value: store.edges.map(edge => ({
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      sourceHandle: edge.sourceHandle,
+      targetHandle: edge.targetHandle,
+      animated: edge.animated,
+    })),
+  });
+
+  useCopilotReadable({
+    description: 'Available node types and their configurations',
+    value: Object.entries(nodesConfig).map(([type, config]) => ({
+      type,
+      title: config.title,
+      icon: config.icon,
+      defaultStatus: config.status,
+      handles: config.handles.map(handle => ({
+        type: handle.type,
+        position: handle.position,
+      })),
+    })),
+  });
+
+  useCopilotReadable({
+    description: 'Current workflow execution state',
+    value: {
+      isRunning,
+      isSelectMode,
+      nodeCount: store.nodes.length,
+      edgeCount: store.edges.length,
+    },
+  });
 
   const handleClearCanvas = useCallback(() => {
     takeSnapshot();
