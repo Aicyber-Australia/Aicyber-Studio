@@ -97,9 +97,24 @@ export const NodeSetNodeRunner: NodeRunner = {
     if (inputMode === 'cross') {
       console.log('🔄 NodeSet Runner - Processing in CROSS mode...');
 
-      // Extract individual media items from each input node
-      const inputMediaArrays = inputDataList.map(inputData => {
+      // Extract individual media items from each input node, respecting setOutputMode
+      const inputMediaArrays = inputDataList.map((inputData, inputIndex) => {
         const media = inputData.media || {};
+        const setOutputMode = inputData.setOutputMode || 'individual';
+
+        console.log(`🔄 NodeSet Runner - Input ${inputIndex} setOutputMode:`, setOutputMode);
+
+        // If integrated mode, treat entire node as one item
+        if (setOutputMode === 'integrated') {
+          // Package entire node's media as a single integrated item
+          return [{
+            type: 'integrated',
+            media: media,
+            isIntegrated: true
+          }];
+        }
+
+        // Otherwise, extract individual items (current behavior)
         const items: any[] = [];
 
         // Collect all individual media items
@@ -147,7 +162,19 @@ export const NodeSetNodeRunner: NodeRunner = {
 
         // Combine all items in this combination
         combination.forEach(item => {
-          if (item.type === 'image') {
+          if (item.isIntegrated) {
+            // This is an integrated node - add all its media at once
+            const integratedMedia = item.media;
+            if (integratedMedia.imageList) {
+              combinedMedia.imageList.push(...integratedMedia.imageList);
+            }
+            if (integratedMedia.videoList) {
+              combinedMedia.videoList.push(...integratedMedia.videoList);
+            }
+            if (integratedMedia.textList) {
+              combinedMedia.textList.push(...integratedMedia.textList);
+            }
+          } else if (item.type === 'image') {
             combinedMedia.imageList.push(item.data);
           } else if (item.type === 'video') {
             combinedMedia.videoList.push(item.data);

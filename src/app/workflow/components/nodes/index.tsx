@@ -35,6 +35,7 @@ export type WorkflowNodeData = {
   icon?: keyof typeof iconMapping;
   status?: 'loading' | 'success' | 'error' | 'initial';
   loopMode?: 'cross' | 'sequence' | 'append';
+  setOutputMode?: 'individual' | 'integrated'; // How set nodes (image-set, text-set, media-set) output: individual items or as one unit
   fileName?: string;
   timestamp?: number;
   selectedModel?: string;
@@ -135,6 +136,7 @@ export const createNodeByType = ({
           status: node.status,
           icon: node.icon,
           loopMode: 'sequence',  // 其他节点默认是 append 模式 单列插入
+          setOutputMode: 'individual',  // Set nodes default to individual output mode
         } as WorkflowNodeData;
       }
     })(),

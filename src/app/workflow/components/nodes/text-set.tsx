@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useReactFlow } from '@xyflow/react';
 import { WorkflowNodeProps } from '@/app/workflow/components/nodes';
 import { nodesConfig } from '../../config';
 import { NodeHandle } from './workflow-node/node-handle';
 import WorkflowNode from './workflow-node';
 import { Trash2, Plus } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 function TextSet({ id, data, selected }: WorkflowNodeProps) {
   const [textError, setTextError] = useState<boolean>(false);
@@ -111,10 +112,41 @@ function TextSet({ id, data, selected }: WorkflowNodeProps) {
     ));
   };
 
+  // Handle set output mode change
+  const handleSetOutputModeChange = useCallback((value: string) => {
+    setNodes(nodes => nodes.map(node =>
+      node.id === id
+        ? {
+            ...node,
+            data: {
+              ...node.data,
+              setOutputMode: value as 'individual' | 'integrated',
+            },
+          }
+        : node
+    ));
+  }, [id, setNodes]);
+
+  const setOutputMode = data?.setOutputMode || 'individual';
+
   return (
     <>
       <WorkflowNode id={id} data={data} type="text-set" onRefresh={handleRefresh} selected={selected}>
-        <div className="w-full flex-1 flex items-center justify-center p-3 min-h-0 nodrag">
+        <div className="w-full flex-1 flex flex-col p-3 min-h-0 nodrag space-y-2">
+          {/* Output Mode Selection */}
+          <div className="nodrag flex-shrink-0">
+            <div className="text-[10px] text-muted-foreground mb-1">Output Mode</div>
+            <Select value={setOutputMode} onValueChange={handleSetOutputModeChange}>
+              <SelectTrigger className="h-7 text-xs nodrag">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="nodrag">
+                <SelectItem value="individual" className="text-xs">Individual</SelectItem>
+                <SelectItem value="integrated" className="text-xs">Integrated</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* 多文本显示区域 - 简洁设计 */}
           <div
             className="nodrag nopan nowheel w-full h-full border-2 border-purple-200 bg-white rounded-lg overflow-auto hover:border-purple-300 transition-colors relative"

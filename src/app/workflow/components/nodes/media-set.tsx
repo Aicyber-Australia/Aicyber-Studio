@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useReactFlow } from '@xyflow/react';
 import { WorkflowNodeProps } from '@/app/workflow/components/nodes';
 import { nodesConfig } from '../../config';
@@ -8,6 +8,7 @@ import { NodeHandle } from './workflow-node/node-handle';
 import WorkflowNode from './workflow-node';
 import { Eye, Trash2, FileText, Image as ImageIcon, Plus } from 'lucide-react';
 import { ImagePreviewDialog } from './image-preview-dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type MediaItem = {
   id: string;
@@ -169,10 +170,41 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
   const imageCount = mediaList.filter(m => m.type === 'image').length;
   const textCount = mediaList.filter(m => m.type === 'text').length;
 
+  // Handle set output mode change
+  const handleSetOutputModeChange = useCallback((value: string) => {
+    setNodes(nodes => nodes.map(node =>
+      node.id === id
+        ? {
+            ...node,
+            data: {
+              ...node.data,
+              setOutputMode: value as 'individual' | 'integrated',
+            },
+          }
+        : node
+    ));
+  }, [id, setNodes]);
+
+  const setOutputMode = data?.setOutputMode || 'individual';
+
   return (
     <>
       <WorkflowNode id={id} data={data} type="media-set" onRefresh={handleRefresh} selected={selected}>
-        <div className="w-full flex-1 flex items-center justify-center p-3 min-h-0 nodrag">
+        <div className="w-full flex-1 flex flex-col p-3 min-h-0 nodrag space-y-2">
+          {/* Output Mode Selection */}
+          <div className="nodrag flex-shrink-0">
+            <div className="text-[10px] text-muted-foreground mb-1">Output Mode</div>
+            <Select value={setOutputMode} onValueChange={handleSetOutputModeChange}>
+              <SelectTrigger className="h-7 text-xs nodrag">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="nodrag">
+                <SelectItem value="individual" className="text-xs">Individual</SelectItem>
+                <SelectItem value="integrated" className="text-xs">Integrated</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* 混合媒体显示区域 */}
           <div
             className="nodrag nopan nowheel w-full h-full border-2 border-dashed border-gray-300 rounded-lg overflow-auto hover:border-gray-400 transition-colors relative"
