@@ -5,10 +5,21 @@ import { NODE_SIZE, IMAGE_NODE_SIZE, ACTION_NODE_SIZE, nodesConfig } from '../..
 import { iconMapping } from '@/app/workflow/utils/icon-mapping';
 import ImageFrame from './image-frame';
 import ImageSet from './image-set';
+import { NodeSet } from './node-set';
 import { TextToImageNode } from './action-node/text-to-image';
 import { ImageToImageNode } from './action-node/image-to-image';
 
 /* WORKFLOW NODE DATA PROPS ------------------------------------------------------ */
+
+export type NodeSetData = {
+  title?: string;
+  label?: string;
+  icon?: string;
+  status?: 'loading' | 'success' | 'error' | 'initial';
+  nodeList?: AppNode[];
+  outputMode?: 'loop' | 'direct'; 
+};
+
 
 export type WorkflowNodeData = {
   title?: string;
@@ -52,6 +63,7 @@ export type NodeConfig = {
 export const nodeTypes = {
   'image-frame': ImageFrame,
   'image-set': ImageSet,
+  'node-set': NodeSet,
   'text-to-image-node': TextToImageNode,
   'image-to-image-node': ImageToImageNode,
 };
@@ -65,7 +77,7 @@ export const createNodeByType = ({
   type: AppNodeType;
   id?: string;
   position?: XYPosition;
-  data?: WorkflowNodeData;
+  data?: WorkflowNodeData | NodeSetData;
 }): AppNode => {
   const node = nodesConfig[type];
 
@@ -102,6 +114,7 @@ export const createNodeByType = ({
 export type AppNode =
   | Node<WorkflowNodeData, 'image-frame'>
   | Node<WorkflowNodeData, 'image-set'>
+  | Node<NodeSetData, 'node-set'>
   | Node<WorkflowNodeData, 'text-to-image-node'>
   | Node<WorkflowNodeData, 'image-to-image-node'>;
 

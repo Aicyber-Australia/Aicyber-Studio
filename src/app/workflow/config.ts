@@ -90,4 +90,24 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
     ],
     icon: 'Image',
   },
+  'node-set': {
+    id: 'node-set',
+    title: 'Node Set',
+    status: 'initial',
+    handles: [
+      {
+        type: 'target',
+        position: Position.Left,
+        x: 0,
+        y: NODE_SIZE.height * 0.5,
+      },
+      {
+        type: 'source',
+        position: Position.Right,
+        x: NODE_SIZE.width,
+        y: NODE_SIZE.height * 0.5,
+      },
+    ],
+    icon: 'Layers',
+  },
 };

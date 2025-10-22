@@ -67,5 +67,7 @@ export const TextToImageNodeRunner: NodeRunner<AppNode> = {
       console.error('ToImageNodeRunner error:', error);
       throw new Error(`Image generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-  }
+  },
+  iterator: async (node: AppNode, inputDataList: any[], loopNode: AppNode) => {
+  },
 };
