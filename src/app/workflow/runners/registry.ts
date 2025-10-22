@@ -4,6 +4,7 @@ import { ImageFrameNodeRunner } from './image-frame-runner';
 import { ImageSetNodeRunner } from './image-set-runner';
 import { TextFrameNodeRunner } from './text-frame-runner';
 import { TextSetNodeRunner } from './text-set-runner';
+import { MediaSetNodeRunner } from './media-set-runner';
 import { NodeSetNodeRunner } from './node-set-runner';
 import { ActionNodeRunner } from './action-node-runner';
 
@@ -60,6 +61,9 @@ nodeRunnerRegistry.register(TextFrameNodeRunner);
 
 // 注册 Text Set 节点 Runner
 nodeRunnerRegistry.register(TextSetNodeRunner);
+
+// 注册 Media Set 节点 Runner
+nodeRunnerRegistry.register(MediaSetNodeRunner);
 
 // 注册 Node Set 节点 Runner
 nodeRunnerRegistry.register(NodeSetNodeRunner);

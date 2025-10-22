@@ -197,10 +197,11 @@ export function useWorkflowRunner() {
 
         } catch (error) {
           console.error(`Node ${node.id} processing failed:`, error);
-          setLogMessages((prev) => [...prev, `❌ Workflow stopped due to error in ${node.data.title}`]);
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          setLogMessages((prev) => [...prev, `❌ Workflow stopped due to error in ${node.data.title}: ${errorMessage}`]);
           showToast({
-            title: "工作流错误",
-            description: `工作流在 ${node.data.title} 节点处停止`,
+            title: "Workflow Error",
+            description: `${node.data.title}: ${errorMessage}`,
             variant: "error"
           });
           isRunning.current = false;

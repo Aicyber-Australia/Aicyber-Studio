@@ -340,7 +340,7 @@ export function useCopilotWorkflowActions({
           target: nodeId,
           sourceHandle: null,
           targetHandle: null,
-        });
+        }, undefined);
       } else {
         // Connect new node -> existing node
         store.onConnect({
@@ -348,7 +348,7 @@ export function useCopilotWorkflowActions({
           target: targetConnectionNode,
           sourceHandle: null,
           targetHandle: null,
-        });
+        }, undefined);
       }
 
       const targetNode = currentNodes.find(n => n.id === targetConnectionNode);
@@ -566,7 +566,7 @@ export function useCopilotWorkflowActions({
         target: targetNodeId,
         sourceHandle: null,
         targetHandle: null,
-      });
+      }, undefined);
       return `Successfully connected ${sourceNode.data.title || sourceNodeId} → ${targetNode.data.title || targetNodeId}`;
     },
   });

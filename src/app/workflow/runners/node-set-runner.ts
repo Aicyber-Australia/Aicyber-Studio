@@ -65,6 +65,36 @@ export const NodeSetNodeRunner: NodeRunner = {
       };
     }
 
+    // Sequence mode requires all inputs to have the same length (considering integrated mode)
+    if (inputMode === 'sequence' && inputDataList.length > 1) {
+      const inputLengths = inputDataList.map(inputData => {
+        const setOutputMode = inputData.setOutputMode || 'individual';
+
+        // If integrated mode, this counts as 1 item
+        if (setOutputMode === 'integrated') {
+          return 1;
+        }
+
+        // Otherwise, count individual items
+        const media = inputData.media || {};
+        let count = 0;
+        if (media.imageList) count += media.imageList.length;
+        if (media.videoList) count += media.videoList.length;
+        if (media.textList) count += media.textList.length;
+        return count;
+      });
+
+      const firstLength = inputLengths[0];
+      const allSameLength = inputLengths.every(len => len === firstLength);
+
+      if (!allSameLength) {
+        return {
+          isValid: false,
+          error: `Sequence mode requires all inputs to have the same length. Current lengths: [${inputLengths.join(', ')}]`
+        };
+      }
+    }
+
     return { isValid: true };
   },
 
@@ -208,9 +238,23 @@ export const NodeSetNodeRunner: NodeRunner = {
       console.log('🔄 NodeSet Runner - Processing in SEQUENCE mode...');
 
       // Sequence mode: pair inputs sequentially (a1+b1, a2+b2, ...)
-      // First, extract all media arrays from all input nodes
-      const sequenceMediaArrays = inputDataList.map(inputData => {
+      // Respect setOutputMode when extracting media
+      const sequenceMediaArrays = inputDataList.map((inputData, inputIndex) => {
         const media = inputData.media || {};
+        const setOutputMode = inputData.setOutputMode || 'individual';
+
+        console.log(`🔄 NodeSet Runner - Sequence Input ${inputIndex} setOutputMode:`, setOutputMode);
+
+        // If integrated mode, return entire node as single item
+        if (setOutputMode === 'integrated') {
+          return [{
+            type: 'integrated' as const,
+            media: media,
+            isIntegrated: true
+          }];
+        }
+
+        // Otherwise, extract individual items
         const allMedia = [];
 
         // Collect all media items from this node
@@ -243,7 +287,20 @@ export const NodeSetNodeRunner: NodeRunner = {
         sequenceMediaArrays.forEach(mediaArray => {
           if (i < mediaArray.length) {
             const item = mediaArray[i];
-            if (item.type === 'image') {
+
+            if (item.isIntegrated) {
+              // This is an integrated node - add all its media at once
+              const integratedMedia = item.media;
+              if (integratedMedia.imageList) {
+                combinedMedia.imageList.push(...integratedMedia.imageList);
+              }
+              if (integratedMedia.videoList) {
+                combinedMedia.videoList.push(...integratedMedia.videoList);
+              }
+              if (integratedMedia.textList) {
+                combinedMedia.textList.push(...integratedMedia.textList);
+              }
+            } else if (item.type === 'image') {
               combinedMedia.imageList.push(item.data);
             } else if (item.type === 'video') {
               combinedMedia.videoList.push(item.data);

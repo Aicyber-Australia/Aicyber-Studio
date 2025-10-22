@@ -72,7 +72,7 @@ export type AppActions = {
   getEdges: () => AppEdge[];
   addEdge: (edge: AppEdge) => void;
   removeEdge: (edgeId: string) => void;
-  onConnect: OnConnect;
+  onConnect: (connection: any, onReject?: (reason: string) => void) => void;
   onEdgesChange: OnEdgesChange<AppEdge>;
   onNodeDragStart: OnNodeDrag<AppNode>;
   onNodeDragStop: OnNodeDrag<AppNode>;
@@ -201,7 +201,27 @@ export function createAppStore(
         set({ edges: nextEdges });
       },
 
-      onConnect: (connection) => {
+      onConnect: (connection, onReject) => {
+        // Validate the connection before adding
+        const sourceNode = get().nodes.find(n => n.id === connection.source);
+        const targetNode = get().nodes.find(n => n.id === connection.target);
+
+        if (!sourceNode || !targetNode) return;
+
+        // Restriction 1: NodeSet cannot be attached to NodeSet
+        if (sourceNode.type === 'node-set' && targetNode.type === 'node-set') {
+          console.warn('❌ Connection rejected: NodeSet cannot connect to NodeSet');
+          onReject?.('NodeSet nodes cannot connect to each other');
+          return;
+        }
+
+        // Restriction 2: MediaSet cannot be attached to NodeSet
+        if (sourceNode.type === 'media-set' && targetNode.type === 'node-set') {
+          console.warn('❌ Connection rejected: MediaSet cannot connect to NodeSet');
+          onReject?.('MediaSet cannot connect to NodeSet (may cause infinite loop)');
+          return;
+        }
+
         const newEdge: AppEdge = {
           ...connection,
           type: 'default',

@@ -37,6 +37,7 @@ import { nodesConfig } from '@/app/workflow/config';
 import { useCopilotWorkflowActions } from '@/app/workflow/hooks/useCopilotWorkflowActions';
 import { useLayout } from '@/app/workflow/hooks/use-layout';
 import { registerAllServices } from '@/app/api/services/service-registrar';
+import { useToast } from '@/components/toast-provider';
 
 const MIN_DISTANCE = 150;
 
@@ -73,6 +74,7 @@ export default function Workflow() {
   const { runWorkflow, stopWorkflow, isRunning } = useWorkflowRunner();
   const [selectedNodes, setSelectedNodes] = useState<any[]>([]);
   const runLayout = useLayout();
+  const { showToast } = useToast();
 
   // Register all API services on client side
   useEffect(() => {
@@ -266,9 +268,16 @@ export default function Workflow() {
   const handleConnect: OnConnect = useCallback(
     (connection) => {
       takeSnapshot();
-      store.onConnect(connection);
+      store.onConnect(connection, (reason) => {
+        // Show toast on connection rejection
+        showToast({
+          title: 'Connection Rejected',
+          description: reason,
+          variant: 'error',
+        });
+      });
     },
-    [takeSnapshot, store.onConnect],
+    [takeSnapshot, store.onConnect, showToast],
   );
 
   const handleNodeDrag = useCallback<OnNodeDrag>(
