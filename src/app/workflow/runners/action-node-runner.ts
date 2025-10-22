@@ -8,7 +8,9 @@ export const ActionNodeRunner: NodeRunner<AppNode> = {
   canRun(node: AppNode): boolean {
     // 动态获取所有已注册的节点类型
     const registeredNodeTypes = getRegisteredNodeTypes();
-    return registeredNodeTypes.includes(node.type);
+    const canRun = registeredNodeTypes.includes(node.type);
+    console.log(`ActionNodeRunner.canRun(${node.type}):`, canRun, 'Registered types:', registeredNodeTypes);
+    return canRun;
   },
 
   validate(node: AppNode, inputDataList: any[]): { isValid: boolean; error?: string } {
@@ -47,11 +49,13 @@ export const ActionNodeRunner: NodeRunner<AppNode> = {
 
       // 获取对应的API服务函数
       const apiService = getApiCallFunction(node.type);
-      
+      console.log(`ActionNodeRunner - Got API service function for ${node.type}`);
+
       // 传递整个node和输入数据给服务
       const result = await apiService(node, inputDataList);
-      
+
       console.log(`ActionNodeRunner - Service result:`, result);
+      console.log(`ActionNodeRunner - Service result stringified:`, JSON.stringify(result, null, 2));
       return result;
     } catch (error) {
       console.error(`ActionNodeRunner error for ${node.type}:`, error);

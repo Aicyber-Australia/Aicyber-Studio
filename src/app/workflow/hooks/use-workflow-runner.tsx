@@ -130,19 +130,30 @@ export function useWorkflowRunner() {
 
       // 执行Runner
       const processedData = await runner.run(updatedNode || node, inputDataList);
+      console.log(`🔄 Process - Runner returned data:`, processedData);
 
       // 合并输出到节点 data
-      setReactFlowNodes(nodes => nodes.map(n => 
-        n.id === node.id 
+      setReactFlowNodes(nodes => nodes.map(n =>
+        n.id === node.id
           ? { ...n, data: { ...n.data, ...processedData } }
           : n
       ));
 
+      // 同步更新 Zustand store
+      setNodes(
+        getNodes().map((n) =>
+          n.id === node.id
+            ? ({ ...n, data: { ...n.data, ...processedData } } as AppNode)
+            : n,
+        ),
+      );
+
       updateNodeStatus(node.id, 'success');
       setLogMessages((prev) => [...prev, `✅ ${node.data.title} completed successfully!`]);
       console.log(`Node ${node.id} processing completed successfully!`);
+      console.log(`Node ${node.id} final data:`, { ...node.data, ...processedData });
     },
-    [updateNodeStatus, getNode, getReactFlowEdges, setReactFlowNodes, showToast],
+    [updateNodeStatus, getNode, getNodes, setNodes, getReactFlowEdges, setReactFlowNodes, showToast],
   );
 
   const runWorkflow = useCallback(
@@ -168,18 +179,21 @@ export function useWorkflowRunner() {
 
       for (const node of nodesToProcess) {
         if (!isRunning.current) break;
-        
+
         try {
           // 第一步：收集数据（只收集一次）
           const inputDataList = collectInputData(node);
-          
+
           // 第二步：自检（只负责类型转换）
           await selfCheckNode(node, inputDataList);
 
           await new Promise(resolve => setTimeout(resolve, 5));
-          
+
           // 第三步：执行（重新获取类型并处理数据）
           await processNode(node, inputDataList);
+
+          // 等待状态更新完成，确保下一个节点能获取到最新数据
+          await new Promise(resolve => setTimeout(resolve, 50));
 
         } catch (error) {
           console.error(`Node ${node.id} processing failed:`, error);

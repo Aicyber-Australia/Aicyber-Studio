@@ -63,31 +63,58 @@ const extractVideoList = (inputDataList: InputData[]): MediaItem[] => {
 async function callYourEndpoint(node: ServiceNode, inputDataList: InputData[]) {
   const { prompt, selectedModel } = node.data;
   const method = getMethodByNodeType(node.type);
-  const response = await fetch(YOUR_ENDPOINT, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: selectedModel || 'default',
+
+  // ===== MOCK MODE: Comment out real API call for testing =====
+  // const response = await fetch(YOUR_ENDPOINT, {
+  //   method: 'POST',
+  //   headers: { 'Content-Type': 'application/json' },
+  //   body: JSON.stringify({
+  //     model: selectedModel || 'default',
+  //     method: method,
+  //     media: {
+  //       imageList: extractImageList(inputDataList),
+  //       videoList: extractVideoList(inputDataList),
+  //       prompt: prompt
+  //     }
+  //   })
+  // });
+
+  // if (!response.ok) {
+  //   throw new Error(`HTTP error! status: ${response.status}`);
+  // }
+
+  // const result = await response.json();
+
+  // if (result.error) {
+  //   throw new Error(result.error);
+  // }
+
+  // return result;
+
+  // ===== MOCK RESPONSE: Return mock image for testing =====
+  console.log('🎭 Using MOCK response - prompt:', prompt, 'model:', selectedModel, 'method:', method);
+
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 1500));
+
+  // Return mock image data
+  return {
+    media: {
+      imageList: [
+        {
+          url: 'https://picsum.photos/seed/' + Date.now() + '/512/512',
+          fileName: `mock-${method}-${Date.now()}.jpg`,
+          data: null // Or you can add base64 data if needed
+        }
+      ]
+    },
+    metadata: {
+      model: selectedModel || 'mock-model',
       method: method,
-      media: {
-        imageList: extractImageList(inputDataList),
-        videoList: extractVideoList(inputDataList),
-        prompt: prompt
-      }
-    })
-  });
-
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-
-  const result = await response.json();
-  
-  if (result.error) {
-    throw new Error(result.error);
-  }
-
-  return result;
+      prompt: prompt,
+      timestamp: new Date().toISOString()
+    }
+  };
 }
 
 // 图片生成服务
@@ -105,7 +132,11 @@ export const imageGenerationService: ApiCallFunction = async (node, inputDataLis
 export const imageEditingService: ApiCallFunction = async (node, inputDataList) => {
   try {
     console.log('✏️ Image Editing Service called');
-    return await callYourEndpoint(node, inputDataList);
+    console.log('Node data:', node.data);
+    console.log('Input data list:', inputDataList);
+    const result = await callYourEndpoint(node, inputDataList);
+    console.log('✏️ Image Editing Service result:', result);
+    return result;
   } catch (error) {
     console.error('Image Editing Service error:', error);
     throw new Error(`Image editing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
