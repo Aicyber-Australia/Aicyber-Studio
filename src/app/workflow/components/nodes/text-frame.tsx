@@ -6,35 +6,35 @@ import { WorkflowNodeProps } from '@/app/workflow/components/nodes';
 import { nodesConfig } from '../../config';
 import { NodeHandle } from './workflow-node/node-handle';
 import WorkflowNode from './workflow-node';
-import { FileText, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 
 function TextFrame({ id, data, selected }: WorkflowNodeProps) {
   const [textError, setTextError] = useState<boolean>(false);
-  
+
   // 使用 ReactFlow 官方 API
   const { setNodes } = useReactFlow();
 
-  // 从 data 获取文本内容
-  const textContent = data?.textContent || '';
-  
+  // 从 media.textList[0] 获取文本内容 (单个字符串)
+  const textContent = data?.media?.textList?.[0] || '';
+
   // 检查节点是否正在处理
   const isProcessing = data?.status === 'loading';
 
   // 刷新按钮处理函数
   const handleRefresh = () => {
     setTextError(false);
-    
+
     // 直接清除节点数据
-    setNodes(nodes => nodes.map(node => 
-      node.id === id 
-        ? { 
-            ...node, 
-            data: { 
-              ...node.data, 
-              textContent: '',
+    setNodes(nodes => nodes.map(node =>
+      node.id === id
+        ? {
+            ...node,
+            data: {
+              ...node.data,
               timestamp: undefined,
-              outputData: undefined
-            } 
+              outputData: undefined,
+              media: undefined
+            }
           }
         : node
     ));
@@ -42,28 +42,27 @@ function TextFrame({ id, data, selected }: WorkflowNodeProps) {
 
   const handleTextChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newText = event.target.value;
-    
+
     setTextError(false);
-    
-    // 更新节点数据
-    setNodes(nodes => nodes.map(node => 
-      node.id === id 
-        ? { 
-            ...node, 
-            data: { 
-              ...node.data, 
-              textContent: newText,
-              title: newText ? `Text: ${newText.substring(0, 20)}${newText.length > 20 ? '...' : ''}` : 'Text Frame'
-            } 
+
+    // 更新节点数据 - 使用 media.textList 数组
+    const mediaData = {
+      textList: [newText]  // 只包含一个字符串
+    };
+
+    setNodes(nodes => nodes.map(node =>
+      node.id === id
+        ? {
+            ...node,
+            data: {
+              ...node.data,
+              media: mediaData
+            }
           }
         : node
     ));
-    
-    console.log(`Node ${id} text updated:`, newText);
-  };
 
-  const handleTextError = () => {
-    setTextError(true);
+    console.log(`Node ${id} text updated:`, newText);
   };
 
   const handleClearText = () => {
@@ -73,8 +72,7 @@ function TextFrame({ id, data, selected }: WorkflowNodeProps) {
             ...node,
             data: {
               ...node.data,
-              textContent: '',
-              title: 'Text Frame'
+              media: undefined
             }
           }
         : node
@@ -85,58 +83,47 @@ function TextFrame({ id, data, selected }: WorkflowNodeProps) {
     <>
       <WorkflowNode id={id} data={data} type="text-frame" onRefresh={handleRefresh} selected={selected}>
         <div className="w-full flex-1 flex items-center justify-center p-3 min-h-0 nodrag">
-          {/* 文本输入区域 */}
+          {/* 文本输入区域 - 简洁设计 */}
           <div
-            className="nodrag nopan nowheel w-full h-full border-2 border-dashed border-gray-300 rounded-lg overflow-auto cursor-text hover:border-gray-400 transition-colors relative"
-            onClick={() => document.getElementById(`text-input-${id}`)?.focus()}
+            className="nodrag nopan nowheel w-full h-full border-2 border-blue-200 bg-white rounded-lg overflow-hidden hover:border-blue-300 transition-colors relative"
             onWheel={(e) => e.stopPropagation()}
           >
-            {textContent ? (
+            {textError ? (
+              <div className="text-red-500 text-xs text-center p-4">加载失败</div>
+            ) : (
               <>
-                {/* 文本显示区域 */}
-                <div className="nodrag w-full h-full p-3">
-                  <textarea
-                    id={`text-input-${id}`}
-                    value={textContent}
-                    onChange={handleTextChange}
-                    onError={handleTextError}
-                    className="nodrag w-full h-full resize-none border-none outline-none bg-transparent text-sm text-gray-700 placeholder-gray-400"
-                    placeholder="输入文本内容..."
-                    draggable={false}
-                    style={{ minHeight: '200px' }}
-                  />
-                </div>
-                
-                {/* 清除按钮 */}
-                <div className="absolute top-2 right-2">
+                {/* 文本输入区域 */}
+                <textarea
+                  id={`text-input-${id}`}
+                  value={textContent}
+                  onChange={handleTextChange}
+                  className="nodrag w-full h-full resize-none border-none outline-none p-3 text-sm text-gray-800 placeholder-gray-400 leading-relaxed"
+                  placeholder="输入文本..."
+                  draggable={false}
+                />
+
+                {/* 清除按钮 - 仅在有内容时显示 */}
+                {textContent && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleClearText();
                     }}
-                    className="nodrag p-1 bg-white/90 hover:bg-white rounded-full transition-colors select-none shadow-sm"
-                    title="清除文本"
+                    className="nodrag absolute top-2 right-2 p-1 bg-gray-100 hover:bg-red-100 rounded transition-colors"
+                    title="清除"
                     draggable={false}
                   >
-                    <Trash2 className="w-3 h-3 text-red-600 pointer-events-none" />
+                    <Trash2 className="w-3 h-3 text-gray-600 hover:text-red-600 pointer-events-none" />
                   </button>
-                </div>
-                
+                )}
+
                 {/* 节点处理时的加载动画 */}
                 {isProcessing && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-10 rounded-md">
-                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div>
+                  <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-10">
+                    <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-500 border-t-transparent"></div>
                   </div>
                 )}
               </>
-            ) : textError ? (
-              <div className="text-red-500 text-xs text-center">加载失败</div>
-            ) : (
-              <div className="text-gray-500 text-xs text-center">
-                <FileText className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                <div>点击输入文本</div>
-                <div className="text-xs mt-1">支持多行文本</div>
-              </div>
             )}
           </div>
         </div>

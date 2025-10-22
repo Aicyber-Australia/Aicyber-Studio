@@ -53,12 +53,7 @@ export type WorkflowNodeData = {
       fileName: string;
       timestamp?: number;
     }>;
-    textList?: Array<{
-      id: string;
-      content: string;
-      fileName: string;
-      timestamp?: number;
-    }>;
+    textList?: string[];
     mediaList?: Array<{
       id: string;
       type: 'image' | 'text';
