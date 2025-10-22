@@ -116,7 +116,7 @@ export const createNodeByType = ({
           title: node.title,
           status: node.status,
           icon: node.icon,
-          collectorMode: 'collector', // normal: 正常模式, collector: 收集模式 收集模式会累计收集每一次的输入
+          collectorMode: 'normal', // normal: 正常模式, collector: 收集模式 收集模式会累计收集每一次的输入
           outputMode: 'loop',  // NodeSet 默认是 loop 模式
           nodeList: [],        // 初始化为空数组
         } as NodeSetData;

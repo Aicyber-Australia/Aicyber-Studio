@@ -51,6 +51,7 @@ export type AppActions = {
   addNode: (node: AppNode) => void;
   removeNode: (nodeId: string) => void;
   addNodeByType: (type: AppNodeType, position: XYPosition) => null | string;
+  fitView: (options?: { duration?: number; padding?: number }) => void;
   addNodeInBetween: ({
     type,
     source,
@@ -265,6 +266,12 @@ export function createAppStore(
       onNodeDragStop: () => {
         set({ draggedNodes: new Map() });
         set({ potentialConnection: undefined });
+      },
+
+      fitView: (options) => {
+        // This is a placeholder - fitView should be called from ReactFlow instance
+        // The actual implementation is handled in the components that use useReactFlow
+        console.log('fitView called with options:', options);
       },
     })),
   );
