@@ -602,7 +602,7 @@ export function useCopilotWorkflowActions({
         let details = `${i + 1}. [${node.type}]`;
         if (node.data?.title) details += ` "${node.data.title}"`;
         details += ` (ID: ${node.id})`;
-        if (node.data?.prompt) details += `\n   Prompt: "${node.data.prompt.substring(0, 60)}${node.data.prompt.length > 60 ? '...' : ''}"`;
+        if ('prompt' in node.data && node.data?.prompt) details += `\n   Prompt: "${node.data.prompt.substring(0, 60)}${node.data.prompt.length > 60 ? '...' : ''}"`;
         return details;
       }).join('\n');
 

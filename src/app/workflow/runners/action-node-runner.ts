@@ -15,7 +15,7 @@ export const ActionNodeRunner: NodeRunner<AppNode> = {
 
   validate(node: AppNode, inputDataList: any[]): { isValid: boolean; error?: string } {
     const nodeData = node.data;
-    const prompt = nodeData?.prompt || '';
+    const prompt = ('prompt' in nodeData && nodeData?.prompt) ? nodeData.prompt : '';
 
     // 检查prompt是否存在
     if (!prompt.trim()) {

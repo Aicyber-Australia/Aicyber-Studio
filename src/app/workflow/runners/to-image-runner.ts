@@ -12,7 +12,7 @@ export const TextToImageNodeRunner: NodeRunner<AppNode> = {
     // to-image-node可以独立运行，不需要依赖输入数据
     // 只需要检查节点本身是否有prompt
     const nodeData = node.data;
-    const prompt = nodeData?.prompt || '';
+    const prompt = ('prompt' in nodeData && nodeData?.prompt) ? nodeData.prompt : '';
 
     if (!prompt.trim()) {
       return { isValid: false, error: 'Prompt is required for image generation' };
@@ -25,8 +25,8 @@ export const TextToImageNodeRunner: NodeRunner<AppNode> = {
     try {
       // 获取节点数据中的模型选择和文本输入
       const nodeData = node.data;
-      const selectedModel = nodeData?.selectedModel || 'default';
-      const prompt = nodeData?.prompt || '';
+      const selectedModel = ('selectedModel' in nodeData && nodeData?.selectedModel) ? nodeData.selectedModel : 'default';
+      const prompt = ('prompt' in nodeData && nodeData?.prompt) ? nodeData.prompt : '';
 
       if (!prompt.trim()) {
         throw new Error('Prompt is required for image generation');
