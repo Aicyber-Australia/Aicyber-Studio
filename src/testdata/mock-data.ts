@@ -7,6 +7,7 @@ const initialNodes: AppNode[] = [
     type: 'image-frame', 
     id: 'imageNode_1',
     data: {
+      loopMode: 'sequence',
       title: 'Image Input',
       media: {
         imageList: [{

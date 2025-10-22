@@ -5,6 +5,10 @@ import {
   Merge,
   CheckCheck,
   Ban,
+  FileText,
+  Image,
+  Images,
+  Layers,
   // Import other icons as needed
 } from 'lucide-react';
 
@@ -18,5 +22,10 @@ export const iconMapping: Record<
   Merge: Merge,
   CheckCheck: CheckCheck,
   Ban: Ban,
+  FileText: FileText,
+  Image: Image,
+  Images: Images,
+  Layers: Layers,
+  Media: Images, // Use Images as fallback for Media
   // Add other mappings here
 };

@@ -5,10 +5,13 @@ import { useNodeId, useReactFlow } from "@xyflow/react";
 import { BaseNode, BaseNodeHeader, BaseNodeHeaderTitle, BaseNodeContent } from "@/components/base-node";
 import { NodeStatusIndicator } from "@/components/node-status-indicator";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Eye, Trash } from "lucide-react";
+import { Plus, Trash2, Trash, Play, RotateCcw } from "lucide-react";
 import { AppNode, NodeSetData } from "@/app/workflow/components/nodes";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/app/workflow/store";
+import { useWorkflowRunner } from "@/app/workflow/hooks/use-workflow-runner";
+import { NodeHandle } from "./workflow-node/node-handle";
+import { nodesConfig } from "@/app/workflow/config";
 
 
 
@@ -16,8 +19,8 @@ import { useAppStore } from "@/app/workflow/store";
 export const NodeSet = React.forwardRef<HTMLDivElement, any>((props, ref) => {
   const nodeId = useNodeId();
   const { setNodes, getNode } = useReactFlow();
-  const [isExpanded, setIsExpanded] = useState(false);
   const removeNode = useAppStore((s) => s.removeNode);
+  const { runWorkflow } = useWorkflowRunner();
 
   const node = getNode(nodeId!);
   const data = node?.data as NodeSetData;
@@ -81,9 +84,8 @@ export const NodeSet = React.forwardRef<HTMLDivElement, any>((props, ref) => {
     removeNode(nodeId);
   }, [nodeId, removeNode]);
 
-  const handleToggleExpanded = useCallback(() => {
-    setIsExpanded(!isExpanded);
-  }, [isExpanded]);
+  const onPlay = useCallback(() => runWorkflow(nodeId!), [nodeId, runWorkflow]);
+  const onRemove = useCallback(() => removeNode(nodeId!), [nodeId, removeNode]);
 
   return (
     <BaseNode ref={ref} {...props}>
@@ -99,80 +101,78 @@ export const NodeSet = React.forwardRef<HTMLDivElement, any>((props, ref) => {
           </NodeStatusIndicator>
         </BaseNodeHeaderTitle>
         
-        {/* 删除整个 NodeSet 的按钮 */}
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={handleRemoveNodeSet}
-          className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-          title="删除整个 NodeSet"
-        >
-          <Trash className="h-3 w-3" />
-        </Button>
+        {/* 标准操作按钮 */}
+        <div className="flex items-center gap-1">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onPlay}
+            className="h-6 w-6 p-0"
+            title="运行"
+          >
+            <Play className="h-3 w-3 stroke-blue-500 fill-blue-500" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onRemove}
+            className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+            title="删除"
+          >
+            <Trash className="h-3 w-3" />
+          </Button>
+        </div>
       </BaseNodeHeader>
 
       <BaseNodeContent>
         <div className="space-y-2">
-          {/* 控制按钮 */}
-          <div className="flex items-center justify-between">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleAddNode}
-              className="h-6 px-2 text-xs"
-            >
-              <Plus className="h-3 w-3 mr-1" />
-              Add Node
-            </Button>
-            
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={handleToggleExpanded}
-              className="h-6 px-2 text-xs"
-            >
-              <Eye className="h-3 w-3 mr-1" />
-              {isExpanded ? 'Hide' : 'Show'}
-            </Button>
-          </div>
-
-          {/* 节点列表 */}
-          {isExpanded && (
-            <div className="space-y-1 max-h-32 overflow-y-auto">
-              {nodeList.length === 0 ? (
-                <div className="text-xs text-muted-foreground text-center py-2">
-                  No nodes added yet
-                </div>
-              ) : (
-                nodeList.map((nodeItem: any, index: number) => (
-                  <div
-                    key={nodeItem.id}
-                    className="flex items-center justify-between bg-muted/50 rounded px-2 py-1 text-xs"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <span className="text-muted-foreground">#{index + 1}</span>
-                      <span className="font-medium">{nodeItem.type}</span>
-                      <span className="text-muted-foreground">
-                        {nodeItem.data?.title || 'Untitled'}
-                      </span>
-                    </div>
-                    
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleRemoveChildNode(nodeItem.id)}
-                      className="h-4 w-4 p-0 text-destructive hover:text-destructive"
-                      title="删除子节点"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+          {/* 简化的节点列表展示 */}
+          <div className="space-y-1 max-h-24 overflow-y-auto">
+            {nodeList.length === 0 ? (
+              <div className="text-xs text-muted-foreground text-center py-2">
+                No nodes collected yet
+              </div>
+            ) : (
+              nodeList.map((nodeItem: any, index: number) => (
+                <div
+                  key={nodeItem.id}
+                  className="flex items-center justify-between bg-muted/30 rounded px-2 py-1 text-xs"
+                >
+                  <div className="flex items-center space-x-2">
+                    <span className="text-muted-foreground">#{index + 1}</span>
+                    <span className="font-medium text-blue-600">{nodeItem.type}</span>
+                    <span className="text-muted-foreground truncate max-w-32">
+                      {nodeItem.data?.title || 'Untitled'}
+                    </span>
                   </div>
-                ))
-              )}
-            </div>
-          )}
+                  
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleRemoveChildNode(nodeItem.id)}
+                    className="h-4 w-4 p-0 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="删除子节点"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </BaseNodeContent>
+
+      {/* Handle 配置 */}
+      {nodesConfig['node-set'].handles.map((handle: any) => (
+        <NodeHandle
+          key={`${handle.type}-${handle.id}`}
+          id={handle.id}
+          type={handle.type}
+          position={handle.position}
+          x={handle.x}
+          y={handle.y}
+        />
+      ))}
     </BaseNode>
   );
 });

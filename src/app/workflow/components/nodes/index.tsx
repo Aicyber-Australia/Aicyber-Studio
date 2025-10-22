@@ -1,10 +1,12 @@
 import { Node, NodeProps, XYPosition } from '@xyflow/react';
 import { nanoid } from 'nanoid';
 
-import { NODE_SIZE, IMAGE_NODE_SIZE, ACTION_NODE_SIZE, nodesConfig } from '../../config';
+import { NODE_SIZE, IMAGE_NODE_SIZE, TEXT_NODE_SIZE, ACTION_NODE_SIZE, nodesConfig } from '../../config';
 import { iconMapping } from '@/app/workflow/utils/icon-mapping';
 import ImageFrame from './image-frame';
 import ImageSet from './image-set';
+import TextFrame from './text-frame';
+import TextSet from './text-set';
 import { NodeSet } from './node-set';
 import { TextToImageNode } from './action-node/text-to-image';
 import { ImageToImageNode } from './action-node/image-to-image';
@@ -15,9 +17,13 @@ export type NodeSetData = {
   title?: string;
   label?: string;
   icon?: string;
+  // 维护一个set 里面是所有支持的媒体类型eg. 每次加入node时候
+  mediaTypes?: Array<string>;
   status?: 'loading' | 'success' | 'error' | 'initial';
   nodeList?: AppNode[];
   outputMode?: 'loop' | 'direct'; 
+  collectorMode?: 'collector' | 'normal';
+  programmaticallyAdded?: boolean;
 };
 
 
@@ -26,6 +32,7 @@ export type WorkflowNodeData = {
   label?: string;
   icon?: keyof typeof iconMapping;
   status?: 'loading' | 'success' | 'error' | 'initial';
+  loopMode?: 'cross' | 'sequence' | 'append';
   fileName?: string;
   timestamp?: number;
   selectedModel?: string;
@@ -44,7 +51,14 @@ export type WorkflowNodeData = {
       fileName: string;
       timestamp?: number;
     }>;
+    textList?: Array<{
+      id: string;
+      content: string;
+      fileName: string;
+      timestamp?: number;
+    }>;
   };
+  textContent?: string;
 };
 
 export type WorkflowNodeProps = NodeProps<Node<WorkflowNodeData>> & {
@@ -63,6 +77,8 @@ export type NodeConfig = {
 export const nodeTypes = {
   'image-frame': ImageFrame,
   'image-set': ImageSet,
+  'text-frame': TextFrame,
+  'text-set': TextSet,
   'node-set': NodeSet,
   'text-to-image-node': TextToImageNode,
   'image-to-image-node': ImageToImageNode,
@@ -85,27 +101,41 @@ export const createNodeByType = ({
   let nodeSize = NODE_SIZE;
   if (type === 'image-frame' || type === 'image-set') {
     nodeSize = IMAGE_NODE_SIZE;
+  } else if (type === 'text-frame' || type === 'text-set') {
+    nodeSize = TEXT_NODE_SIZE;
   } else if (type === 'text-to-image-node' || type === 'image-to-image-node') {
     nodeSize = ACTION_NODE_SIZE;
   }
 
   const newNode: AppNode = {
     id: id ?? nanoid(),
-    data: data ?? {
-      title: node.title,
-      status: node.status,
-      icon: node.icon,
-    },
+    data: data ?? (() => {
+      // 根据节点类型设置不同的默认数据
+      if (type === 'node-set') {
+        return {
+          title: node.title,
+          status: node.status,
+          icon: node.icon,
+          collectorMode: 'collector', // normal: 正常模式, collector: 收集模式 收集模式会累计收集每一次的输入
+          outputMode: 'loop',  // NodeSet 默认是 loop 模式
+          nodeList: [],        // 初始化为空数组
+        } as NodeSetData;
+      } else {
+        return {
+          title: node.title,
+          status: node.status,
+          icon: node.icon,
+          loopMode: 'sequence',  // 其他节点默认是 append 模式 单列插入
+        } as WorkflowNodeData;
+      }
+    })(),
     position: {
       x: position.x - nodeSize.width * 0.5,
       y: position.y - nodeSize.height * 0.5,
     },
     type,
-
-    // Set explicit width and height to control initial size
     width: nodeSize.width,
     height: nodeSize.height,
-    // handles: node.handles,
   };
 
   return newNode;
@@ -114,6 +144,9 @@ export const createNodeByType = ({
 export type AppNode =
   | Node<WorkflowNodeData, 'image-frame'>
   | Node<WorkflowNodeData, 'image-set'>
+  | Node<WorkflowNodeData, 'text-frame'>
+  | Node<WorkflowNodeData, 'text-set'>
+  | Node<WorkflowNodeData, 'media-set'>
   | Node<NodeSetData, 'node-set'>
   | Node<WorkflowNodeData, 'text-to-image-node'>
   | Node<WorkflowNodeData, 'image-to-image-node'>;
