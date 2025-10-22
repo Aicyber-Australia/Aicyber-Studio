@@ -57,6 +57,7 @@ export function useLayout() {
             title: 'Node Set',
             status: 'initial',
             icon: 'Layers',
+            inputMode: 'sequence',
             collectorMode: 'collector',
             outputMode: 'loop',
             nodeList: []

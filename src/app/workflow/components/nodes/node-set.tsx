@@ -7,7 +7,7 @@ import { nodesConfig } from '../../config';
 import { NodeHandle } from './workflow-node/node-handle';
 import WorkflowNode from './workflow-node';
 import { Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 function NodeSet({ id, data, selected }: WorkflowNodeProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -94,13 +94,118 @@ function NodeSet({ id, data, selected }: WorkflowNodeProps) {
     );
   }, [id, setNodes]);
 
+  // Handle input mode change (how to process upstream inputs)
+  const handleInputModeChange = useCallback((value: string) => {
+    if (!id) return;
+    setNodes((nodes) =>
+      nodes.map((n) =>
+        n.id === id
+          ? {
+              ...n,
+              data: {
+                ...n.data,
+                inputMode: value as 'cross' | 'sequence' | 'append',
+              },
+            }
+          : n
+      )
+    );
+  }, [id, setNodes]);
+
+  // Handle collector mode change
+  const handleCollectorModeChange = useCallback((value: string) => {
+    if (!id) return;
+    setNodes((nodes) =>
+      nodes.map((n) =>
+        n.id === id
+          ? {
+              ...n,
+              data: {
+                ...n.data,
+                collectorMode: value as 'normal' | 'collector',
+              },
+            }
+          : n
+      )
+    );
+  }, [id, setNodes]);
+
+  // Handle output mode change (how to send to downstream)
+  const handleOutputModeChange = useCallback((value: string) => {
+    if (!id) return;
+    setNodes((nodes) =>
+      nodes.map((n) =>
+        n.id === id
+          ? {
+              ...n,
+              data: {
+                ...n.data,
+                outputMode: value as 'loop' | 'direct',
+              },
+            }
+          : n
+      )
+    );
+  }, [id, setNodes]);
+
+  // Get current modes from data
+  const inputMode = (data as NodeSetData)?.inputMode || 'sequence';
+  const collectorMode = (data as NodeSetData)?.collectorMode || 'normal';
+  const outputMode = (data as NodeSetData)?.outputMode || 'loop';
+
   return (
     <>
       <WorkflowNode id={id} data={data} type="node-set" onRefresh={handleRefresh} selected={selected}>
-        <div className="w-full flex-1 flex items-center justify-center p-3 min-h-0 nodrag">
+        <div className="w-full flex-1 flex flex-col p-3 min-h-0 nodrag space-y-2">
+          {/* Mode Selection Controls */}
+          <div className="nodrag flex flex-col gap-2 flex-shrink-0">
+            {/* Input Mode */}
+            <div className="flex-1">
+              <div className="text-[10px] text-muted-foreground mb-1">Input Processing</div>
+              <Select value={inputMode} onValueChange={handleInputModeChange}>
+                <SelectTrigger className="h-7 text-xs nodrag">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="nodrag">
+                  <SelectItem value="cross" className="text-xs">Cross</SelectItem>
+                  <SelectItem value="sequence" className="text-xs">Sequence</SelectItem>
+                  <SelectItem value="append" className="text-xs">Append</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Collector and Output Modes */}
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <div className="text-[10px] text-muted-foreground mb-1">Collector</div>
+                <Select value={collectorMode} onValueChange={handleCollectorModeChange}>
+                  <SelectTrigger className="h-7 text-xs nodrag">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="nodrag">
+                    <SelectItem value="normal" className="text-xs">Normal</SelectItem>
+                    <SelectItem value="collector" className="text-xs">Collector</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex-1">
+                <div className="text-[10px] text-muted-foreground mb-1">Output</div>
+                <Select value={outputMode} onValueChange={handleOutputModeChange}>
+                  <SelectTrigger className="h-7 text-xs nodrag">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="nodrag">
+                    <SelectItem value="loop" className="text-xs">Loop</SelectItem>
+                    <SelectItem value="direct" className="text-xs">Direct</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
           {/* 节点列表显示区域 */}
           <div
-            className="nodrag nopan nowheel w-full h-full border-2 border-dashed border-gray-300 rounded-lg overflow-auto hover:border-gray-400 transition-colors relative"
+            className="nodrag nopan nowheel w-full flex-1 border-2 border-dashed border-gray-300 rounded-lg overflow-auto hover:border-gray-400 transition-colors relative"
             onWheel={(e) => e.stopPropagation()}
           >
             {nodeList.length > 0 ? (

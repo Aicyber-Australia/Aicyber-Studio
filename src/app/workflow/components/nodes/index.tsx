@@ -22,8 +22,9 @@ export type NodeSetData = {
   mediaTypes?: Array<string>;
   status?: 'loading' | 'success' | 'error' | 'initial';
   nodeList?: AppNode[];
-  outputMode?: 'loop' | 'direct'; 
-  collectorMode?: 'collector' | 'normal';
+  inputMode?: 'cross' | 'sequence' | 'append'; // How to process upstream input nodes
+  collectorMode?: 'collector' | 'normal'; // Whether to accumulate data across runs
+  outputMode?: 'loop' | 'direct'; // How to send data to downstream nodes
   programmaticallyAdded?: boolean;
 };
 
@@ -128,9 +129,10 @@ export const createNodeByType = ({
           title: node.title,
           status: node.status,
           icon: node.icon,
-          collectorMode: 'normal', // normal: 正常模式, collector: 收集模式 收集模式会累计收集每一次的输入
-          outputMode: 'loop',  // NodeSet 默认是 loop 模式
-          nodeList: [],        // 初始化为空数组
+          inputMode: 'sequence',   // How to process upstream inputs: cross, sequence, append
+          collectorMode: 'normal', // Whether to accumulate: normal, collector
+          outputMode: 'loop',      // How to output to downstream: loop, direct
+          nodeList: [],            // 初始化为空数组
         } as NodeSetData;
       } else {
         return {
