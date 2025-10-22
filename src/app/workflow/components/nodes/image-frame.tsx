@@ -79,7 +79,7 @@ function ImageFrame({ id, data, selected }: WorkflowNodeProps) {
   };
 
   return (
-    <WorkflowNode id={id} data={data} onRefresh={handleRefresh} selected={selected}>
+    <WorkflowNode id={id} data={data} type="image-frame" onRefresh={handleRefresh} selected={selected}>
       <div className="w-full flex-1 flex items-center justify-center p-3 min-h-0">
         {/* 图片显示区域 - 正方形，随节点缩放 */}
         <div

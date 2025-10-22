@@ -12,14 +12,29 @@ export const TEXT_NODE_SIZE = { width: 280, height: 200 };
 // Action node needs more height for the UI elements
 export const ACTION_NODE_SIZE = { width: 280, height: 220 };
 
+// Node set needs height to display list of nodes
+export const NODE_SET_SIZE = { width: 280, height: 200 };
+
 export const nodesConfig: Record<AppNodeType, NodeConfig> = {
   'media-set': {
     id: 'media-set',
     title: 'Media Set',
     status: 'initial',
-    handles: [],
-    icon: 'Media',
-  
+    handles: [
+      {
+        type: 'target',
+        position: Position.Left,
+        x: 0,
+        y: IMAGE_NODE_SIZE.height * 0.5,
+      },
+      {
+        type: 'source',
+        position: Position.Right,
+        x: IMAGE_NODE_SIZE.width,
+        y: IMAGE_NODE_SIZE.height * 0.5,
+      },
+    ],
+    icon: 'Images',
   },
   'image-frame': {
     id: 'image-frame',
@@ -150,13 +165,13 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
         type: 'target',
         position: Position.Left,
         x: 0,
-        y: NODE_SIZE.height * 0.5,
+        y: NODE_SET_SIZE.height * 0.5,
       },
       {
         type: 'source',
         position: Position.Right,
-        x: NODE_SIZE.width,
-        y: NODE_SIZE.height * 0.5,
+        x: NODE_SET_SIZE.width,
+        y: NODE_SET_SIZE.height * 0.5,
       },
     ],
     icon: 'Layers',

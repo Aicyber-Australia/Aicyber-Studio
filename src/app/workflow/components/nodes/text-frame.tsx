@@ -83,7 +83,7 @@ function TextFrame({ id, data, selected }: WorkflowNodeProps) {
 
   return (
     <>
-      <WorkflowNode id={id} data={data} onRefresh={handleRefresh} selected={selected}>
+      <WorkflowNode id={id} data={data} type="text-frame" onRefresh={handleRefresh} selected={selected}>
         <div className="w-full flex-1 flex items-center justify-center p-3 min-h-0 nodrag">
           {/* 文本输入区域 */}
           <div

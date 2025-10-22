@@ -1,12 +1,13 @@
 import { Node, NodeProps, XYPosition } from '@xyflow/react';
 import { nanoid } from 'nanoid';
 
-import { NODE_SIZE, IMAGE_NODE_SIZE, TEXT_NODE_SIZE, ACTION_NODE_SIZE, nodesConfig } from '../../config';
+import { NODE_SIZE, IMAGE_NODE_SIZE, TEXT_NODE_SIZE, ACTION_NODE_SIZE, NODE_SET_SIZE, nodesConfig } from '../../config';
 import { iconMapping } from '@/app/workflow/utils/icon-mapping';
 import ImageFrame from './image-frame';
 import ImageSet from './image-set';
 import TextFrame from './text-frame';
 import TextSet from './text-set';
+import MediaSet from './media-set';
 import { NodeSet } from './node-set';
 import { TextToImageNode } from './action-node/text-to-image';
 import { ImageToImageNode } from './action-node/image-to-image';
@@ -57,6 +58,14 @@ export type WorkflowNodeData = {
       fileName: string;
       timestamp?: number;
     }>;
+    mediaList?: Array<{
+      id: string;
+      type: 'image' | 'text';
+      url?: string;
+      content?: string;
+      fileName: string;
+      timestamp: number;
+    }>;
   };
   textContent?: string;
 };
@@ -79,6 +88,7 @@ export const nodeTypes = {
   'image-set': ImageSet,
   'text-frame': TextFrame,
   'text-set': TextSet,
+  'media-set': MediaSet,
   'node-set': NodeSet,
   'text-to-image-node': TextToImageNode,
   'image-to-image-node': ImageToImageNode,
@@ -99,12 +109,14 @@ export const createNodeByType = ({
 
   // Determine the size based on node type
   let nodeSize = NODE_SIZE;
-  if (type === 'image-frame' || type === 'image-set') {
+  if (type === 'image-frame' || type === 'image-set' || type === 'media-set') {
     nodeSize = IMAGE_NODE_SIZE;
   } else if (type === 'text-frame' || type === 'text-set') {
     nodeSize = TEXT_NODE_SIZE;
   } else if (type === 'text-to-image-node' || type === 'image-to-image-node') {
     nodeSize = ACTION_NODE_SIZE;
+  } else if (type === 'node-set') {
+    nodeSize = NODE_SET_SIZE;
   }
 
   const newNode: AppNode = {

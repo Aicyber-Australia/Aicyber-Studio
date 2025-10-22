@@ -3,7 +3,7 @@ import { Play, Trash, RotateCcw } from 'lucide-react';
 import { NodeResizer, useReactFlow } from '@xyflow/react';
 
 import { Button } from '@/components/ui/button';
-import { WorkflowNodeData } from '@/app/workflow/components/nodes';
+import { WorkflowNodeData, AppNodeType } from '@/app/workflow/components/nodes';
 import { useWorkflowRunner } from '@/app/workflow/hooks/use-workflow-runner';
 import { iconMapping } from '@/app/workflow/utils/icon-mapping';
 import { useAppStore } from '@/app/workflow/store';
@@ -13,7 +13,7 @@ import {
   BaseNodeHeaderTitle,
 } from '@/components/base-node';
 import { NodeStatusIndicator } from '@/components/node-status-indicator';
-import { IMAGE_NODE_SIZE } from '@/app/workflow/config';
+import { IMAGE_NODE_SIZE, TEXT_NODE_SIZE, ACTION_NODE_SIZE, NODE_SET_SIZE, NODE_SIZE } from '@/app/workflow/config';
 
 // This is an example of how to implement the WorkflowNode component. All the nodes in the Workflow Builder example
 // are variations on this CustomNode defined in the index.tsx file.
@@ -21,19 +21,21 @@ import { IMAGE_NODE_SIZE } from '@/app/workflow/config';
 function WorkflowNode({
   id,
   data,
+  type,
   children,
   onRefresh,
   selected,
 }: {
   id: string;
   data: WorkflowNodeData;
+  type?: AppNodeType;
   children?: React.ReactNode;
   onRefresh?: () => void;
   selected?: boolean;
 }) {
   const { runWorkflow } = useWorkflowRunner();
   const removeNode = useAppStore((s) => s.removeNode);
-  const { setNodes } = useReactFlow();
+  const { setNodes, getNode } = useReactFlow();
   const [isTitleEditing, setIsTitleEditing] = useState(false);
   const onPlay = useCallback(() => runWorkflow(id), [id, runWorkflow]);
   const onRemove = useCallback(() => removeNode(id), [id, removeNode]);
@@ -48,13 +50,26 @@ function WorkflowNode({
 
   const IconComponent = data?.icon ? iconMapping[data.icon] : undefined;
 
+  // Determine the minimum size based on node type
+  const nodeType = type || getNode(id)?.type as AppNodeType;
+  let minSize = NODE_SIZE;
+  if (nodeType === 'image-frame' || nodeType === 'image-set' || nodeType === 'media-set') {
+    minSize = IMAGE_NODE_SIZE;
+  } else if (nodeType === 'text-frame' || nodeType === 'text-set') {
+    minSize = TEXT_NODE_SIZE;
+  } else if (nodeType === 'text-to-image-node' || nodeType === 'image-to-image-node') {
+    minSize = ACTION_NODE_SIZE;
+  } else if (nodeType === 'node-set') {
+    minSize = NODE_SET_SIZE;
+  }
+
   return (
     <NodeStatusIndicator status={data?.status}>
       <NodeResizer
         color="#3b82f6"
         isVisible={selected}
-        minWidth={IMAGE_NODE_SIZE.width}
-        minHeight={IMAGE_NODE_SIZE.height}
+        minWidth={minSize.width}
+        minHeight={minSize.height}
       />
       <BaseNode style={{ width: '100%', height: '100%' }}>
         <BaseNodeHeader>

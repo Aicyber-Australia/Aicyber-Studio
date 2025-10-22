@@ -126,7 +126,7 @@ function ImageSet({ id, data, selected }: WorkflowNodeProps) {
 
   return (
     <>
-      <WorkflowNode id={id} data={data} onRefresh={handleRefresh} selected={selected}>
+      <WorkflowNode id={id} data={data} type="image-set" onRefresh={handleRefresh} selected={selected}>
         <div className="w-full flex-1 flex items-center justify-center p-3 min-h-0 nodrag">
           {/* 多图网格显示区域 - 自适应节点尺寸 */}
           <div

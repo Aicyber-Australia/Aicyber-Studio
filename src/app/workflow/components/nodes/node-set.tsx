@@ -1,69 +1,80 @@
-"use client";
+'use client';
 
-import React, { useState, useCallback } from "react";
-import { useNodeId, useReactFlow } from "@xyflow/react";
-import { BaseNode, BaseNodeHeader, BaseNodeHeaderTitle, BaseNodeContent } from "@/components/base-node";
-import { NodeStatusIndicator } from "@/components/node-status-indicator";
-import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Trash, Play, RotateCcw } from "lucide-react";
-import { AppNode, NodeSetData } from "@/app/workflow/components/nodes";
-import { cn } from "@/lib/utils";
-import { useAppStore } from "@/app/workflow/store";
-import { useWorkflowRunner } from "@/app/workflow/hooks/use-workflow-runner";
-import { NodeHandle } from "./workflow-node/node-handle";
-import { nodesConfig } from "@/app/workflow/config";
+import React, { useState, useCallback } from 'react';
+import { useReactFlow } from '@xyflow/react';
+import { WorkflowNodeProps, AppNode, NodeSetData } from '@/app/workflow/components/nodes';
+import { nodesConfig } from '../../config';
+import { NodeHandle } from './workflow-node/node-handle';
+import WorkflowNode from './workflow-node';
+import { Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
+function NodeSet({ id, data, selected }: WorkflowNodeProps) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
+  // 使用 ReactFlow 官方 API
+  const { setNodes } = useReactFlow();
 
+  // 从 data.nodeList 获取所有节点
+  const nodeList = (data as NodeSetData)?.nodeList || [];
 
-export const NodeSet = React.forwardRef<HTMLDivElement, any>((props, ref) => {
-  const nodeId = useNodeId();
-  const { setNodes, getNode } = useReactFlow();
-  const removeNode = useAppStore((s) => s.removeNode);
-  const { runWorkflow } = useWorkflowRunner();
+  // 检查节点是否正在处理
+  const isProcessing = data?.status === 'loading';
 
-  const node = getNode(nodeId!);
-  const data = node?.data as NodeSetData;
-  const nodeList = data?.nodeList || [];
-
+  // 刷新按钮处理函数
+  const handleRefresh = () => {
+    // 直接清除节点数据
+    setNodes(nodes => nodes.map(node =>
+      node.id === id
+        ? {
+            ...node,
+            data: {
+              ...node.data,
+              timestamp: undefined,
+              outputData: undefined,
+              nodeList: []
+            }
+          }
+        : node
+    ));
+  };
 
   // handle add node use for add a new node into the node set, when realise function such as drag or select a node added into the node set
   const handleAddNode = useCallback(() => {
-    if (!nodeId) return;
-    
+    if (!id) return;
+
     setNodes((nodes) =>
       nodes.map((n) =>
-        n.id === nodeId
+        n.id === id
           ? {
               ...n,
               data: {
                 ...n.data,
                 nodeList: [
-                    ...(n.data?.nodeList as AppNode[] ?? []),  
-                    {                                          
-                      id: `node-${Date.now()}`,
-                      type: 'node-set',
-                      data: { title: 'New Node', status: 'initial' },
-                      position: { x: 0, y: 0 },
-                      timestamp: Date.now()
-                    } as AppNode
-                  ],
+                  ...(n.data?.nodeList as AppNode[] ?? []),
+                  {
+                    id: `node-${Date.now()}`,
+                    type: 'node-set',
+                    data: { title: 'New Node', status: 'initial' },
+                    position: { x: 0, y: 0 },
+                    timestamp: Date.now()
+                  } as AppNode
+                ],
               },
             }
           : n
       )
     );
-
-
-  }, [nodeId, setNodes]);
+  }, [id, setNodes]);
 
   // 删除子节点（从 nodeList 中移除）
-  const handleRemoveChildNode = useCallback((nodeToRemoveId: string) => {
-    if (!nodeId) return;
+  const handleRemoveChildNode = useCallback((nodeToRemoveId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!id) return;
 
     setNodes((nodes) =>
       nodes.map((n) =>
-        n.id === nodeId
+        n.id === id
           ? {
               ...n,
               data: {
@@ -71,110 +82,95 @@ export const NodeSet = React.forwardRef<HTMLDivElement, any>((props, ref) => {
                 nodeList: (n.data?.nodeList as AppNode[] || []).filter(
                   (item: AppNode) => item.id !== nodeToRemoveId
                 ),
+                title: (n.data?.nodeList as AppNode[] || []).filter(
+                  (item: AppNode) => item.id !== nodeToRemoveId
+                ).length > 0
+                  ? `Node Set (${(n.data?.nodeList as AppNode[] || []).filter((item: AppNode) => item.id !== nodeToRemoveId).length})`
+                  : 'Node Set'
               },
             }
           : n
       )
     );
-  }, [nodeId, setNodes]);
-
-  // 删除整个 NodeSet 节点
-  const handleRemoveNodeSet = useCallback(() => {
-    if (!nodeId) return;
-    removeNode(nodeId);
-  }, [nodeId, removeNode]);
-
-  const onPlay = useCallback(() => runWorkflow(nodeId!), [nodeId, runWorkflow]);
-  const onRemove = useCallback(() => removeNode(nodeId!), [nodeId, removeNode]);
+  }, [id, setNodes]);
 
   return (
-    <BaseNode ref={ref} {...props}>
-      <BaseNodeHeader>
-        <BaseNodeHeaderTitle>
-          <NodeStatusIndicator status={data?.status}>
-            <span className="text-sm font-medium">
-              {data?.title || "Node Set"}
-            </span>
-            <span className="text-xs text-muted-foreground ml-2">
-              ({nodeList.length} nodes)
-            </span>
-          </NodeStatusIndicator>
-        </BaseNodeHeaderTitle>
-        
-        {/* 标准操作按钮 */}
-        <div className="flex items-center gap-1">
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onPlay}
-            className="h-6 w-6 p-0"
-            title="运行"
+    <>
+      <WorkflowNode id={id} data={data} type="node-set" onRefresh={handleRefresh} selected={selected}>
+        <div className="w-full flex-1 flex items-center justify-center p-3 min-h-0 nodrag">
+          {/* 节点列表显示区域 */}
+          <div
+            className="nodrag nopan nowheel w-full h-full border-2 border-dashed border-gray-300 rounded-lg overflow-auto hover:border-gray-400 transition-colors relative"
+            onWheel={(e) => e.stopPropagation()}
           >
-            <Play className="h-3 w-3 stroke-blue-500 fill-blue-500" />
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onRemove}
-            className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-            title="删除"
-          >
-            <Trash className="h-3 w-3" />
-          </Button>
-        </div>
-      </BaseNodeHeader>
+            {nodeList.length > 0 ? (
+              <>
+                {/* 节点列表显示 */}
+                <div className="nodrag w-full h-full p-2 space-y-1">
+                  {nodeList.map((nodeItem: AppNode, index: number) => (
+                    <div
+                      key={nodeItem.id}
+                      className="nodrag relative bg-gray-50 rounded-lg p-2 border border-gray-200 group"
+                      onMouseEnter={() => setHoveredIndex(index)}
+                      onMouseLeave={() => setHoveredIndex(null)}
+                    >
+                      {/* 节点信息 */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2 text-xs">
+                          <span className="text-muted-foreground">#{index + 1}</span>
+                          <span className="font-medium text-blue-600">{nodeItem.type}</span>
+                          <span className="text-muted-foreground truncate max-w-32">
+                            {nodeItem.data?.title || 'Untitled'}
+                          </span>
+                        </div>
 
-      <BaseNodeContent>
-        <div className="space-y-2">
-          {/* 简化的节点列表展示 */}
-          <div className="space-y-1 max-h-24 overflow-y-auto">
-            {nodeList.length === 0 ? (
-              <div className="text-xs text-muted-foreground text-center py-2">
-                No nodes collected yet
-              </div>
-            ) : (
-              nodeList.map((nodeItem: any, index: number) => (
-                <div
-                  key={nodeItem.id}
-                  className="flex items-center justify-between bg-muted/30 rounded px-2 py-1 text-xs"
-                >
-                  <div className="flex items-center space-x-2">
-                    <span className="text-muted-foreground">#{index + 1}</span>
-                    <span className="font-medium text-blue-600">{nodeItem.type}</span>
-                    <span className="text-muted-foreground truncate max-w-32">
-                      {nodeItem.data?.title || 'Untitled'}
-                    </span>
-                  </div>
-                  
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleRemoveChildNode(nodeItem.id)}
-                    className="h-4 w-4 p-0 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                    title="删除子节点"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
+                        {/* 悬停时显示的删除按钮 */}
+                        {hoveredIndex === index && (
+                          <button
+                            onClick={(e) => handleRemoveChildNode(nodeItem.id, e)}
+                            className="nodrag p-1 bg-red-100 hover:bg-red-200 rounded-full transition-colors select-none"
+                            title="Remove node from set"
+                            draggable={false}
+                          >
+                            <Trash2 className="w-3 h-3 text-red-600 pointer-events-none" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))
+
+                {/* 节点处理时的加载动画 */}
+                {isProcessing && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-10 rounded-md">
+                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-gray-500 text-xs text-center flex flex-col items-center justify-center h-full">
+                <div>No nodes collected yet</div>
+                <div className="text-xs mt-1">Nodes will be added here</div>
+              </div>
             )}
           </div>
         </div>
-      </BaseNodeContent>
 
-      {/* Handle 配置 */}
-      {nodesConfig['node-set'].handles.map((handle: any) => (
-        <NodeHandle
-          key={`${handle.type}-${handle.id}`}
-          id={handle.id}
-          type={handle.type}
-          position={handle.position}
-          x={handle.x}
-          y={handle.y}
-        />
-      ))}
-    </BaseNode>
+        {/* Handle 配置 */}
+        {nodesConfig['node-set'].handles.map((handle: any) => (
+          <NodeHandle
+            key={`${handle.type}-${handle.id}`}
+            id={handle.id}
+            type={handle.type}
+            position={handle.position}
+            x={handle.x}
+            y={handle.y}
+          />
+        ))}
+      </WorkflowNode>
+    </>
   );
-});
+}
 
-NodeSet.displayName = "NodeSet";
+export { NodeSet };
+export default NodeSet;

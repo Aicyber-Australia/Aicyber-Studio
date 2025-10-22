@@ -1,0 +1,355 @@
+'use client';
+
+import React, { useState } from 'react';
+import { useReactFlow } from '@xyflow/react';
+import { WorkflowNodeProps } from '@/app/workflow/components/nodes';
+import { nodesConfig } from '../../config';
+import { NodeHandle } from './workflow-node/node-handle';
+import WorkflowNode from './workflow-node';
+import { Eye, Trash2, FileText, Image as ImageIcon, Plus } from 'lucide-react';
+import { ImagePreviewDialog } from './image-preview-dialog';
+
+type MediaItem = {
+  id: string;
+  type: 'image' | 'text';
+  url?: string;
+  content?: string;
+  fileName: string;
+  timestamp: number;
+};
+
+function MediaSet({ id, data, selected }: WorkflowNodeProps) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [previewImage, setPreviewImage] = useState<{ url: string; fileName: string } | null>(null);
+
+  // 使用 ReactFlow 官方 API
+  const { setNodes } = useReactFlow();
+
+  // 从 media.mediaList 获取所有媒体项
+  const mediaList: MediaItem[] = data?.media?.mediaList || [];
+
+  // 检查节点是否正在处理
+  const isProcessing = data?.status === 'loading';
+
+  // 刷新按钮处理函数
+  const handleRefresh = () => {
+    // 直接清除节点数据
+    setNodes(nodes => nodes.map(node =>
+      node.id === id
+        ? {
+            ...node,
+            data: {
+              ...node.data,
+              fileName: undefined,
+              timestamp: undefined,
+              outputData: undefined,
+              media: undefined
+            }
+          }
+        : node
+    ));
+  };
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    const newImages: MediaItem[] = Array.from(files)
+      .filter(file => file.type.startsWith('image/'))
+      .map(file => ({
+        id: `media-${Date.now()}-${Math.random()}`,
+        type: 'image' as const,
+        url: URL.createObjectURL(file),
+        fileName: file.name,
+        timestamp: Date.now()
+      }));
+
+    // 更新节点数据，支持多媒体
+    const mediaData = {
+      mediaList: [...mediaList, ...newImages]
+    };
+
+    setNodes(nodes => nodes.map(node =>
+      node.id === id
+        ? {
+            ...node,
+            data: {
+              ...node.data,
+              media: mediaData,
+              title: `Media Set (${mediaData.mediaList.length})`
+            }
+          }
+        : node
+    ));
+
+    console.log(`Node ${id} uploaded ${newImages.length} images:`, newImages);
+  };
+
+  const handleAddText = () => {
+    const newText: MediaItem = {
+      id: `media-${Date.now()}-${Math.random()}`,
+      type: 'text',
+      content: '',
+      fileName: `text-${mediaList.filter(m => m.type === 'text').length + 1}.txt`,
+      timestamp: Date.now()
+    };
+
+    const mediaData = {
+      mediaList: [...mediaList, newText]
+    };
+
+    setNodes(nodes => nodes.map(node =>
+      node.id === id
+        ? {
+            ...node,
+            data: {
+              ...node.data,
+              media: mediaData,
+              title: `Media Set (${mediaData.mediaList.length})`
+            }
+          }
+        : node
+    ));
+
+    console.log(`Node ${id} added new text:`, newText);
+  };
+
+  const handleTextChange = (mediaId: string, newContent: string) => {
+    const updatedMediaList = mediaList.map(item =>
+      item.id === mediaId
+        ? { ...item, content: newContent }
+        : item
+    );
+
+    setNodes(nodes => nodes.map(node =>
+      node.id === id
+        ? {
+            ...node,
+            data: {
+              ...node.data,
+              media: { mediaList: updatedMediaList }
+            }
+          }
+        : node
+    ));
+  };
+
+  const handleDeleteMedia = (mediaId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updatedMediaList = mediaList.filter(item => item.id !== mediaId);
+
+    setNodes(nodes => nodes.map(node =>
+      node.id === id
+        ? {
+            ...node,
+            data: {
+              ...node.data,
+              media: { mediaList: updatedMediaList },
+              title: updatedMediaList.length > 0 ? `Media Set (${updatedMediaList.length})` : 'Media Set'
+            }
+          }
+        : node
+    ));
+  };
+
+  const handlePreviewMouseDown = (image: { url: string; fileName: string }, e: React.MouseEvent) => {
+    // Only trigger on left mouse button (button 0)
+    if (e.button !== 0) return;
+
+    e.stopPropagation();
+    console.log('Preview mousedown triggered for:', image.fileName);
+    setPreviewImage(image);
+  };
+
+  const handlePreviewClose = () => {
+    console.log('Preview closed');
+    setPreviewImage(null);
+  };
+
+  const imageCount = mediaList.filter(m => m.type === 'image').length;
+  const textCount = mediaList.filter(m => m.type === 'text').length;
+
+  return (
+    <>
+      <WorkflowNode id={id} data={data} type="media-set" onRefresh={handleRefresh} selected={selected}>
+        <div className="w-full flex-1 flex items-center justify-center p-3 min-h-0 nodrag">
+          {/* 混合媒体显示区域 */}
+          <div
+            className="nodrag nopan nowheel w-full h-full border-2 border-dashed border-gray-300 rounded-lg overflow-auto hover:border-gray-400 transition-colors relative"
+            onWheel={(e) => e.stopPropagation()}
+          >
+            {mediaList.length > 0 ? (
+              <>
+                {/* 混合媒体列表显示 */}
+                <div className="nodrag w-full h-full p-2 space-y-2">
+                  {mediaList.map((item, index) => (
+                    <div
+                      key={item.id}
+                      className="nodrag relative bg-gray-50 rounded-lg border border-gray-200 group"
+                      onMouseEnter={() => setHoveredIndex(index)}
+                      onMouseLeave={() => setHoveredIndex(null)}
+                    >
+                      {item.type === 'image' ? (
+                        // 图片项
+                        <div className="nodrag relative overflow-hidden rounded-lg" style={{ aspectRatio: '16/9' }}>
+                          <img
+                            src={item.url}
+                            alt={item.fileName}
+                            className="w-full h-full object-cover"
+                            draggable={false}
+                          />
+                          {/* 图片序号和文件名 */}
+                          <div className="absolute top-1 left-1 bg-black/50 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
+                            <ImageIcon className="w-3 h-3" />
+                            <span>#{index + 1} {item.fileName}</span>
+                          </div>
+
+                          {/* 悬停时显示的按钮 */}
+                          {hoveredIndex === index && (
+                            <div
+                              className="nodrag absolute inset-0 bg-black/40 flex items-center justify-center gap-2 rounded"
+                              onClick={(e) => e.stopPropagation()}
+                              draggable={false}
+                            >
+                              <button
+                                onMouseDown={(e) => handlePreviewMouseDown({ url: item.url!, fileName: item.fileName }, e)}
+                                className="nodrag p-2 bg-white/90 hover:bg-white rounded-full transition-colors select-none"
+                                title="Preview (hold to view)"
+                                draggable={false}
+                              >
+                                <Eye className="w-4 h-4 text-gray-700 pointer-events-none" />
+                              </button>
+                              <button
+                                onClick={(e) => handleDeleteMedia(item.id, e)}
+                                className="nodrag p-2 bg-white/90 hover:bg-white rounded-full transition-colors select-none"
+                                title="Delete"
+                                draggable={false}
+                              >
+                                <Trash2 className="w-4 h-4 text-red-600 pointer-events-none" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        // 文本项
+                        <div className="nodrag p-2">
+                          {/* 文本序号和标题 */}
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs text-gray-500 font-medium flex items-center gap-1">
+                              <FileText className="w-3 h-3" />
+                              #{index + 1} - {item.fileName}
+                            </span>
+
+                            {/* 悬停时显示的删除按钮 */}
+                            {hoveredIndex === index && (
+                              <button
+                                onClick={(e) => handleDeleteMedia(item.id, e)}
+                                className="nodrag p-1 bg-red-100 hover:bg-red-200 rounded-full transition-colors select-none"
+                                title="Delete text"
+                                draggable={false}
+                              >
+                                <Trash2 className="w-3 h-3 text-red-600 pointer-events-none" />
+                              </button>
+                            )}
+                          </div>
+
+                          {/* 文本内容输入 */}
+                          <textarea
+                            value={item.content || ''}
+                            onChange={(e) => handleTextChange(item.id, e.target.value)}
+                            className="nodrag w-full resize-none border-none outline-none bg-transparent text-sm text-gray-700 placeholder-gray-400"
+                            placeholder="Enter text content..."
+                            draggable={false}
+                            style={{ minHeight: '60px', maxHeight: '120px' }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* 添加媒体按钮 */}
+                  <div className="nodrag flex gap-2">
+                    <button
+                      onClick={() => document.getElementById(`image-upload-${id}`)?.click()}
+                      className="nodrag flex-1 p-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 text-gray-500 hover:text-gray-700"
+                      title="Add images"
+                      draggable={false}
+                    >
+                      <ImageIcon className="w-4 h-4" />
+                      <span className="text-xs">Add Image</span>
+                    </button>
+                    <button
+                      onClick={handleAddText}
+                      className="nodrag flex-1 p-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 text-gray-500 hover:text-gray-700"
+                      title="Add text"
+                      draggable={false}
+                    >
+                      <FileText className="w-4 h-4" />
+                      <span className="text-xs">Add Text</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 节点处理时的加载动画 */}
+                {isProcessing && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-10 rounded-md">
+                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-gray-500 text-xs text-center flex flex-col items-center justify-center h-full gap-2">
+                <Plus className="w-8 h-8 text-gray-400" />
+                <div>Add images or text</div>
+                <div className="text-xs mt-1">Mixed media support</div>
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={() => document.getElementById(`image-upload-${id}`)?.click()}
+                    className="nodrag px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-xs"
+                    draggable={false}
+                  >
+                    Add Image
+                  </button>
+                  <button
+                    onClick={handleAddText}
+                    className="nodrag px-3 py-1 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors text-xs"
+                    draggable={false}
+                  >
+                    Add Text
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 隐藏的文件上传输入 - 支持多文件 */}
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleImageUpload}
+            className="hidden"
+            id={`image-upload-${id}`}
+          />
+        </div>
+
+        {/* Handle 配置 */}
+        {nodesConfig['media-set'].handles.map((handle: any) => (
+          <NodeHandle
+            key={`${handle.type}-${handle.id}`}
+            id={handle.id}
+            type={handle.type}
+            position={handle.position}
+            x={handle.x}
+            y={handle.y}
+          />
+        ))}
+      </WorkflowNode>
+
+      {/* 预览对话框 - 使用 Portal 渲染到 body，确保是真正的窗口级别 */}
+      <ImagePreviewDialog image={previewImage} onClose={handlePreviewClose} />
+    </>
+  );
+}
+
+export default MediaSet;
