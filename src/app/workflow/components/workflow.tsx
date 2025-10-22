@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import {
   Background,
   ReactFlow,
@@ -36,6 +36,7 @@ import { Button } from '@/components/ui/button';
 import { nodesConfig } from '@/app/workflow/config';
 import { useCopilotWorkflowActions } from '@/app/workflow/hooks/useCopilotWorkflowActions';
 import { useLayout } from '@/app/workflow/hooks/use-layout';
+import { registerAllServices } from '@/app/api/services/service-registrar';
 
 const MIN_DISTANCE = 150;
 
@@ -72,6 +73,11 @@ export default function Workflow() {
   const { runWorkflow, stopWorkflow, isRunning } = useWorkflowRunner();
   const [selectedNodes, setSelectedNodes] = useState<any[]>([]);
   const runLayout = useLayout();
+
+  // Register all API services on client side
+  useEffect(() => {
+    registerAllServices();
+  }, []);
 
   // Initialize undo/redo functionality
   const { takeSnapshot } = useUndoRedo();

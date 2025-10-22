@@ -12,8 +12,28 @@ export class NodeRunnerRegistry {
   }
 
   getRunner(nodeType: string): NodeRunner {
-    // 返回精确匹配，否则返回默认 Runner
-    return this.runners.get(nodeType) || DefaultNodeRunner;
+    // 首先尝试精确匹配
+    const exactMatch = this.runners.get(nodeType);
+    if (exactMatch) {
+      console.log(`Registry: Exact match for ${nodeType}`);
+      return exactMatch;
+    }
+
+    // 如果没有精确匹配，检查是否有runner可以运行这个节点类型
+    // 注意：跳过 DefaultNodeRunner，因为它总是返回 true
+    for (const runner of this.runners.values()) {
+      if (runner.nodeType === '*') {
+        continue; // 跳过默认runner，最后再处理
+      }
+      if (runner.canRun && runner.canRun({ type: nodeType } as any)) {
+        console.log(`Registry: Using ${runner.nodeType} runner for ${nodeType}`);
+        return runner;
+      }
+    }
+
+    // 最后返回默认 Runner
+    console.log(`Registry: Using default runner for ${nodeType}`);
+    return DefaultNodeRunner;
   }
 
   clear() {
