@@ -8,15 +8,11 @@ import { AppStore } from '@/app/workflow/store/app-store';
 
 const selector = (state: AppStore) => ({
   addNode: state.addNode,
-  addNodeInBetween: state.addNodeInBetween,
-  potentialConnection: state.potentialConnection,
 });
 
 export function useDragAndDrop() {
   const { screenToFlowPosition } = useReactFlow();
-  const { addNode, addNodeInBetween, potentialConnection } = useAppStore(
-    useShallow(selector),
-  );
+  const { addNode } = useAppStore(useShallow(selector));
 
   const onDrop: React.DragEventHandler = useCallback(
     (event) => {
@@ -26,29 +22,19 @@ export function useDragAndDrop() {
 
       if (!nodeProps) return;
 
-      if (potentialConnection) {
-        addNodeInBetween({
-          type: nodeProps.id,
-          source: potentialConnection.source?.node,
-          target: potentialConnection.target?.node,
-          sourceHandleId: potentialConnection.source?.handle,
-          targetHandleId: potentialConnection.target?.handle,
-          position: potentialConnection.position,
-        });
-      } else {
-        const position = screenToFlowPosition({
-          x: event.clientX,
-          y: event.clientY,
-        });
+      // Only allow dropping nodes on canvas (no drag-to-connect)
+      const position = screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      });
 
-        const newNode = createNodeByType({
-          type: nodeProps.id,
-          position,
-        });
-        addNode(newNode);
-      }
+      const newNode = createNodeByType({
+        type: nodeProps.id,
+        position,
+      });
+      addNode(newNode);
     },
-    [addNode, addNodeInBetween, screenToFlowPosition, potentialConnection],
+    [addNode, screenToFlowPosition],
   );
 
   const onDragOver: React.DragEventHandler = useCallback(

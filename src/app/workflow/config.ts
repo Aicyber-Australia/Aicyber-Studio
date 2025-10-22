@@ -156,6 +156,47 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
     ],
     icon: 'Image',
   },
+  'image-to-text-node': {
+    id: 'image-to-text-node',
+    title: 'Image to Text (Describe)',
+    status: 'initial',
+    handles: [
+      {
+        type: 'target',
+        position: Position.Left,
+        x: 0,
+        y: ACTION_NODE_SIZE.height * 0.5,
+      },
+      {
+        type: 'source',
+        position: Position.Right,
+        x: ACTION_NODE_SIZE.width,
+        y: ACTION_NODE_SIZE.height * 0.5,
+      },
+    ],
+    icon: 'FileText',
+  },
+  'edit-image-node': {
+    id: 'edit-image-node',
+    title: 'Edit Image',
+    status: 'initial',
+    handles: [
+      {
+        type: 'target',
+        position: Position.Left,
+        x: 0,
+        y: ACTION_NODE_SIZE.height * 0.5,
+      },
+      {
+        type: 'source',
+        position: Position.Right,
+        x: ACTION_NODE_SIZE.width,
+        y: ACTION_NODE_SIZE.height * 0.5,
+      },
+    ],
+    icon: 'Pencil',
+    // Output: Single edited image (imageList[0])
+  },
   'node-set': {
     id: 'node-set',
     title: 'Node Set',

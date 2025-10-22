@@ -64,13 +64,12 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
 
 const selector = (state: AppStore) => ({
   addNode: state.addNode,
-  checkForPotentialConnection: state.checkForPotentialConnection,
   resetPotentialConnection: state.resetPotentialConnection,
 });
 
 function DraggableItem(props: NodeConfig) {
   const { screenToFlowPosition } = useReactFlow();
-  const { addNode, checkForPotentialConnection, resetPotentialConnection } =
+  const { addNode, resetPotentialConnection } =
     useAppStore(useShallow(selector));
   const [isDragging, setIsDragging] = useState(false);
 
@@ -94,39 +93,8 @@ function DraggableItem(props: NodeConfig) {
     [props],
   );
 
-  const lastDragPos = useRef({ x: 0, y: 0 });
-  const onDrag = useCallback(
-    (e: React.DragEvent) => {
-      const lastPos = lastDragPos.current;
-      // we need to keep track of the last drag position to avoid unnecessary calculations
-      // the drag api constantly fires events even if the mouse is not moving
-      if (lastPos.x === e.clientX && lastPos.y === e.clientY) {
-        return;
-      }
-      lastDragPos.current = { x: e.clientX, y: e.clientY };
-
-      const flowPosition = screenToFlowPosition({ x: e.clientX, y: e.clientY });
-
-      const handles = nodesConfig[props.id].handles.map(
-        (handle) => handle.type,
-      );
-      const handleType = handles.reduce(
-        (acc, type) => {
-          if (acc === 'none') return type;
-          if (acc !== 'both' && acc !== type) return 'both';
-          return acc;
-        },
-        'none' as 'both' | 'none' | 'source' | 'target',
-      );
-
-      if (handleType === 'none') return;
-
-      checkForPotentialConnection(flowPosition, {
-        type: handleType === 'both' ? undefined : handleType,
-      });
-    },
-    [screenToFlowPosition, checkForPotentialConnection, props.id],
-  );
+  // Removed onDrag logic to disable drag-to-connect functionality
+  // Users can still drag nodes to canvas, but not connect directly to handles
 
   const onDragEnd = useCallback(() => {
     setIsDragging(false);
@@ -142,7 +110,6 @@ function DraggableItem(props: NodeConfig) {
         isDragging ? 'border-green-500' : 'border-gray-100',
       )}
       onDragStart={onDragStart}
-      onDrag={onDrag}
       onDragEnd={onDragEnd}
       onClick={onClick}
       draggable

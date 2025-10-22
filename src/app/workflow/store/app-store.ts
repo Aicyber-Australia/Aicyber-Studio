@@ -222,6 +222,29 @@ export function createAppStore(
           return;
         }
 
+        // Auto-assign image from image-frame to edit-image-node
+        if (sourceNode.type === 'image-frame' && targetNode.type === 'edit-image-node') {
+          const sourceImage = sourceNode.data?.media?.imageList?.[0];
+          if (sourceImage) {
+            // Auto-assign the image to the target edit-image node
+            set({
+              nodes: get().nodes.map(node =>
+                node.id === targetNode.id
+                  ? {
+                      ...node,
+                      data: {
+                        ...node.data,
+                        media: {
+                          imageList: [{ ...sourceImage }]
+                        }
+                      }
+                    }
+                  : node
+              )
+            });
+          }
+        }
+
         const newEdge: AppEdge = {
           ...connection,
           type: 'default',

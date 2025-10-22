@@ -9,6 +9,7 @@ import {
   Image,
   Images,
   Layers,
+  Pencil,
   // Import other icons as needed
 } from 'lucide-react';
 
@@ -26,6 +27,7 @@ export const iconMapping: Record<
   Image: Image,
   Images: Images,
   Layers: Layers,
+  Pencil: Pencil,
   Media: Images, // Use Images as fallback for Media
   // Add other mappings here
 };

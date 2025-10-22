@@ -9,6 +9,8 @@ const getMethodByNodeType = (nodeType: string): string => {
     'text-to-image-node': 'image-gen',
     'image-to-image-node': 'image-edit',
     'image-replicate-node': 'image-replicate',
+    'image-to-text-node': 'image-describe',
+    'edit-image-node': 'image-edit',
     'text-to-video-node': 'video-gen',
     'video-to-video-node': 'video-edit'
   };
@@ -154,9 +156,87 @@ export const imageReplicationService: ApiCallFunction = async (node, inputDataLi
   }
 };
 
+// 图片转文字服务 (Image to Text / Describe)
+export const imageToTextService: ApiCallFunction = async (node, inputDataList) => {
+  try {
+    console.log('📝 Image to Text Service called');
+    // Mock response - return a description of the image
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    return {
+      media: {
+        textList: [
+          `This is a mock description of the image. Prompt: ${node.data.prompt || 'No prompt provided'}`
+        ]
+      },
+      metadata: {
+        model: node.data.selectedModel || 'mock-model',
+        method: 'image-describe',
+        prompt: node.data.prompt,
+        timestamp: new Date().toISOString()
+      }
+    };
+  } catch (error) {
+    console.error('Image to Text Service error:', error);
+    throw new Error(`Image to text failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+};
+
+// 图片编辑服务 (Edit Image)
+export const editImageService: ApiCallFunction = async (node, inputDataList) => {
+  try {
+    console.log('✏️ Edit Image Service called');
+    console.log('Node data:', node.data);
+    console.log('Input data list:', inputDataList);
+
+    // Check if user has saved an edited image in the node
+    const editedImage = node.data.media?.imageList?.[0];
+
+    // If there's an edited image saved in the node, use it
+    if (editedImage) {
+      console.log('✏️ Using edited image from node');
+      return {
+        media: {
+          imageList: [editedImage]
+        },
+        metadata: {
+          model: 'edit-image',
+          method: 'image-edit',
+          timestamp: new Date().toISOString()
+        }
+      };
+    }
+
+    // Otherwise, pass through the input image (user hasn't edited yet or didn't save)
+    if (inputDataList && inputDataList.length > 0) {
+      const inputImage = inputDataList[0]?.media?.imageList?.[0];
+      if (inputImage) {
+        console.log('✏️ Passing through input image (no edits saved)');
+        return {
+          media: {
+            imageList: [inputImage]
+          },
+          metadata: {
+            model: 'edit-image',
+            method: 'image-edit-passthrough',
+            timestamp: new Date().toISOString()
+          }
+        };
+      }
+    }
+
+    throw new Error('No image found to edit or pass through');
+  } catch (error) {
+    console.error('Edit Image Service error:', error);
+    throw new Error(`Image editing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+};
+
 // 图片服务映射 - 用于自动注册
 export const imageServiceMap = {
   'text-to-image-node': imageGenerationService,
   'image-to-image-node': imageEditingService,
-  'image-replicate-node': imageReplicationService
+  'image-replicate-node': imageReplicationService,
+  'image-to-text-node': imageToTextService,
+  'edit-image-node': editImageService
 };

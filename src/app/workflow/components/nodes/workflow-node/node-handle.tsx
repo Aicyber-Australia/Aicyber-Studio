@@ -17,6 +17,7 @@ import { type AppStore } from '@/app/workflow/store/app-store';
 import { type AppNodeType, NodeConfig } from '@/app/workflow/components/nodes';
 import { Button } from '@/components/ui/button';
 import { FlowDropdownMenu } from '@/app/workflow/components/flow-dropdown-menu';
+import { FlowActionMenu, imageFrameActions } from '@/app/workflow/components/flow-action-menu';
 
 import { useDropdown } from '@/hooks/use-dropdown';
 import { useAppStore } from '@/app/workflow/store';
@@ -29,42 +30,79 @@ const compatibleNodeTypes = (type: 'source' | 'target', currentNodeType?: string
       return node.id === 'image-frame';
     };
   }
-  
+
   // Special case for text-to-image-node: output can connect to any node
   if (currentNodeType === 'text-to-image-node' && type === 'source') {
     return (node: NodeConfig) => {
       return (
         node.id === 'image-frame' ||
         node.id === 'text-to-image-node' ||
-        node.id === 'image-to-image-node'
+        node.id === 'image-to-image-node' ||
+        node.id === 'image-to-text-node'
       );
     };
   }
 
-  // Special case for image-to-image-node: source must be image-frame
+  // Special case for image-to-image-node: source must be image-frame, image-set, or media-set
   if (currentNodeType === 'image-to-image-node' && type === 'target') {
     return (node: NodeConfig) => {
-      return node.id === 'image-frame';
+      return node.id === 'image-frame' || node.id === 'image-set' || node.id === 'media-set';
     };
   }
-  
+
   // Special case for image-to-image-node: output can connect to any node
   if (currentNodeType === 'image-to-image-node' && type === 'source') {
     return (node: NodeConfig) => {
       return (
         node.id === 'image-frame' ||
         node.id === 'text-to-image-node' ||
-        node.id === 'image-to-image-node'
+        node.id === 'image-to-image-node' ||
+        node.id === 'image-to-text-node'
       );
     };
   }
-  
+
+  // Special case for image-to-text-node: source must be image-frame, image-set, or media-set
+  if (currentNodeType === 'image-to-text-node' && type === 'target') {
+    return (node: NodeConfig) => {
+      return node.id === 'image-frame' || node.id === 'image-set' || node.id === 'media-set';
+    };
+  }
+
+  // Special case for image-to-text-node: output can connect to text-frame or text-set
+  if (currentNodeType === 'image-to-text-node' && type === 'source') {
+    return (node: NodeConfig) => {
+      return node.id === 'text-frame' || node.id === 'text-set';
+    };
+  }
+
+  // Special case for edit-image-node: source must be single image-frame only
+  if (currentNodeType === 'edit-image-node' && type === 'target') {
+    return (node: NodeConfig) => {
+      return node.id === 'image-frame';
+    };
+  }
+
+  // Special case for edit-image-node: output can connect to image nodes
+  if (currentNodeType === 'edit-image-node' && type === 'source') {
+    return (node: NodeConfig) => {
+      return (
+        node.id === 'image-frame' ||
+        node.id === 'image-set' ||
+        node.id === 'image-to-image-node' ||
+        node.id === 'image-to-text-node'
+      );
+    };
+  }
+
   if (type === 'source') {
     return (node: NodeConfig) => {
       return (
         node.id === 'image-frame' ||
         node.id === 'text-to-image-node' ||
-        node.id === 'image-to-image-node'
+        node.id === 'image-to-image-node' ||
+        node.id === 'image-to-text-node' ||
+        node.id === 'edit-image-node'
       );
     };
   }
@@ -72,7 +110,9 @@ const compatibleNodeTypes = (type: 'source' | 'target', currentNodeType?: string
     return (
       node.id === 'image-frame' ||
       node.id === 'text-to-image-node' ||
-      node.id === 'image-to-image-node'
+      node.id === 'image-to-image-node' ||
+      node.id === 'image-to-text-node' ||
+      node.id === 'edit-image-node'
     );
   };
 };
@@ -230,10 +270,17 @@ export function NodeHandle({
           className="absolute z-50 mt-2 left-1/2 transform -translate-x-1/2"
           ref={ref}
         >
-          <FlowDropdownMenu
-            onAddNode={onAddNode}
-            filterNodes={compatibleNodeTypes(type, currentNodeType)}
-          />
+          {type === 'source' && currentNodeType === 'image-frame' ? (
+            <FlowActionMenu
+              onAddNode={onAddNode}
+              actions={imageFrameActions}
+            />
+          ) : (
+            <FlowDropdownMenu
+              onAddNode={onAddNode}
+              filterNodes={compatibleNodeTypes(type, currentNodeType)}
+            />
+          )}
         </div>
       )}
     </ButtonHandle>

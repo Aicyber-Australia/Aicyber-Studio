@@ -17,21 +17,24 @@ export const ActionNodeRunner: NodeRunner<AppNode> = {
     const nodeData = node.data;
     const prompt = ('prompt' in nodeData && nodeData?.prompt) ? nodeData.prompt : '';
 
-    // 检查prompt是否存在
-    if (!prompt.trim()) {
+    // edit-image-node doesn't require a prompt
+    const noPromptRequired = ['edit-image-node'];
+
+    // 检查prompt是否存在 (except for nodes that don't need it)
+    if (!noPromptRequired.includes(node.type) && !prompt.trim()) {
       return { isValid: false, error: 'Prompt is required' };
     }
 
     // 对于需要输入数据的节点类型进行额外验证
-    const requiresInputData = ['image-to-image-node', 'image-replicate-node', 'video-to-video-node'];
+    const requiresInputData = ['image-to-image-node', 'image-replicate-node', 'video-to-video-node', 'image-to-text-node', 'edit-image-node'];
     if (requiresInputData.includes(node.type)) {
       if (!inputDataList || inputDataList.length === 0) {
         return { isValid: false, error: 'No input data provided' };
       }
 
       // 检查输入数据是否包含所需的内容
-      const hasRequiredData = inputDataList.some(data => 
-        data && (data.imageUrl || data.imageData || data.fileName || data.videoUrl)
+      const hasRequiredData = inputDataList.some(data =>
+        data && (data.imageUrl || data.imageData || data.fileName || data.videoUrl || data.media?.imageList)
       );
 
       if (!hasRequiredData) {
