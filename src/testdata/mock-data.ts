@@ -3,11 +3,10 @@ import { AppNode, createNodeByType } from '../app/workflow/components/nodes';
 import { layoutGraph } from '../app/workflow/utils/layout-helper';
 
 const initialNodes: AppNode[] = [
-  createNodeByType({ 
-    type: 'image-frame', 
+  createNodeByType({
+    type: 'image-frame',
     id: 'imageNode_1',
     data: {
-      loopMode: 'sequence',
       title: 'Image Input',
       media: {
         imageList: [{

@@ -57,6 +57,7 @@ export type InputData = {
       timestamp?: number;
     };
   }>;
+  outputMode?: 'loop' | 'direct'; // How node-set outputs: loop (pass each node) or direct (flatten all)
 };
 
 /**
@@ -153,15 +154,38 @@ export function normalizeInputsToMediaSets(inputDataList: InputData[]): MediaSet
     // Special case: Handle node-set inputs
     // Node-sets have a nodeList property containing media-set nodes
     if (input.nodeList && Array.isArray(input.nodeList)) {
-      input.nodeList.forEach((node) => {
-        if (node.data?.media?.mediaList && node.data.media.mediaList.length > 0) {
+      const outputMode = input.outputMode || 'loop';
+
+      if (outputMode === 'direct') {
+        // Direct mode: Flatten all mediaLists into a single combined MediaSet
+        const allMediaItems: MediaItem[] = [];
+
+        input.nodeList.forEach((node) => {
+          if (node.data?.media?.mediaList && node.data.media.mediaList.length > 0) {
+            allMediaItems.push(...node.data.media.mediaList);
+          }
+        });
+
+        if (allMediaItems.length > 0) {
           mediaSets.push({
-            mediaList: node.data.media.mediaList,
-            fileName: node.data.fileName || `media-set-${node.id}`,
-            timestamp: node.data.timestamp || Date.now()
+            mediaList: allMediaItems,
+            fileName: `node-set-direct-${allMediaItems.length}`,
+            timestamp: Date.now()
           });
         }
-      });
+      } else {
+        // Loop mode: Pass each media-set as a separate MediaSet (current behavior)
+        input.nodeList.forEach((node) => {
+          if (node.data?.media?.mediaList && node.data.media.mediaList.length > 0) {
+            mediaSets.push({
+              mediaList: node.data.media.mediaList,
+              fileName: node.data.fileName || `media-set-${node.id}`,
+              timestamp: node.data.timestamp || Date.now()
+            });
+          }
+        });
+      }
+
       return; // Skip normal processing for node-set
     }
 
