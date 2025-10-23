@@ -6,13 +6,13 @@ import { WorkflowNodeProps } from '@/app/workflow/components/nodes';
 import { nodesConfig } from '../../config';
 import { NodeHandle } from './workflow-node/node-handle';
 import WorkflowNode from './workflow-node';
-import { Eye, Trash2, FileText, Image as ImageIcon, Plus } from 'lucide-react';
+import { Eye, Trash2, FileText, Image as ImageIcon, Video as VideoIcon, Plus } from 'lucide-react';
 import { ImagePreviewDialog } from './image-preview-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type MediaItem = {
   id: string;
-  type: 'image' | 'text';
+  type: 'image' | 'text' | 'video';
   url?: string;
   content?: string;
   fileName: string;
@@ -84,6 +84,41 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
     ));
 
     console.log(`Node ${id} uploaded ${newImages.length} images:`, newImages);
+  };
+
+  const handleVideoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    const newVideos: MediaItem[] = Array.from(files)
+      .filter(file => file.type.startsWith('video/'))
+      .map(file => ({
+        id: `media-${Date.now()}-${Math.random()}`,
+        type: 'video' as const,
+        url: URL.createObjectURL(file),
+        fileName: file.name,
+        timestamp: Date.now()
+      }));
+
+    // 更新节点数据，支持多媒体
+    const mediaData = {
+      mediaList: [...mediaList, ...newVideos]
+    };
+
+    setNodes(nodes => nodes.map(node =>
+      node.id === id
+        ? {
+            ...node,
+            data: {
+              ...node.data,
+              media: mediaData,
+              title: `Media Set (${mediaData.mediaList.length})`
+            }
+          }
+        : node
+    ));
+
+    console.log(`Node ${id} uploaded ${newVideos.length} videos:`, newVideos);
   };
 
   const handleAddText = () => {
@@ -168,6 +203,7 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
   };
 
   const imageCount = mediaList.filter(m => m.type === 'image').length;
+  const videoCount = mediaList.filter(m => m.type === 'video').length;
   const textCount = mediaList.filter(m => m.type === 'text').length;
 
   // Handle set output mode change
@@ -262,6 +298,39 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
                             </div>
                           )}
                         </div>
+                      ) : item.type === 'video' ? (
+                        // 视频项
+                        <div className="nodrag relative overflow-hidden rounded-lg" style={{ aspectRatio: '16/9' }}>
+                          <video
+                            src={item.url}
+                            className="w-full h-full object-cover"
+                            controls
+                            draggable={false}
+                          />
+                          {/* 视频序号和文件名 */}
+                          <div className="absolute top-1 left-1 bg-black/50 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
+                            <VideoIcon className="w-3 h-3" />
+                            <span>#{index + 1} {item.fileName}</span>
+                          </div>
+
+                          {/* 悬停时显示的按钮 */}
+                          {hoveredIndex === index && (
+                            <div
+                              className="nodrag absolute inset-0 bg-black/40 flex items-center justify-center gap-2 rounded"
+                              onClick={(e) => e.stopPropagation()}
+                              draggable={false}
+                            >
+                              <button
+                                onClick={(e) => handleDeleteMedia(item.id, e)}
+                                className="nodrag p-2 bg-white/90 hover:bg-white rounded-full transition-colors select-none"
+                                title="Delete"
+                                draggable={false}
+                              >
+                                <Trash2 className="w-4 h-4 text-red-600 pointer-events-none" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       ) : (
                         // 文本项
                         <div className="nodrag p-2">
@@ -311,6 +380,15 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
                       <span className="text-xs">Add Image</span>
                     </button>
                     <button
+                      onClick={() => document.getElementById(`video-upload-${id}`)?.click()}
+                      className="nodrag flex-1 p-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 text-gray-500 hover:text-gray-700"
+                      title="Add videos"
+                      draggable={false}
+                    >
+                      <VideoIcon className="w-4 h-4" />
+                      <span className="text-xs">Add Video</span>
+                    </button>
+                    <button
                       onClick={handleAddText}
                       className="nodrag flex-1 p-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 text-gray-500 hover:text-gray-700"
                       title="Add text"
@@ -332,7 +410,7 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
             ) : (
               <div className="text-gray-500 text-xs text-center flex flex-col items-center justify-center h-full gap-2">
                 <Plus className="w-8 h-8 text-gray-400" />
-                <div>Add images or text</div>
+                <div>Add images, videos or text</div>
                 <div className="text-xs mt-1">Mixed media support</div>
                 <div className="flex gap-2 mt-2">
                   <button
@@ -341,6 +419,13 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
                     draggable={false}
                   >
                     Add Image
+                  </button>
+                  <button
+                    onClick={() => document.getElementById(`video-upload-${id}`)?.click()}
+                    className="nodrag px-3 py-1 bg-purple-500 text-white rounded-md hover:bg-purple-600 transition-colors text-xs"
+                    draggable={false}
+                  >
+                    Add Video
                   </button>
                   <button
                     onClick={handleAddText}
@@ -362,6 +447,14 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
             onChange={handleImageUpload}
             className="hidden"
             id={`image-upload-${id}`}
+          />
+          <input
+            type="file"
+            accept="video/*"
+            multiple
+            onChange={handleVideoUpload}
+            className="hidden"
+            id={`video-upload-${id}`}
           />
         </div>
 

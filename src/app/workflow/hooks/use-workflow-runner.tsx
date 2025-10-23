@@ -198,6 +198,10 @@ export function useWorkflowRunner() {
         } catch (error) {
           console.error(`Node ${node.id} processing failed:`, error);
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+          // Update node status to error
+          updateNodeStatus(node.id, 'error');
+
           setLogMessages((prev) => [...prev, `❌ Workflow stopped due to error in ${node.data.title}: ${errorMessage}`]);
           showToast({
             title: "Workflow Error",

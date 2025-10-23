@@ -1,12 +1,70 @@
 import { NodeRunner } from './types';
 import { AppNode, NodeSetData, WorkflowNodeData } from '../components/nodes';
 
+// Helper function to convert separate media lists to unified mediaList format
+const convertToUnifiedMediaList = (media: {
+  imageList?: any[];
+  videoList?: any[];
+  textList?: any[];
+}): Array<{ id: string; type: 'image' | 'video' | 'text'; url?: string; content?: string; fileName: string; timestamp: number }> => {
+  const unifiedList: Array<{ id: string; type: 'image' | 'video' | 'text'; url?: string; content?: string; fileName: string; timestamp: number }> = [];
+
+  // Convert imageList
+  if (media.imageList && media.imageList.length > 0) {
+    media.imageList.forEach((img) => {
+      unifiedList.push({
+        id: img.id || `media-${Date.now()}-${Math.random()}`,
+        type: 'image',
+        url: img.url,
+        fileName: img.fileName,
+        timestamp: img.timestamp || Date.now()
+      });
+    });
+  }
+
+  // Convert videoList
+  if (media.videoList && media.videoList.length > 0) {
+    media.videoList.forEach((vid) => {
+      unifiedList.push({
+        id: vid.id || `media-${Date.now()}-${Math.random()}`,
+        type: 'video',
+        url: vid.url,
+        fileName: vid.fileName,
+        timestamp: vid.timestamp || Date.now()
+      });
+    });
+  }
+
+  // Convert textList
+  if (media.textList && media.textList.length > 0) {
+    media.textList.forEach((txt, index) => {
+      unifiedList.push({
+        id: `media-${Date.now()}-${Math.random()}`,
+        type: 'text',
+        content: typeof txt === 'string' ? txt : txt.content,
+        fileName: `text-${index + 1}.txt`,
+        timestamp: Date.now()
+      });
+    });
+  }
+
+  return unifiedList;
+};
+
 // Helper function to get media types from a node
 const getMediaTypes = (node: AppNode): Set<string> => {
   const types = new Set<string>();
   const nodeData = node.data as WorkflowNodeData;
   const media = nodeData?.media;
 
+  // Check unified mediaList first (from media-set nodes)
+  if (media?.mediaList && media.mediaList.length > 0) {
+    media.mediaList.forEach(item => {
+      types.add(item.type);
+    });
+  }
+
+  // Also check individual lists for backward compatibility
   if (media?.imageList && media.imageList.length > 0) types.add('image');
   if (media?.videoList && media.videoList.length > 0) types.add('video');
   if (media?.textList && media.textList.length > 0) types.add('text');
@@ -78,9 +136,16 @@ export const NodeSetNodeRunner: NodeRunner = {
         // Otherwise, count individual items
         const media = inputData.media || {};
         let count = 0;
-        if (media.imageList) count += media.imageList.length;
-        if (media.videoList) count += media.videoList.length;
-        if (media.textList) count += media.textList.length;
+
+        // Check unified mediaList first
+        if (media.mediaList) {
+          count += media.mediaList.length;
+        } else {
+          // Fall back to individual lists
+          if (media.imageList) count += media.imageList.length;
+          if (media.videoList) count += media.videoList.length;
+          if (media.textList) count += media.textList.length;
+        }
         return count;
       });
 
@@ -144,18 +209,26 @@ export const NodeSetNodeRunner: NodeRunner = {
           }];
         }
 
-        // Otherwise, extract individual items (current behavior)
+        // Otherwise, extract individual items
         const items: any[] = [];
 
-        // Collect all individual media items
-        if (media.imageList) {
-          items.push(...media.imageList.map((img: any) => ({ type: 'image', data: img })));
-        }
-        if (media.videoList) {
-          items.push(...media.videoList.map((vid: any) => ({ type: 'video', data: vid })));
-        }
-        if (media.textList) {
-          items.push(...media.textList.map((txt: any) => ({ type: 'text', data: txt })));
+        // Check for unified mediaList first
+        if (media.mediaList) {
+          items.push(...media.mediaList.map((item: any) => ({
+            type: item.type,
+            data: item
+          })));
+        } else {
+          // Fall back to individual lists for backward compatibility
+          if (media.imageList) {
+            items.push(...media.imageList.map((img: any) => ({ type: 'image', data: img })));
+          }
+          if (media.videoList) {
+            items.push(...media.videoList.map((vid: any) => ({ type: 'video', data: vid })));
+          }
+          if (media.textList) {
+            items.push(...media.textList.map((txt: any) => ({ type: 'text', data: txt })));
+          }
         }
 
         return items;
@@ -195,21 +268,35 @@ export const NodeSetNodeRunner: NodeRunner = {
           if (item.isIntegrated) {
             // This is an integrated node - add all its media at once
             const integratedMedia = item.media;
-            if (integratedMedia.imageList) {
-              combinedMedia.imageList.push(...integratedMedia.imageList);
-            }
-            if (integratedMedia.videoList) {
-              combinedMedia.videoList.push(...integratedMedia.videoList);
-            }
-            if (integratedMedia.textList) {
-              combinedMedia.textList.push(...integratedMedia.textList);
+            if (integratedMedia.mediaList) {
+              // Unified mediaList from media-set
+              integratedMedia.mediaList.forEach((mediaItem: any) => {
+                if (mediaItem.type === 'image') {
+                  combinedMedia.imageList.push(mediaItem);
+                } else if (mediaItem.type === 'video') {
+                  combinedMedia.videoList.push(mediaItem);
+                } else if (mediaItem.type === 'text') {
+                  combinedMedia.textList.push(mediaItem.content || mediaItem);
+                }
+              });
+            } else {
+              // Fall back to individual lists
+              if (integratedMedia.imageList) {
+                combinedMedia.imageList.push(...integratedMedia.imageList);
+              }
+              if (integratedMedia.videoList) {
+                combinedMedia.videoList.push(...integratedMedia.videoList);
+              }
+              if (integratedMedia.textList) {
+                combinedMedia.textList.push(...integratedMedia.textList);
+              }
             }
           } else if (item.type === 'image') {
             combinedMedia.imageList.push(item.data);
           } else if (item.type === 'video') {
             combinedMedia.videoList.push(item.data);
           } else if (item.type === 'text') {
-            combinedMedia.textList.push(item.data);
+            combinedMedia.textList.push(typeof item.data === 'string' ? item.data : item.data.content);
           }
         });
 
@@ -218,11 +305,16 @@ export const NodeSetNodeRunner: NodeRunner = {
         if (combinedMedia.videoList.length === 0) delete combinedMedia.videoList;
         if (combinedMedia.textList.length === 0) delete combinedMedia.textList;
 
+        // Convert to unified mediaList format
+        const unifiedMediaList = convertToUnifiedMediaList(combinedMedia);
+
         return {
           id: `cross-node-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
           type: "media-set" as const,
           data: {
-            media: combinedMedia,
+            media: {
+              mediaList: unifiedMediaList
+            },
             title: `Media-Set ${index + 1}`,
             status: 'initial' as const,
             timestamp: Date.now()
@@ -257,15 +349,23 @@ export const NodeSetNodeRunner: NodeRunner = {
         // Otherwise, extract individual items
         const allMedia = [];
 
-        // Collect all media items from this node
-        if (media.imageList) {
-          allMedia.push(...media.imageList.map((img: any) => ({ type: 'image' as const, data: img })));
-        }
-        if (media.videoList) {
-          allMedia.push(...media.videoList.map((vid: any) => ({ type: 'video' as const, data: vid })));
-        }
-        if (media.textList) {
-          allMedia.push(...media.textList.map((txt: any) => ({ type: 'text' as const, data: txt })));
+        // Check for unified mediaList first
+        if (media.mediaList) {
+          allMedia.push(...media.mediaList.map((item: any) => ({
+            type: item.type,
+            data: item
+          })));
+        } else {
+          // Fall back to individual lists for backward compatibility
+          if (media.imageList) {
+            allMedia.push(...media.imageList.map((img: any) => ({ type: 'image' as const, data: img })));
+          }
+          if (media.videoList) {
+            allMedia.push(...media.videoList.map((vid: any) => ({ type: 'video' as const, data: vid })));
+          }
+          if (media.textList) {
+            allMedia.push(...media.textList.map((txt: any) => ({ type: 'text' as const, data: txt })));
+          }
         }
 
         return allMedia;
@@ -291,21 +391,35 @@ export const NodeSetNodeRunner: NodeRunner = {
             if (item.isIntegrated) {
               // This is an integrated node - add all its media at once
               const integratedMedia = item.media;
-              if (integratedMedia.imageList) {
-                combinedMedia.imageList.push(...integratedMedia.imageList);
-              }
-              if (integratedMedia.videoList) {
-                combinedMedia.videoList.push(...integratedMedia.videoList);
-              }
-              if (integratedMedia.textList) {
-                combinedMedia.textList.push(...integratedMedia.textList);
+              if (integratedMedia.mediaList) {
+                // Unified mediaList from media-set
+                integratedMedia.mediaList.forEach((mediaItem: any) => {
+                  if (mediaItem.type === 'image') {
+                    combinedMedia.imageList.push(mediaItem);
+                  } else if (mediaItem.type === 'video') {
+                    combinedMedia.videoList.push(mediaItem);
+                  } else if (mediaItem.type === 'text') {
+                    combinedMedia.textList.push(mediaItem.content || mediaItem);
+                  }
+                });
+              } else {
+                // Fall back to individual lists
+                if (integratedMedia.imageList) {
+                  combinedMedia.imageList.push(...integratedMedia.imageList);
+                }
+                if (integratedMedia.videoList) {
+                  combinedMedia.videoList.push(...integratedMedia.videoList);
+                }
+                if (integratedMedia.textList) {
+                  combinedMedia.textList.push(...integratedMedia.textList);
+                }
               }
             } else if (item.type === 'image') {
               combinedMedia.imageList.push(item.data);
             } else if (item.type === 'video') {
               combinedMedia.videoList.push(item.data);
             } else if (item.type === 'text') {
-              combinedMedia.textList.push(item.data);
+              combinedMedia.textList.push(typeof item.data === 'string' ? item.data : item.data.content);
             }
           }
         });
@@ -315,11 +429,16 @@ export const NodeSetNodeRunner: NodeRunner = {
         if (combinedMedia.videoList.length === 0) delete combinedMedia.videoList;
         if (combinedMedia.textList.length === 0) delete combinedMedia.textList;
 
+        // Convert to unified mediaList format
+        const unifiedMediaList = convertToUnifiedMediaList(combinedMedia);
+
         pairedNodes.push({
           id: `sequence-node-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`,
           type: "media-set" as const,
           data: {
-            media: combinedMedia,
+            media: {
+              mediaList: unifiedMediaList
+            },
             title: `Media-Set ${i + 1}`,
             status: 'initial' as const,
             timestamp: Date.now()
@@ -334,16 +453,32 @@ export const NodeSetNodeRunner: NodeRunner = {
     else if (inputMode === 'append') {
       console.log('🔄 NodeSet Runner - Processing in APPEND mode...');
 
-      // Simply append each input as a separate media-set node
-      const appendProcessedNodes = inputDataList.map((inputData, index) => ({
-        id: `append-node-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
-        type: "media-set" as const,
-        data: {
-          ...inputData,
-          timestamp: Date.now()
-        },
-        position: { x: 0, y: 0 }
-      }));
+      // Simply append each input as a separate media-set node, but ensure unified format
+      const appendProcessedNodes = inputDataList.map((inputData, index) => {
+        const media = inputData.media || {};
+
+        // Check if already in unified format
+        let unifiedMediaList;
+        if (media.mediaList) {
+          unifiedMediaList = media.mediaList;
+        } else {
+          // Convert to unified format
+          unifiedMediaList = convertToUnifiedMediaList(media);
+        }
+
+        return {
+          id: `append-node-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
+          type: "media-set" as const,
+          data: {
+            ...inputData,
+            media: {
+              mediaList: unifiedMediaList
+            },
+            timestamp: Date.now()
+          },
+          position: { x: 0, y: 0 }
+        } as AppNode;
+      });
 
       updatedNodeList = [...updatedNodeList, ...appendProcessedNodes];
     }

@@ -39,7 +39,7 @@ export const MediaSetNodeRunner: NodeRunner = {
       imageList: Array<{ url: string; data?: string; fileName: string; timestamp?: number; }>;
       videoList: Array<{ url: string; data?: string; fileName: string; timestamp?: number; }>;
       textList: string[];
-      mediaList: Array<{ id: string; type: 'image' | 'text'; url?: string; content?: string; fileName: string; timestamp: number; }>;
+      mediaList: Array<{ id: string; type: 'image' | 'text' | 'video'; url?: string; content?: string; fileName: string; timestamp: number; }>;
     } = {
       imageList: [],
       videoList: [],
@@ -100,17 +100,60 @@ export const MediaSetNodeRunner: NodeRunner = {
 
     console.log('🔄 MediaSet Runner - final allMedia:', allMedia);
 
-    // Clean up empty arrays
-    const media: any = {};
-    if (allMedia.imageList.length > 0) media.imageList = allMedia.imageList;
-    if (allMedia.videoList.length > 0) media.videoList = allMedia.videoList;
-    if (allMedia.textList.length > 0) media.textList = allMedia.textList;
-    if (allMedia.mediaList.length > 0) media.mediaList = allMedia.mediaList;
+    // Convert all media to unified mediaList format
+    const unifiedMediaList: Array<{
+      id: string;
+      type: 'image' | 'text' | 'video';
+      url?: string;
+      content?: string;
+      fileName: string;
+      timestamp: number;
+    }> = [];
 
-    // Return merged media
+    // Add existing mediaList items
+    unifiedMediaList.push(...allMedia.mediaList);
+
+    // Convert imageList to mediaList format
+    allMedia.imageList.forEach((image) => {
+      unifiedMediaList.push({
+        id: `media-${Date.now()}-${Math.random()}`,
+        type: 'image',
+        url: image.url,
+        fileName: image.fileName,
+        timestamp: image.timestamp || Date.now()
+      });
+    });
+
+    // Convert videoList to mediaList format
+    allMedia.videoList.forEach((video) => {
+      unifiedMediaList.push({
+        id: `media-${Date.now()}-${Math.random()}`,
+        type: 'video',
+        url: video.url,
+        fileName: video.fileName,
+        timestamp: video.timestamp || Date.now()
+      });
+    });
+
+    // Convert textList to mediaList format
+    allMedia.textList.forEach((text, index) => {
+      unifiedMediaList.push({
+        id: `media-${Date.now()}-${Math.random()}`,
+        type: 'text',
+        content: text,
+        fileName: `text-${index + 1}.txt`,
+        timestamp: Date.now()
+      });
+    });
+
+    console.log('🔄 MediaSet Runner - unifiedMediaList:', unifiedMediaList);
+
+    // Return merged media in unified format
     const result = {
-      media,
-      fileName: `media-set-${allMedia.imageList.length + allMedia.videoList.length + allMedia.textList.length + allMedia.mediaList.length}`,
+      media: {
+        mediaList: unifiedMediaList
+      },
+      fileName: `media-set-${unifiedMediaList.length}`,
       timestamp: Date.now(),
     };
 

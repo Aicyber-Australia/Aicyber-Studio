@@ -6,6 +6,9 @@ export const NODE_SIZE = { width: 260, height: 50 };
 // Image nodes need square dimensions for image display
 export const IMAGE_NODE_SIZE = { width: 280, height: 280 };
 
+// Video nodes need 16:9 aspect ratio for video display
+export const VIDEO_NODE_SIZE = { width: 280, height: 200 };
+
 // Text nodes need more height for text display
 export const TEXT_NODE_SIZE = { width: 280, height: 200 };
 
@@ -75,6 +78,46 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
       },
     ],
     icon: 'Images',
+  },
+  'video-frame': {
+    id: 'video-frame',
+    title: 'Video Frame',
+    status: 'initial',
+    handles: [
+      {
+        type: 'target',
+        position: Position.Left,
+        x: 0,
+        y: VIDEO_NODE_SIZE.height * 0.5,
+      },
+      {
+        type: 'source',
+        position: Position.Right,
+        x: VIDEO_NODE_SIZE.width,
+        y: VIDEO_NODE_SIZE.height * 0.5,
+      },
+    ],
+    icon: 'Video',
+  },
+  'video-set': {
+    id: 'video-set',
+    title: 'Video Set',
+    status: 'initial',
+    handles: [
+      {
+        type: 'target',
+        position: Position.Left,
+        x: 0,
+        y: VIDEO_NODE_SIZE.height * 0.5,
+      },
+      {
+        type: 'source',
+        position: Position.Right,
+        x: VIDEO_NODE_SIZE.width,
+        y: VIDEO_NODE_SIZE.height * 0.5,
+      },
+    ],
+    icon: 'Video',
   },
   'text-frame': {
     id: 'text-frame',

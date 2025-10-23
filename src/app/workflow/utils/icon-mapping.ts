@@ -8,6 +8,7 @@ import {
   FileText,
   Image,
   Images,
+  Video,
   Layers,
   Pencil,
   // Import other icons as needed
@@ -26,6 +27,7 @@ export const iconMapping: Record<
   FileText: FileText,
   Image: Image,
   Images: Images,
+  Video: Video,
   Layers: Layers,
   Pencil: Pencil,
   Media: Images, // Use Images as fallback for Media

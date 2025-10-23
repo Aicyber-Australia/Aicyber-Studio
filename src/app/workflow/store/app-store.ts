@@ -215,11 +215,14 @@ export function createAppStore(
           return;
         }
 
-        // Restriction 2: MediaSet cannot be attached to NodeSet
+        // Restriction 2: MediaSet can only connect to NodeSet in integrated mode
         if (sourceNode.type === 'media-set' && targetNode.type === 'node-set') {
-          console.warn('❌ Connection rejected: MediaSet cannot connect to NodeSet');
-          onReject?.('MediaSet cannot connect to NodeSet (may cause infinite loop)');
-          return;
+          const setOutputMode = sourceNode.data?.setOutputMode || 'individual';
+          if (setOutputMode !== 'integrated') {
+            console.warn('❌ Connection rejected: MediaSet must be in integrated mode to connect to NodeSet');
+            onReject?.('MediaSet must be in "Integrated" output mode to connect to NodeSet');
+            return;
+          }
         }
 
         // Auto-assign image from image-frame to edit-image-node

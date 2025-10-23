@@ -1,10 +1,12 @@
 import { Node, NodeProps, XYPosition } from '@xyflow/react';
 import { nanoid } from 'nanoid';
 
-import { NODE_SIZE, IMAGE_NODE_SIZE, TEXT_NODE_SIZE, ACTION_NODE_SIZE, NODE_SET_SIZE, nodesConfig } from '../../config';
+import { NODE_SIZE, IMAGE_NODE_SIZE, VIDEO_NODE_SIZE, TEXT_NODE_SIZE, ACTION_NODE_SIZE, NODE_SET_SIZE, nodesConfig } from '../../config';
 import { iconMapping } from '@/app/workflow/utils/icon-mapping';
 import ImageFrame from './image-frame';
 import ImageSet from './image-set';
+import VideoFrame from './video-frame';
+import VideoSet from './video-set';
 import TextFrame from './text-frame';
 import TextSet from './text-set';
 import MediaSet from './media-set';
@@ -59,7 +61,7 @@ export type WorkflowNodeData = {
     textList?: string[];
     mediaList?: Array<{
       id: string;
-      type: 'image' | 'text';
+      type: 'image' | 'text' | 'video';
       url?: string;
       content?: string;
       fileName: string;
@@ -85,6 +87,8 @@ export type NodeConfig = {
 export const nodeTypes = {
   'image-frame': ImageFrame,
   'image-set': ImageSet,
+  'video-frame': VideoFrame,
+  'video-set': VideoSet,
   'text-frame': TextFrame,
   'text-set': TextSet,
   'media-set': MediaSet,
@@ -112,6 +116,8 @@ export const createNodeByType = ({
   let nodeSize = NODE_SIZE;
   if (type === 'image-frame' || type === 'image-set' || type === 'media-set') {
     nodeSize = IMAGE_NODE_SIZE;
+  } else if (type === 'video-frame' || type === 'video-set') {
+    nodeSize = VIDEO_NODE_SIZE;
   } else if (type === 'text-frame' || type === 'text-set') {
     nodeSize = TEXT_NODE_SIZE;
   } else if (type === 'text-to-image-node' || type === 'image-to-image-node' || type === 'image-to-text-node' || type === 'edit-image-node') {
@@ -159,6 +165,8 @@ export const createNodeByType = ({
 export type AppNode =
   | Node<WorkflowNodeData, 'image-frame'>
   | Node<WorkflowNodeData, 'image-set'>
+  | Node<WorkflowNodeData, 'video-frame'>
+  | Node<WorkflowNodeData, 'video-set'>
   | Node<WorkflowNodeData, 'text-frame'>
   | Node<WorkflowNodeData, 'text-set'>
   | Node<WorkflowNodeData, 'media-set'>
