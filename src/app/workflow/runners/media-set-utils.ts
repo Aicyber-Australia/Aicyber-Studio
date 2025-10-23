@@ -63,9 +63,11 @@ export type InputData = {
  * Normalizes all input data into a unified array of MediaSets.
  *
  * Handles multiple scenarios:
- * 1. Individual frames (image-frame, video-frame, text-frame) -> each becomes one MediaSet with one item
- * 2. Set nodes with 'individual' mode -> each item becomes a separate MediaSet
- * 3. Set nodes with 'integrated' mode -> all items combined into one MediaSet
+ * 1. Multiple individual frames -> combined into one MediaSet with all items
+ * 2. Single frame -> one MediaSet with one item
+ * 3. Set nodes with 'individual' mode -> each item becomes a separate MediaSet
+ * 4. Set nodes with 'integrated' mode -> all items combined into one MediaSet
+ * 5. Node-sets -> each media-set in nodeList becomes a separate MediaSet
  *
  * @param inputDataList - Array of input data from connected nodes
  * @returns Array of MediaSets ready for action node processing
@@ -76,6 +78,75 @@ export function normalizeInputsToMediaSets(inputDataList: InputData[]): MediaSet
   }
 
   const mediaSets: MediaSet[] = [];
+
+  // Check if all inputs are individual frames (single media items without setOutputMode)
+  const allIndividualFrames = inputDataList.every((input) => {
+    // Skip node-sets
+    if (input.nodeList) return false;
+
+    // Must not have setOutputMode (frames don't have this)
+    if (input.setOutputMode) return false;
+
+    const media = input.media || {};
+
+    // Count total media items
+    const totalItems =
+      (media.imageList?.length || 0) +
+      (media.videoList?.length || 0) +
+      (media.textList?.length || 0) +
+      (media.mediaList?.length || 0);
+
+    // Must have exactly 1 item
+    return totalItems === 1;
+  });
+
+  // Special case: Multiple individual frames -> combine into single MediaSet
+  if (allIndividualFrames && inputDataList.length > 1) {
+    const combinedMediaList: MediaItem[] = [];
+
+    inputDataList.forEach((input, index) => {
+      const media = input.media || {};
+
+      if (media.imageList?.[0]) {
+        const img = media.imageList[0];
+        combinedMediaList.push({
+          id: `media-${Date.now()}-${index}-${Math.random()}`,
+          type: 'image',
+          url: img.url,
+          fileName: img.fileName,
+          timestamp: img.timestamp || Date.now()
+        });
+      } else if (media.videoList?.[0]) {
+        const vid = media.videoList[0];
+        combinedMediaList.push({
+          id: `media-${Date.now()}-${index}-${Math.random()}`,
+          type: 'video',
+          url: vid.url,
+          fileName: vid.fileName,
+          timestamp: vid.timestamp || Date.now()
+        });
+      } else if (media.textList?.[0]) {
+        const txt = media.textList[0];
+        combinedMediaList.push({
+          id: `media-${Date.now()}-${index}-${Math.random()}`,
+          type: 'text',
+          content: txt,
+          fileName: `text-${index + 1}.txt`,
+          timestamp: Date.now()
+        });
+      } else if (media.mediaList?.[0]) {
+        combinedMediaList.push(media.mediaList[0]);
+      }
+    });
+
+    mediaSets.push({
+      mediaList: combinedMediaList,
+      fileName: `frame-collection-${combinedMediaList.length}`,
+      timestamp: Date.now()
+    });
+
+    return mediaSets;
+  }
 
   // Process each input
   inputDataList.forEach((input, inputIndex) => {
