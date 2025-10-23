@@ -57,9 +57,9 @@ export function useLayout() {
             title: 'Node Set',
             status: 'initial',
             icon: 'Layers',
-            inputMode: 'sequence',
+            inputMode: 'append',
             collectorMode: 'collector',
-            outputMode: 'loop',
+            outputMode: 'direct',
             nodeList: []
           }
         });

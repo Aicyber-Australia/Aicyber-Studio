@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useMemo, useEffect } from 'react';
 import { Play, Trash, RotateCcw } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import {
 import { WorkflowNodeData } from '@/app/workflow/components/nodes';
 import { useWorkflowRunner } from '@/app/workflow/hooks/use-workflow-runner';
 import { useAppStore } from '@/app/workflow/store';
-import { useReactFlow, NodeResizer } from '@xyflow/react';
+import { useReactFlow, NodeResizer, getIncomers, useStore } from '@xyflow/react';
 import {
   BaseNode,
   BaseNodeHeader,
@@ -23,6 +23,7 @@ import {
 } from '@/components/base-node';
 import { NodeStatusIndicator } from '@/components/node-status-indicator';
 import { ACTION_NODE_SIZE } from '@/app/workflow/config';
+import { getExecutionCount } from '@/app/workflow/runners/media-set-utils';
 
 // Available models for selection
 const MODELS = [
@@ -45,6 +46,28 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
   const [selectedModel, setSelectedModel] = useState<string>(data?.selectedModel || 'default');
   const [prompt, setPrompt] = useState<string>(data?.prompt || '');
   const [isTitleEditing, setIsTitleEditing] = useState(false);
+
+  // Subscribe to ReactFlow store for real-time updates
+  // This will re-render when nodes or edges change
+  const nodes = useStore((state) => state.nodes);
+  const edges = useStore((state) => state.edges);
+
+  // Calculate execution count based on incoming connections
+  // This will automatically update when nodes or edges change
+  const executionCount = useMemo(() => {
+    const currentNode = nodes.find((n) => n.id === id);
+
+    if (!currentNode) return 0;
+
+    // Get all incoming nodes
+    const incomingNodes = getIncomers(currentNode, nodes, edges);
+
+    // Extract data from incoming nodes
+    const inputDataList = incomingNodes.map((node) => node.data);
+
+    // Calculate execution count using utility function
+    return getExecutionCount(inputDataList);
+  }, [id, nodes, edges]);
 
   const onPlay = useCallback(() => runWorkflow(id), [id, runWorkflow]);
   const onRemove = useCallback(() => removeNode(id), [id, removeNode]);
@@ -99,6 +122,11 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
             onEditingChange={setIsTitleEditing}
           >
             {data?.title || 'Action Node'}
+            {executionCount > 0 && (
+              <span className="ml-2 text-xs text-muted-foreground font-normal">
+                ({executionCount}x)
+              </span>
+            )}
           </BaseNodeHeaderTitle>
           <div className="flex items-center gap-1" style={{ visibility: isTitleEditing ? 'hidden' : 'visible' }}>
             {onRefresh && (

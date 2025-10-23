@@ -1,6 +1,7 @@
 import { NodeRunner } from './types';
 import { AppNode } from '../components/nodes';
 import { getApiCallFunction, getRegisteredNodeTypes } from '../../api/services/service-registrar';
+import { normalizeInputsToMediaSets } from './media-set-utils';
 
 export const ActionNodeRunner: NodeRunner<AppNode> = {
   nodeType: 'action-node', // 通用类型
@@ -32,13 +33,20 @@ export const ActionNodeRunner: NodeRunner<AppNode> = {
         return { isValid: false, error: 'No input data provided' };
       }
 
-      // 检查输入数据是否包含所需的内容
-      const hasRequiredData = inputDataList.some(data =>
-        data && (data.imageUrl || data.imageData || data.fileName || data.videoUrl || data.media?.imageList)
+      // Normalize inputs to mediaSets to validate
+      const mediaSets = normalizeInputsToMediaSets(inputDataList);
+
+      if (mediaSets.length === 0) {
+        return { isValid: false, error: `No valid media data found in input for ${node.type}` };
+      }
+
+      // Verify each mediaSet has required media
+      const allMediaSetsValid = mediaSets.every(mediaSet =>
+        mediaSet.mediaList && mediaSet.mediaList.length > 0
       );
 
-      if (!hasRequiredData) {
-        return { isValid: false, error: `No required data found in input for ${node.type}` };
+      if (!allMediaSetsValid) {
+        return { isValid: false, error: `Invalid media data structure for ${node.type}` };
       }
     }
 
@@ -50,15 +58,34 @@ export const ActionNodeRunner: NodeRunner<AppNode> = {
       console.log(`ActionNodeRunner - Running ${node.type} with data:`, node.data);
       console.log(`ActionNodeRunner - Input data list:`, inputDataList);
 
+      // Normalize all inputs to unified MediaSet format
+      const mediaSets = normalizeInputsToMediaSets(inputDataList);
+      console.log(`ActionNodeRunner - Normalized to ${mediaSets.length} mediaSets:`, mediaSets);
+
+      // Store execution count in node data for UI display
+      const executionCount = mediaSets.length;
+      console.log(`ActionNodeRunner - Execution count: ${executionCount}`);
+
       // 获取对应的API服务函数
       const apiService = getApiCallFunction(node.type);
       console.log(`ActionNodeRunner - Got API service function for ${node.type}`);
 
-      // 传递整个node和输入数据给服务
-      const result = await apiService(node, inputDataList);
+      // 传递整个node和normalized mediaSets给服务
+      // The service will receive mediaSets instead of raw inputDataList
+      const result = await apiService(node, mediaSets);
 
       console.log(`ActionNodeRunner - Service result:`, result);
       console.log(`ActionNodeRunner - Service result stringified:`, JSON.stringify(result, null, 2));
+
+      // Include execution metadata in result
+      if (result && typeof result === 'object') {
+        return {
+          ...result,
+          executionCount,
+          mediaSetsProcessed: mediaSets.length
+        };
+      }
+
       return result;
     } catch (error) {
       console.error(`ActionNodeRunner error for ${node.type}:`, error);

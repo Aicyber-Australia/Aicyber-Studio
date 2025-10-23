@@ -225,6 +225,17 @@ export function createAppStore(
           }
         }
 
+        // Restriction 3: MediaSet can only connect to Action Nodes in integrated mode
+        const actionNodeTypes = ['text-to-image-node', 'image-to-image-node', 'image-to-text-node', 'edit-image-node'];
+        if (sourceNode.type === 'media-set' && actionNodeTypes.includes(targetNode.type)) {
+          const setOutputMode = sourceNode.data?.setOutputMode || 'individual';
+          if (setOutputMode !== 'integrated') {
+            console.warn('❌ Connection rejected: MediaSet must be in integrated mode to connect to Action Node');
+            onReject?.('MediaSet must be in "Integrated" output mode to connect to Action Nodes');
+            return;
+          }
+        }
+
         // Auto-assign image from image-frame to edit-image-node
         if (sourceNode.type === 'image-frame' && targetNode.type === 'edit-image-node') {
           const sourceImage = sourceNode.data?.media?.imageList?.[0];

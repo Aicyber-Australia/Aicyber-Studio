@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
-import { useReactFlow } from '@xyflow/react';
+import React, { useState, useCallback, useMemo } from 'react';
+import { useReactFlow, getOutgoers, useStore } from '@xyflow/react';
 import { WorkflowNodeProps } from '@/app/workflow/components/nodes';
 import { nodesConfig } from '../../config';
 import { NodeHandle } from './workflow-node/node-handle';
@@ -25,6 +25,42 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
 
   // 使用 ReactFlow 官方 API
   const { setNodes } = useReactFlow();
+
+  // Subscribe to ReactFlow store for real-time updates
+  const nodes = useStore((state) => state.nodes);
+  const edges = useStore((state) => state.edges);
+
+  // Check if this node is connected to any action nodes
+  // This will automatically update when connections change
+  const isConnectedToActionNode = useMemo(() => {
+    const currentNode = nodes.find((n) => n.id === id);
+
+    if (!currentNode) return false;
+
+    const actionNodeTypes = ['text-to-image-node', 'image-to-image-node', 'image-to-text-node', 'edit-image-node'];
+    const outgoingNodes = getOutgoers(currentNode, nodes, edges);
+
+    const connected = outgoingNodes.some((node) => actionNodeTypes.includes(node.type || ''));
+
+    // Auto-switch to integrated mode when connected to action node
+    if (connected && data?.setOutputMode !== 'integrated') {
+      setNodes((prevNodes) =>
+        prevNodes.map((node) =>
+          node.id === id
+            ? {
+                ...node,
+                data: {
+                  ...node.data,
+                  setOutputMode: 'integrated',
+                },
+              }
+            : node
+        )
+      );
+    }
+
+    return connected;
+  }, [id, nodes, edges, data?.setOutputMode, setNodes]);
 
   // 从 media.mediaList 获取所有媒体项
   const mediaList: MediaItem[] = data?.media?.mediaList || [];
@@ -221,7 +257,7 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
     ));
   }, [id, setNodes]);
 
-  const setOutputMode = data?.setOutputMode || 'individual';
+  const setOutputMode = data?.setOutputMode || 'integrated';
 
   return (
     <>
@@ -229,13 +265,24 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
         <div className="w-full flex-1 flex flex-col p-3 min-h-0 nodrag space-y-2">
           {/* Output Mode Selection */}
           <div className="nodrag flex-shrink-0">
-            <div className="text-[10px] text-muted-foreground mb-1">Output Mode</div>
-            <Select value={setOutputMode} onValueChange={handleSetOutputModeChange}>
-              <SelectTrigger className="h-7 text-xs nodrag">
+            <div className="text-[10px] text-muted-foreground mb-1">
+              Output Mode
+              {isConnectedToActionNode && (
+                <span className="ml-1 text-[9px] text-amber-600">(locked to integrated)</span>
+              )}
+            </div>
+            <Select
+              value={setOutputMode}
+              onValueChange={handleSetOutputModeChange}
+              disabled={isConnectedToActionNode}
+            >
+              <SelectTrigger className="h-7 text-xs nodrag" disabled={isConnectedToActionNode}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="nodrag">
-                <SelectItem value="individual" className="text-xs">Individual</SelectItem>
+                <SelectItem value="individual" className="text-xs" disabled={isConnectedToActionNode}>
+                  Individual
+                </SelectItem>
                 <SelectItem value="integrated" className="text-xs">Integrated</SelectItem>
               </SelectContent>
             </Select>

@@ -146,7 +146,7 @@ export const createNodeByType = ({
           status: node.status,
           icon: node.icon,
           loopMode: 'sequence',  // 其他节点默认是 append 模式 单列插入
-          setOutputMode: 'individual',  // Set nodes default to individual output mode
+          setOutputMode: type === 'media-set' ? 'integrated' : 'individual',  // media-set defaults to integrated, others to individual
         } as WorkflowNodeData;
       }
     })(),
