@@ -3,11 +3,11 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useReactFlow, getOutgoers, useStore } from '@xyflow/react';
 import { WorkflowNodeProps } from '@/app/workflow/components/nodes';
-import { nodesConfig } from '../../config';
-import { NodeHandle } from './workflow-node/node-handle';
-import WorkflowNode from './workflow-node';
+import { nodesConfig } from '@/app/workflow/config';
+import { NodeHandle } from '@/app/workflow/components/nodes/workflow-node/node-handle';
+import WorkflowNode from '@/app/workflow/components/nodes/workflow-node';
 import { Eye, Trash2, FileText, Image as ImageIcon, Video as VideoIcon, Plus } from 'lucide-react';
-import { ImagePreviewDialog } from './image-preview-dialog';
+import { ImagePreviewDialog } from '@/app/workflow/components/nodes/image/image-preview-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type MediaItem = {

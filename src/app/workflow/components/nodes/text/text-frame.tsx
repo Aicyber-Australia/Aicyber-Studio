@@ -3,9 +3,9 @@
 import React, { useState } from 'react';
 import { useReactFlow } from '@xyflow/react';
 import { WorkflowNodeProps } from '@/app/workflow/components/nodes';
-import { nodesConfig } from '../../config';
-import { NodeHandle } from './workflow-node/node-handle';
-import WorkflowNode from './workflow-node';
+import { nodesConfig } from '@/app/workflow/config';
+import { NodeHandle } from '@/app/workflow/components/nodes/workflow-node/node-handle';
+import WorkflowNode from '@/app/workflow/components/nodes/workflow-node';
 import { Trash2 } from 'lucide-react';
 
 function TextFrame({ id, data, selected }: WorkflowNodeProps) {

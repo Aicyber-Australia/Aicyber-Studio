@@ -3,8 +3,8 @@
 import React, { useCallback, useState } from 'react';
 import { Play, Trash, RotateCcw, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { WorkflowNodeProps } from '..';
-import { nodesConfig } from '../../../config';
+import { WorkflowNodeProps } from '@/app/workflow/components/nodes';
+import { nodesConfig } from '@/app/workflow/config';
 import { NodeHandle } from '../workflow-node/node-handle';
 import { useWorkflowRunner } from '@/app/workflow/hooks/use-workflow-runner';
 import { useAppStore } from '@/app/workflow/store';
@@ -17,7 +17,7 @@ import {
 } from '@/components/base-node';
 import { NodeStatusIndicator } from '@/components/node-status-indicator';
 import { ACTION_NODE_SIZE } from '@/app/workflow/config';
-import { ImageEditDialog } from '../image-edit-dialog';
+import { ImageEditDialog } from '../image/image-edit-dialog';
 
 export function EditImageNode({ id, data, selected }: WorkflowNodeProps) {
   const { runWorkflow } = useWorkflowRunner();
