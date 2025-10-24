@@ -1,7 +1,41 @@
 import { NodeRunner } from './types';
 import { AppNode, ApiExecutionResponse, ApiExecutionError } from '../components/nodes';
 import { getApiCallFunction, getRegisteredNodeTypes } from '../../api/services/service-registrar';
-import { normalizeInputsToMediaSets } from './media-set-utils';
+import { normalizeInputsToMediaSets, MediaSet } from './media-set-utils';
+
+/**
+ * Deduplicates MediaSets to prevent duplicate API requests.
+ * Two MediaSets are considered duplicates if they contain the same media items (by URL/content).
+ */
+function deduplicateMediaSets(mediaSets: MediaSet[]): MediaSet[] {
+  const seen = new Set<string>();
+  const deduplicated: MediaSet[] = [];
+
+  for (const mediaSet of mediaSets) {
+    // Create a unique key for this mediaSet based on its media items
+    const mediaKeys = mediaSet.mediaList
+      .map(item => {
+        // Use URL for images/videos, content for text
+        if (item.type === 'text') {
+          return `text:${item.content}`;
+        }
+        return `${item.type}:${item.url}`;
+      })
+      .sort() // Sort to ensure consistent ordering
+      .join('|');
+
+    const mediaSetKey = `mediaSet:${mediaKeys}`;
+
+    if (!seen.has(mediaSetKey)) {
+      seen.add(mediaSetKey);
+      deduplicated.push(mediaSet);
+    } else {
+      console.log(`ActionNodeRunner - Skipping duplicate mediaSet: ${mediaSetKey}`);
+    }
+  }
+
+  return deduplicated;
+}
 
 export const ActionNodeRunner: NodeRunner<AppNode> = {
   nodeType: 'action-node', // 通用类型
@@ -59,8 +93,12 @@ export const ActionNodeRunner: NodeRunner<AppNode> = {
       console.log(`ActionNodeRunner - Input data list:`, inputDataList);
 
       // Normalize all inputs to unified MediaSet format
-      const mediaSets = normalizeInputsToMediaSets(inputDataList);
-      console.log(`ActionNodeRunner - Normalized to ${mediaSets.length} mediaSets:`, mediaSets);
+      const normalizedMediaSets = normalizeInputsToMediaSets(inputDataList);
+      console.log(`ActionNodeRunner - Normalized to ${normalizedMediaSets.length} mediaSets:`, normalizedMediaSets);
+
+      // Deduplicate mediaSets based on media URLs/content to avoid duplicate API requests
+      const mediaSets = deduplicateMediaSets(normalizedMediaSets);
+      console.log(`ActionNodeRunner - After deduplication: ${mediaSets.length} mediaSets`);
 
       // Store execution count in node data for UI display
       const executionCount = mediaSets.length;

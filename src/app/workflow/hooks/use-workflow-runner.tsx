@@ -18,6 +18,33 @@ const selector = (state: AppStore) => ({
 });
 
 /**
+ * Deduplicates API responses based on URL and type.
+ * This prevents duplicate entries in the apiResponses array during progressive iterations.
+ */
+function deduplicateApiResponses(responses: any[]): any[] {
+  const seen = new Set<string>();
+  const deduplicated: any[] = [];
+
+  for (const response of responses) {
+    // Create a unique key based on URL and type
+    // For errors, use the error message as well
+    let key: string;
+    if ('error' in response) {
+      key = `error:${response.error}:${response.errorCode || ''}`;
+    } else {
+      key = `${response.type}:${response.url}`;
+    }
+
+    if (!seen.has(key)) {
+      seen.add(key);
+      deduplicated.push(response);
+    }
+  }
+
+  return deduplicated;
+}
+
+/**
  * This is a demo workflow runner that runs a simplified version of a workflow.
  * You can customize how nodes are processed by overriding `processNode` or
  * even replacing the entire `collectNodesToProcess` function with your own logic.
@@ -349,9 +376,10 @@ export function useWorkflowRunner() {
                 };
               }
 
-              // Merge apiResponses if they exist
+              // Merge apiResponses if they exist (with deduplication)
               if (partialData.apiResponses && currentData.apiResponses) {
-                newData.apiResponses = [...currentData.apiResponses, ...partialData.apiResponses];
+                const mergedResponses = [...currentData.apiResponses, ...partialData.apiResponses];
+                newData.apiResponses = deduplicateApiResponses(mergedResponses);
               }
 
               return { ...n, data: newData };
@@ -374,9 +402,10 @@ export function useWorkflowRunner() {
                   };
                 }
 
-                // Merge apiResponses if they exist
+                // Merge apiResponses if they exist (with deduplication)
                 if (partialData.apiResponses && currentData.apiResponses) {
-                  newData.apiResponses = [...currentData.apiResponses, ...partialData.apiResponses];
+                  const mergedResponses = [...currentData.apiResponses, ...partialData.apiResponses];
+                  newData.apiResponses = deduplicateApiResponses(mergedResponses);
                 }
 
                 return { ...n, data: newData } as AppNode;
@@ -644,9 +673,10 @@ export function useWorkflowRunner() {
               };
             }
 
-            // Merge apiResponses if they exist
+            // Merge apiResponses if they exist (with deduplication)
             if (processedData.apiResponses && currentData.apiResponses) {
-              newData.apiResponses = [...currentData.apiResponses, ...processedData.apiResponses];
+              const mergedResponses = [...currentData.apiResponses, ...processedData.apiResponses];
+              newData.apiResponses = deduplicateApiResponses(mergedResponses);
             }
 
             // Update execution metadata
@@ -679,9 +709,10 @@ export function useWorkflowRunner() {
                 };
               }
 
-              // Merge apiResponses if they exist
+              // Merge apiResponses if they exist (with deduplication)
               if (processedData.apiResponses && currentData.apiResponses) {
-                newData.apiResponses = [...currentData.apiResponses, ...processedData.apiResponses];
+                const mergedResponses = [...currentData.apiResponses, ...processedData.apiResponses];
+                newData.apiResponses = deduplicateApiResponses(mergedResponses);
               }
 
               // Update execution metadata
@@ -1122,6 +1153,26 @@ export function useWorkflowRunner() {
 
       if (isRunning.current) {
         setLogMessages((prev) => [...prev, '✅ Workflow processing complete.']);
+
+        // Log all node information after workflow completion
+        const finalNodes = getNodes();
+        console.log('='.repeat(80));
+        console.log('📊 WORKFLOW EXECUTION COMPLETED - ALL NODES INFO');
+        console.log('='.repeat(80));
+        console.log(`Total nodes: ${finalNodes.length}`);
+        console.log('');
+
+        finalNodes.forEach((node, index) => {
+          console.log(`Node ${index + 1}: ${node.id}`);
+          console.log(`  Type: ${node.type}`);
+          console.log(`  Title: ${node.data.title}`);
+          console.log(`  Status: ${node.data.status}`);
+          console.log(`  Position: (${node.position.x}, ${node.position.y})`);
+          console.log(`  Data:`, node.data);
+          console.log('');
+        });
+
+        console.log('='.repeat(80));
       }
 
       isRunning.current = false;
