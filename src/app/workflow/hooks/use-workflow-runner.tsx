@@ -15,6 +15,7 @@ const selector = (state: AppStore) => ({
   getNodes: state.getNodes,
   setNodes: state.setNodes,
   getEdges: state.getEdges,
+  setEdges: state.setEdges,
 });
 
 /**
@@ -25,8 +26,8 @@ const selector = (state: AppStore) => ({
 export function useWorkflowRunner() {
   const [logMessages, setLogMessages] = useState<string[]>([]);
   const isRunning = useRef(false);
-  const { getNodes, setNodes, getEdges } = useAppStore(useShallow(selector));
-  const { getNode, setNodes: setReactFlowNodes, getEdges: getReactFlowEdges } = useReactFlow();
+  const { getNodes, setNodes, getEdges, setEdges } = useAppStore(useShallow(selector));
+  const { getNode, setNodes: setReactFlowNodes, getEdges: getReactFlowEdges, setEdges: setReactFlowEdges } = useReactFlow();
   const { showToast } = useToast();
 
   const stopWorkflow = useCallback(() => {
@@ -108,9 +109,118 @@ export function useWorkflowRunner() {
         throw new Error(validation.error || 'Self-check failed');
       }
       
+      // 如果检测到需要迭代器模式
+      if (validation.shouldUseIterator && validation.iterationCount) {
+        console.log(`🔄 Self-check - Setting up iterator with ${validation.iterationCount} iterations`);
+        setLogMessages((prev) => [...prev, `🔄 Setting up iterator with ${validation.iterationCount} iterations...`]);
+        
+        // 在节点数据中标记迭代信息
+        setReactFlowNodes(nodes => nodes.map(n =>
+          n.id === node.id
+            ? { ...n, data: { ...n.data, isIterator: true, iterationCount: validation.iterationCount } as any }
+            : n
+        ));
+        
+        // 同步更新 Zustand store
+        setNodes(
+          getNodes().map((n) =>
+            n.id === node.id
+              ? ({ ...n, data: { ...n.data, isIterator: true, iterationCount: validation.iterationCount } as any } as AppNode)
+              : n,
+          ),
+        );
+      }
+      
       console.log('🔄 Self-check - Completed, node type may have changed');
     },
-    [updateNodeStatus, setReactFlowNodes, showToast],
+    [updateNodeStatus, setReactFlowNodes, showToast, setNodes, getNodes],
+  );
+
+  // 执行单个节点的方法（用于迭代器内部）
+  const executeNode = useCallback(
+    async (node: AppNode, inputDataList: any[]) => {
+      updateNodeStatus(node.id, 'loading');
+      
+      // 获取节点类型和runner
+      const runner = nodeRunnerRegistry.getRunner(node.type as string);
+      
+      // 检查是否需要使用iterator模式
+      const validation = runner.validate(node, inputDataList);
+      const shouldUseIterator = validation.shouldUseIterator || false;
+      
+      let processedData: any;
+      if (shouldUseIterator && (node.data as any)?.isIterator) {
+        // 在迭代器内部，如果遇到另一个迭代器，直接执行runner.run
+        // 避免循环依赖，让主workflow处理迭代器逻辑
+        processedData = await runner.run(node, inputDataList);
+      } else if (shouldUseIterator && runner.iterator) {
+        processedData = await runner.iterator(node, inputDataList, node);
+      } else {
+        processedData = await runner.run(node, inputDataList);
+      }
+      
+      // 更新节点状态和数据
+      setReactFlowNodes(nodes => nodes.map(n =>
+        n.id === node.id
+          ? { ...n, data: { ...n.data, ...processedData } }
+          : n
+      ));
+      
+      setNodes(
+        getNodes().map((n) =>
+          n.id === node.id
+            ? ({ ...n, data: { ...n.data, ...processedData } } as AppNode)
+            : n,
+        ),
+      );
+      
+      updateNodeStatus(node.id, 'success');
+      return processedData;
+    },
+    [updateNodeStatus, getNodes, setNodes, setReactFlowNodes, setLogMessages]
+  );
+
+  // 迭代器执行方法 - 不记录result，直接执行完整workflow
+  const executeIterator = useCallback(
+    async (node: AppNode, inputDataList: any[], iterationCount: number): Promise<void> => {
+      console.log(`🔄 Iterator - Starting ${iterationCount} iterations for node:`, node.id);
+      setLogMessages((prev) => [...prev, `🔄 Starting ${iterationCount} iterations...`]);
+      
+      for (let i = 0; i < iterationCount; i++) {
+        console.log(`🔄 Iterator - Iteration ${i + 1}/${iterationCount}`);
+        setLogMessages((prev) => [...prev, `🔄 Iteration ${i + 1}/${iterationCount}...`]);
+        
+        // 每次迭代都从当前节点跑到底，让collector收集结果
+        const nodes = getNodes();
+        const edges = getEdges();
+        const nodesToProcess = collectNodesToProcess(nodes, edges, node.id);
+        
+        for (const currentNode of nodesToProcess) {
+          if (!isRunning.current) break;
+          
+          try {
+            const currentInputDataList = collectInputData(currentNode);
+            await selfCheckNode(currentNode, currentInputDataList);
+            await new Promise(resolve => setTimeout(resolve, 5));
+            
+            // 使用executeNode来执行节点，确保完整的状态更新
+            await executeNode(currentNode, currentInputDataList);
+            
+            await new Promise(resolve => setTimeout(resolve, 50));
+          } catch (error) {
+            console.error(`Iterator iteration ${i + 1} failed at node ${currentNode.id}:`, error);
+            setLogMessages((prev) => [...prev, `❌ Iteration ${i + 1} failed at ${currentNode.data.title}`]);
+            break;
+          }
+        }
+        
+        console.log(`🔄 Iterator - Iteration ${i + 1} completed`);
+      }
+      
+      console.log(`🔄 Iterator - Completed ${iterationCount} iterations`);
+      setLogMessages((prev) => [...prev, `✅ Iterator completed ${iterationCount} iterations`]);
+    },
+    [getNodes, getEdges, collectInputData, selfCheckNode, setLogMessages, isRunning, executeNode]
   );
 
   // Run阶段：重新获取类型并执行
@@ -128,8 +238,32 @@ export function useWorkflowRunner() {
       const runner = nodeRunnerRegistry.getRunner(finalNodeType as string);
       console.log('🔄 Process - Using runner for type:', finalNodeType);
 
-      // 执行Runner
-      const processedData = await runner.run(updatedNode || node, inputDataList);
+      // 检查是否需要使用iterator模式
+      const validation = runner.validate(updatedNode || node, inputDataList);
+      const shouldUseIterator = validation.shouldUseIterator || false;
+      
+      let processedData: any;
+      if (shouldUseIterator && updatedNode?.data?.isIterator) {
+        console.log('🔄 Process - Using iterator mode with full workflow execution');
+        setLogMessages((prev) => [...prev, `${node.data.title} using iterator mode with full workflow execution...`]);
+        
+        const iterationCount = (updatedNode.data as any).iterationCount || 1;
+        await executeIterator(updatedNode as AppNode, inputDataList, iterationCount);
+        
+        // 迭代器不返回具体结果，让collector收集
+        processedData = {
+          executionMode: 'iterator',
+          totalIterations: iterationCount,
+          completed: true
+        };
+      } else if (shouldUseIterator && runner.iterator) {
+        console.log('🔄 Process - Using iterator mode');
+        setLogMessages((prev) => [...prev, `${node.data.title} using iterator mode...`]);
+        processedData = await runner.iterator(updatedNode || node, inputDataList, updatedNode || node);
+      } else {
+        console.log('🔄 Process - Using run mode');
+        processedData = await runner.run(updatedNode || node, inputDataList);
+      }
       console.log(`🔄 Process - Runner returned data:`, processedData);
 
       // 合并输出到节点 data
@@ -153,8 +287,9 @@ export function useWorkflowRunner() {
       console.log(`Node ${node.id} processing completed successfully!`);
       console.log(`Node ${node.id} final data:`, { ...node.data, ...processedData });
     },
-    [updateNodeStatus, getNode, getNodes, setNodes, getReactFlowEdges, setReactFlowNodes, showToast],
+    [updateNodeStatus, getNode, getNodes, setNodes, getReactFlowEdges, setReactFlowNodes, showToast, executeIterator],
   );
+
 
   const runWorkflow = useCallback(
     async (startNodeId?: string) => {
@@ -176,6 +311,65 @@ export function useWorkflowRunner() {
       setLogMessages(['Starting workflow...']);
 
       const nodesToProcess = collectNodesToProcess(nodes, edges, _startNodeId);
+      
+      // 检查workflow中是否有action node
+      const hasActionNode = nodesToProcess.some(node => 
+        ['image-to-image-node', 'image-replicate-node', 'video-to-video-node', 'image-to-text-node', 'edit-image-node'].includes(node.type)
+      );
+      
+      if (hasActionNode) {
+        // 如果有action node，检查最后一个节点是否是collector
+        const lastNode = nodesToProcess[nodesToProcess.length - 1];
+        const hasCollector = lastNode?.type === 'node-set' && 
+                            (lastNode.data as any)?.collectorMode === 'collector';
+        
+        if (!hasCollector) {
+          // 自动添加collector节点
+          console.log('🔄 Workflow - Adding collector node automatically');
+          setLogMessages((prev) => [...prev, '🔄 Adding collector node automatically...']);
+          
+          const collectorId = `collector-${Date.now()}`;
+          const collectorNode = {
+            id: collectorId,
+            type: 'node-set',
+            data: {
+              title: 'Auto Collector',
+              status: 'success',
+              icon: 'Layers',
+              inputMode: 'sequence',
+              collectorMode: 'collector',
+              outputMode: 'loop',
+              nodeList: [],
+              timestamp: Date.now()
+            },
+            position: { x: 400, y: 200 },
+            width: 200,
+            height: 100
+          };
+          
+          // 添加collector节点到工作流
+          setReactFlowNodes(nodes => [...nodes, collectorNode as any]);
+          setNodes([...getNodes(), collectorNode as any]);
+          
+          // 创建从最后一个节点到collector的边
+          const lastNodeId = lastNode.id;
+          const newEdge = {
+            id: `edge-${lastNodeId}-${collectorId}`,
+            source: lastNodeId,
+            target: collectorId,
+            type: 'default'
+          };
+          
+          setReactFlowEdges(edges => [...edges, newEdge as any]);
+          setEdges([...getEdges(), newEdge as any]);
+          
+          setLogMessages((prev) => [...prev, '✅ Collector node added automatically']);
+        } else {
+          setLogMessages((prev) => [...prev, '✅ Workflow validated: ends with collector']);
+        }
+      } else {
+        setLogMessages((prev) => [...prev, '✅ Workflow validated: no action nodes, no collector needed']);
+      }
 
       for (const node of nodesToProcess) {
         if (!isRunning.current) break;
@@ -191,6 +385,14 @@ export function useWorkflowRunner() {
 
           // 第三步：执行（重新获取类型并处理数据）
           await processNode(node, inputDataList);
+
+          // 检查是否是迭代器模式，如果是则停止执行后续节点
+          const updatedNode = getNode(node.id);
+          if (updatedNode?.data?.executionMode === 'iterator') {
+            console.log('🔄 Workflow - Iterator mode detected, stopping subsequent nodes');
+            setLogMessages((prev) => [...prev, '🔄 Iterator mode completed, stopping workflow...']);
+            break; // 停止执行，因为迭代器已经执行了完整workflow
+          }
 
           // 等待状态更新完成，确保下一个节点能获取到最新数据
           await new Promise(resolve => setTimeout(resolve, 50));

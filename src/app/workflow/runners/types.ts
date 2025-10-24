@@ -1,4 +1,4 @@
-export type RunnerValidation = { isValid: boolean; error?: string };
+export type RunnerValidation = { isValid: boolean; error?: string; shouldUseIterator?: boolean; iterationCount?: number };
 
 export interface NodeRunner<NodeType = any> {
   nodeType: string;
