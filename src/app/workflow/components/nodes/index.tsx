@@ -29,7 +29,7 @@ export type NodeSetData = {
   inputMode?: 'cross' | 'sequence' | 'append'; // How to process upstream input nodes
   collectorMode?: 'collector' | 'normal'; // Whether to accumulate data across runs
   outputMode?: 'loop' | 'direct'; // How to send data to downstream nodes: 'loop' (individual - each media-set separate) or 'direct' (integrated - all flattened)
-  executionMode?: 'concurrent' | 'progressive'; // How action nodes process multiple inputs: 'concurrent' (all at once) or 'progressive' (one-by-one with downstream execution)
+  executionMode?: 'concurrent' | 'progressive'; // How nodes process multiple inputs: 'concurrent' (all at once) or 'progressive' (one-by-one with downstream execution)
   programmaticallyAdded?: boolean;
   // Track which media items from each source node have been processed (for progressive mode deduplication)
   processedMediaIds?: Record<string, string[]>; // sourceNodeId -> array of processed media IDs
@@ -54,7 +54,7 @@ export type WorkflowNodeData = {
   icon?: keyof typeof iconMapping;
   status?: 'loading' | 'success' | 'error' | 'initial';
   setOutputMode?: 'individual' | 'integrated'; // How set nodes (image-set, text-set, media-set) output: individual items or as one unit
-  executionMode?: 'concurrent' | 'progressive'; // How action nodes process multiple inputs: 'concurrent' (all at once) or 'progressive' (one-by-one with downstream execution)
+  executionMode?: 'concurrent' | 'progressive'; // How nodes process multiple inputs: 'concurrent' (all at once) or 'progressive' (one-by-one with downstream execution)
   fileName?: string;
   timestamp?: number;
   selectedModel?: string;
@@ -163,6 +163,7 @@ export const createNodeByType = ({
           inputMode: 'sequence',   // How to process upstream inputs: cross, sequence, append
           collectorMode: 'normal', // Whether to accumulate: normal, collector
           outputMode: 'loop',      // How to output to downstream: loop, direct
+          executionMode: 'concurrent', // How to execute: concurrent (all at once) or progressive (one-by-one)
           nodeList: [],            // 初始化为空数组
         } as NodeSetData;
       } else {
@@ -171,6 +172,7 @@ export const createNodeByType = ({
           status: node.status,
           icon: node.icon,
           setOutputMode: type === 'media-set' ? 'integrated' : 'individual',  // media-set defaults to integrated, others to individual
+          executionMode: 'concurrent', // How to execute: concurrent (all at once) or progressive (one-by-one)
         } as WorkflowNodeData;
       }
     })(),
