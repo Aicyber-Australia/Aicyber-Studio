@@ -28,7 +28,7 @@ export type NodeSetData = {
   nodeList?: AppNode[];
   inputMode?: 'cross' | 'sequence' | 'append'; // How to process upstream input nodes
   collectorMode?: 'collector' | 'normal'; // Whether to accumulate data across runs
-  outputMode?: 'loop' | 'direct'; // How to send data to downstream nodes
+  outputMode?: 'loop' | 'direct'; // How to send data to downstream nodes: 'loop' (individual - each media-set separate) or 'direct' (integrated - all flattened)
   programmaticallyAdded?: boolean;
 };
 

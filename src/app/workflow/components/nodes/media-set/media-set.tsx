@@ -30,20 +30,47 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
   const nodes = useStore((state) => state.nodes);
   const edges = useStore((state) => state.edges);
 
-  // Check if this node is connected to any action nodes
+  // Check if this MediaSet node is connected to any nodes that require integrated mode
+  // IMPORTANT: Only MediaSet (not image-set, video-set, text-set) has these restrictions
   // This will automatically update when connections change
-  const isConnectedToActionNode = useMemo(() => {
+  const connectionRestriction = useMemo(() => {
     const currentNode = nodes.find((n) => n.id === id);
 
-    if (!currentNode) return false;
+    if (!currentNode) return { isRestricted: false, reason: '' };
 
     const actionNodeTypes = ['text-to-image-node', 'image-to-image-node', 'image-to-text-node', 'edit-image-node'];
     const outgoingNodes = getOutgoers(currentNode, nodes, edges);
 
-    const connected = outgoingNodes.some((node) => actionNodeTypes.includes(node.type || ''));
+    // Check if connected to action nodes (always requires integrated for MediaSet)
+    const connectedToActionNode = outgoingNodes.some((node) => actionNodeTypes.includes(node.type || ''));
 
-    // Auto-switch to integrated mode when connected to action node
-    if (connected && data?.setOutputMode !== 'integrated') {
+    // Check if this MediaSet has MIXED media types (more than one type)
+    const mediaList = data?.media?.mediaList || [];
+    const mediaTypes = mediaList.length > 0 ? new Set(mediaList.map((item: any) => item.type)) : new Set();
+    const hasMixedTypes = mediaTypes.size > 1; // More than one type = mixed
+
+    // Check if connected to NodeSet with cross or sequence mode (only matters if mixed types)
+    const connectedToRestrictedNodeSet = hasMixedTypes && outgoingNodes.some((node) => {
+      if (node.type === 'node-set') {
+        const inputMode = (node.data as any)?.inputMode || 'sequence';
+        return inputMode === 'cross' || inputMode === 'sequence';
+      }
+      return false;
+    });
+
+    let isRestricted = false;
+    let reason = '';
+
+    if (connectedToActionNode) {
+      isRestricted = true;
+      reason = 'Connected to Action Node';
+    } else if (connectedToRestrictedNodeSet) {
+      isRestricted = true;
+      reason = 'Mixed media types + NodeSet (cross/sequence mode)';
+    }
+
+    // Auto-switch to integrated mode when restriction applies
+    if (isRestricted && data?.setOutputMode !== 'integrated') {
       setNodes((prevNodes) =>
         prevNodes.map((node) =>
           node.id === id
@@ -59,8 +86,8 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
       );
     }
 
-    return connected;
-  }, [id, nodes, edges, data?.setOutputMode, setNodes]);
+    return { isRestricted, reason };
+  }, [id, nodes, edges, data?.setOutputMode, data?.media?.mediaList, setNodes]);
 
   // 从 media.mediaList 获取所有媒体项
   const mediaList: MediaItem[] = data?.media?.mediaList || [];
@@ -267,20 +294,22 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
           <div className="nodrag flex-shrink-0">
             <div className="text-[10px] text-muted-foreground mb-1">
               Output Mode
-              {isConnectedToActionNode && (
-                <span className="ml-1 text-[9px] text-amber-600">(locked to integrated)</span>
+              {connectionRestriction.isRestricted && (
+                <span className="ml-1 text-[9px] text-amber-600">
+                  (locked: {connectionRestriction.reason})
+                </span>
               )}
             </div>
             <Select
               value={setOutputMode}
               onValueChange={handleSetOutputModeChange}
-              disabled={isConnectedToActionNode}
+              disabled={connectionRestriction.isRestricted}
             >
-              <SelectTrigger className="h-7 text-xs nodrag" disabled={isConnectedToActionNode}>
+              <SelectTrigger className="h-7 text-xs nodrag" disabled={connectionRestriction.isRestricted}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="nodrag">
-                <SelectItem value="individual" className="text-xs" disabled={isConnectedToActionNode}>
+                <SelectItem value="individual" className="text-xs" disabled={connectionRestriction.isRestricted}>
                   Individual
                 </SelectItem>
                 <SelectItem value="integrated" className="text-xs">Integrated</SelectItem>

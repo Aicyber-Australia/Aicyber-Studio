@@ -1,19 +1,25 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { useReactFlow } from '@xyflow/react';
+import { useReactFlow, getIncomers, useStore } from '@xyflow/react';
 import { WorkflowNodeProps, AppNode, NodeSetData } from '@/app/workflow/components/nodes';
 import { nodesConfig } from '../../config';
 import { NodeHandle } from './workflow-node/node-handle';
 import WorkflowNode from './workflow-node';
 import { Trash2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/components/toast-provider';
 
 function NodeSet({ id, data, selected }: WorkflowNodeProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   // 使用 ReactFlow 官方 API
   const { setNodes } = useReactFlow();
+  const { showToast } = useToast();
+
+  // Subscribe to ReactFlow store for real-time updates
+  const nodes = useStore((state) => state.nodes);
+  const edges = useStore((state) => state.edges);
 
   // 从 data.nodeList 获取所有节点
   const nodeList = (data as NodeSetData)?.nodeList || [];
@@ -97,6 +103,45 @@ function NodeSet({ id, data, selected }: WorkflowNodeProps) {
   // Handle input mode change (how to process upstream inputs)
   const handleInputModeChange = useCallback((value: string) => {
     if (!id) return;
+
+    const newInputMode = value as 'cross' | 'sequence' | 'append';
+
+    // If switching to cross or sequence, check incoming MediaSet connections
+    if (newInputMode === 'cross' || newInputMode === 'sequence') {
+      const currentNode = nodes.find((n) => n.id === id);
+      if (currentNode) {
+        const incomingNodes = getIncomers(currentNode, nodes, edges);
+        const problematicMediaSets: string[] = [];
+
+        incomingNodes.forEach((node) => {
+          if (node.type === 'media-set') {
+            const media = node.data?.media;
+            const setOutputMode = node.data?.setOutputMode || 'individual';
+
+            // Check if MediaSet has mixed media types
+            if (media?.mediaList && media.mediaList.length > 0) {
+              const mediaTypes = new Set(media.mediaList.map((item: any) => item.type));
+              const isMixedMediaSet = mediaTypes.size > 1;
+
+              // If mixed types and not integrated, this is problematic
+              if (isMixedMediaSet && setOutputMode !== 'integrated') {
+                problematicMediaSets.push(node.data?.title || node.id);
+              }
+            }
+          }
+        });
+
+        if (problematicMediaSets.length > 0) {
+          showToast({
+            title: 'Input Mode Change Restricted',
+            description: `Cannot switch to ${newInputMode} mode: Connected MediaSet nodes with mixed media types must be in "Integrated" output mode. Affected nodes: ${problematicMediaSets.join(', ')}`,
+            variant: 'error',
+          });
+          return; // Don't change the mode
+        }
+      }
+    }
+
     setNodes((nodes) =>
       nodes.map((n) =>
         n.id === id
@@ -104,13 +149,13 @@ function NodeSet({ id, data, selected }: WorkflowNodeProps) {
               ...n,
               data: {
                 ...n.data,
-                inputMode: value as 'cross' | 'sequence' | 'append',
+                inputMode: newInputMode,
               },
             }
           : n
       )
     );
-  }, [id, setNodes]);
+  }, [id, setNodes, nodes, edges, showToast]);
 
   // Handle collector mode change
   const handleCollectorModeChange = useCallback((value: string) => {
@@ -192,11 +237,13 @@ function NodeSet({ id, data, selected }: WorkflowNodeProps) {
                 <div className="text-[10px] text-muted-foreground mb-1">Output</div>
                 <Select value={outputMode} onValueChange={handleOutputModeChange}>
                   <SelectTrigger className="h-7 text-xs nodrag">
-                    <SelectValue />
+                    <SelectValue>
+                      {outputMode === 'loop' ? 'Individual' : 'Integrated'}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="nodrag">
-                    <SelectItem value="loop" className="text-xs">Loop</SelectItem>
-                    <SelectItem value="direct" className="text-xs">Direct</SelectItem>
+                    <SelectItem value="loop" className="text-xs">Individual</SelectItem>
+                    <SelectItem value="direct" className="text-xs">Integrated</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

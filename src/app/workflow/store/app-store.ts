@@ -208,33 +208,39 @@ export function createAppStore(
 
         if (!sourceNode || !targetNode) return;
 
-        // Restriction 1: NodeSet cannot be attached to NodeSet
-        if (sourceNode.type === 'node-set' && targetNode.type === 'node-set') {
-          console.warn('❌ Connection rejected: NodeSet cannot connect to NodeSet');
-          onReject?.('NodeSet nodes cannot connect to each other');
-          return;
-        }
-
-        // Restriction 2: MediaSet can only connect to NodeSet in integrated mode
+        // Validation: ONLY MediaSet (not image-set, video-set, text-set) with MIXED media types
+        // can only connect to NodeSet in cross/sequence mode if integrated
         if (sourceNode.type === 'media-set' && targetNode.type === 'node-set') {
-          const setOutputMode = sourceNode.data?.setOutputMode || 'individual';
-          if (setOutputMode !== 'integrated') {
-            console.warn('❌ Connection rejected: MediaSet must be in integrated mode to connect to NodeSet');
-            onReject?.('MediaSet must be in "Integrated" output mode to connect to NodeSet');
-            return;
+          const media = sourceNode.data?.media;
+          const setOutputMode = sourceNode.data?.setOutputMode || 'integrated'; // media-set defaults to integrated
+          const targetInputMode = (targetNode.data as any)?.inputMode || 'sequence';
+
+          // ONLY check if MediaSet has MIXED media types (more than one type)
+          if (media?.mediaList && media.mediaList.length > 0) {
+            const mediaTypes = new Set(media.mediaList.map((item: any) => item.type));
+            const isMixedMediaSet = mediaTypes.size > 1; // More than one type = mixed
+
+            // ONLY if mixed types AND connecting to NodeSet with cross/sequence mode AND not integrated -> reject
+            if (isMixedMediaSet && (targetInputMode === 'cross' || targetInputMode === 'sequence') && setOutputMode !== 'integrated') {
+              console.warn('❌ Connection rejected: MediaSet with mixed media types must be in integrated mode to connect to NodeSet with cross/sequence mode');
+              onReject?.('MediaSet with mixed media types (e.g., images + videos) must be in "Integrated" output mode when connecting to NodeSet in Cross or Sequence mode for type safety');
+              return;
+            }
           }
         }
 
-        // Restriction 3: MediaSet can only connect to Action Nodes in integrated mode
+        // Validation: MediaSet (not other set types) can only connect to Action Nodes in integrated mode
         const actionNodeTypes = ['text-to-image-node', 'image-to-image-node', 'image-to-text-node', 'edit-image-node'];
         if (sourceNode.type === 'media-set' && actionNodeTypes.includes(targetNode.type)) {
-          const setOutputMode = sourceNode.data?.setOutputMode || 'individual';
+          const setOutputMode = sourceNode.data?.setOutputMode || 'integrated'; // media-set defaults to integrated
           if (setOutputMode !== 'integrated') {
             console.warn('❌ Connection rejected: MediaSet must be in integrated mode to connect to Action Node');
             onReject?.('MediaSet must be in "Integrated" output mode to connect to Action Nodes');
             return;
           }
         }
+
+        // Image-set, video-set, text-set can connect with any output mode - no restrictions!
 
         // Auto-assign image from image-frame to edit-image-node
         if (sourceNode.type === 'image-frame' && targetNode.type === 'edit-image-node') {

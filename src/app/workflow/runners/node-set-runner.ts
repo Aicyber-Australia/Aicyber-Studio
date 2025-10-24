@@ -96,12 +96,51 @@ const validateMediaTypeConsistency = (nodeList: AppNode[]): { isValid: boolean; 
   return { isValid: true };
 };
 
+/**
+ * NodeSet Runner
+ *
+ * Handles connections between NodeSets and other media nodes.
+ *
+ * Key Concepts:
+ * 1. NodeSet outputMode (how NodeSet sends data to downstream):
+ *    - 'loop' (individual): Each media-set in nodeList treated separately
+ *    - 'direct' (integrated): All media-sets flattened into one combined set
+ *
+ * 2. Media Set setOutputMode (how image-set, video-set, text-set, media-set output):
+ *    - 'individual': Each media item becomes separate output
+ *    - 'integrated': All media items combined into one unit
+ *
+ * 3. NodeSet inputMode (how NodeSet processes upstream inputs):
+ *    - 'sequence': Pairs inputs by index (a1+b1, a2+b2, ...)
+ *    - 'cross': Creates Cartesian product (a1+b1, a1+b2, a2+b1, a2+b2, ...)
+ *    - 'append': Simply concatenates inputs as separate media-sets
+ *
+ * Connection Scenarios:
+ *
+ * Example 1: Two NodeSets connecting to another NodeSet
+ * - NodeSet A [a1, a2] with outputMode='loop' (individual)
+ * - NodeSet B [b1, b2] with outputMode='loop' (individual)
+ * - NodeSet C with inputMode='sequence'
+ * - Result: C = {[a1].append(b1), [a2].append(b2)}
+ *
+ * Example 2: NodeSet and Image Set connecting
+ * - NodeSet A [a1, a2] with outputMode='loop' (individual)
+ * - Image Set B [b1, b2] with setOutputMode='individual'
+ * - NodeSet C with inputMode='cross'
+ * - Result: C = {[a1].append(b1), [a1].append(b2), [a2].append(b1), [a2].append(b2)}
+ *
+ * Special Rules:
+ * - MediaSet nodes with mixed media types MUST use 'integrated' mode when connecting
+ *   to NodeSet in cross/sequence modes (for type safety)
+ * - Sequence mode requires all inputs to have same length
+ * - Cross mode requires at least 2 inputs
+ */
 export const NodeSetNodeRunner: NodeRunner = {
   nodeType: 'node-set',
 
   canRun: (node: any) => node?.type === 'node-set',
 
-  validate: (node: any, inputDataList: any[], setNodes?: any) => {
+  validate: (node: any, inputDataList: any[]) => {
 
     // Validate media type consistency in existing nodeList
     const nodeData = node?.data as NodeSetData;
@@ -123,9 +162,46 @@ export const NodeSetNodeRunner: NodeRunner = {
       };
     }
 
-    // Sequence mode requires all inputs to have the same length (considering integrated mode)
+    // Special validation: MediaSet nodes in cross/sequence mode must be integrated
+    if ((inputMode === 'cross' || inputMode === 'sequence') && inputDataList.length > 0) {
+      for (let i = 0; i < inputDataList.length; i++) {
+        const inputData = inputDataList[i];
+        const media = inputData.media || {};
+
+        // Check if this is a media-set node (has mixed media types)
+        const hasMediaList = media.mediaList && media.mediaList.length > 0;
+        if (hasMediaList) {
+          const mediaTypes = new Set(media.mediaList.map((item: any) => item.type));
+          const isMixedMediaSet = mediaTypes.size > 1;
+
+          // If it's a mixed media-set and not integrated, require integrated mode
+          if (isMixedMediaSet && inputData.setOutputMode !== 'integrated') {
+            return {
+              isValid: false,
+              error: `Input ${i + 1}: MediaSet nodes with mixed media types must use 'integrated' output mode when connecting to NodeSet in ${inputMode} mode for type safety`
+            };
+          }
+        }
+      }
+    }
+
+    // Sequence mode requires all inputs to have the same length (considering integrated mode and NodeSet outputMode)
     if (inputMode === 'sequence' && inputDataList.length > 1) {
       const inputLengths = inputDataList.map(inputData => {
+        // Handle NodeSet inputs
+        if (inputData.nodeList && Array.isArray(inputData.nodeList)) {
+          const outputMode = inputData.outputMode || 'loop';
+
+          // If NodeSet is in 'direct' (integrated) mode, it counts as 1 item
+          if (outputMode === 'direct') {
+            return 1;
+          }
+
+          // If NodeSet is in 'loop' (individual) mode, count each media-set
+          return inputData.nodeList.length;
+        }
+
+        // Handle regular media set inputs
         const setOutputMode = inputData.setOutputMode || 'individual';
 
         // If integrated mode, this counts as 1 item
@@ -192,8 +268,51 @@ export const NodeSetNodeRunner: NodeRunner = {
     if (inputMode === 'cross') {
       console.log('🔄 NodeSet Runner - Processing in CROSS mode...');
 
-      // Extract individual media items from each input node, respecting setOutputMode
+      // Extract individual media items from each input node, respecting setOutputMode and NodeSet outputMode
       const inputMediaArrays = inputDataList.map((inputData, inputIndex) => {
+        console.log(`🔄 NodeSet Runner - Processing input ${inputIndex}:`, inputData.nodeList ? 'NodeSet' : 'Regular Node');
+
+        // Handle NodeSet inputs
+        if (inputData.nodeList && Array.isArray(inputData.nodeList)) {
+          const outputMode = inputData.outputMode || 'loop';
+          console.log(`🔄 NodeSet Runner - Input ${inputIndex} is NodeSet with outputMode:`, outputMode);
+
+          // If NodeSet is in 'direct' (integrated) mode, treat entire NodeSet as one item
+          if (outputMode === 'direct') {
+            // Flatten all media from nodeList into one integrated item
+            const allMedia: any = {
+              imageList: [],
+              videoList: [],
+              textList: [],
+              mediaList: []
+            };
+
+            inputData.nodeList.forEach((node: any) => {
+              const nodeMedia = node.data?.media || {};
+              if (nodeMedia.mediaList) {
+                allMedia.mediaList.push(...nodeMedia.mediaList);
+              }
+              if (nodeMedia.imageList) allMedia.imageList.push(...nodeMedia.imageList);
+              if (nodeMedia.videoList) allMedia.videoList.push(...nodeMedia.videoList);
+              if (nodeMedia.textList) allMedia.textList.push(...nodeMedia.textList);
+            });
+
+            return [{
+              type: 'integrated',
+              media: allMedia,
+              isIntegrated: true
+            }];
+          }
+
+          // If NodeSet is in 'loop' (individual) mode, treat each media-set separately
+          return inputData.nodeList.map((node: any) => ({
+            type: 'integrated',
+            media: node.data?.media || {},
+            isIntegrated: true
+          }));
+        }
+
+        // Handle regular media set inputs
         const media = inputData.media || {};
         const setOutputMode = inputData.setOutputMode || 'individual';
 
@@ -330,8 +449,51 @@ export const NodeSetNodeRunner: NodeRunner = {
       console.log('🔄 NodeSet Runner - Processing in SEQUENCE mode...');
 
       // Sequence mode: pair inputs sequentially (a1+b1, a2+b2, ...)
-      // Respect setOutputMode when extracting media
+      // Respect setOutputMode and NodeSet outputMode when extracting media
       const sequenceMediaArrays = inputDataList.map((inputData, inputIndex) => {
+        console.log(`🔄 NodeSet Runner - Processing sequence input ${inputIndex}:`, inputData.nodeList ? 'NodeSet' : 'Regular Node');
+
+        // Handle NodeSet inputs
+        if (inputData.nodeList && Array.isArray(inputData.nodeList)) {
+          const outputMode = inputData.outputMode || 'loop';
+          console.log(`🔄 NodeSet Runner - Sequence Input ${inputIndex} is NodeSet with outputMode:`, outputMode);
+
+          // If NodeSet is in 'direct' (integrated) mode, treat entire NodeSet as one item
+          if (outputMode === 'direct') {
+            // Flatten all media from nodeList into one integrated item
+            const allMedia: any = {
+              imageList: [],
+              videoList: [],
+              textList: [],
+              mediaList: []
+            };
+
+            inputData.nodeList.forEach((node: any) => {
+              const nodeMedia = node.data?.media || {};
+              if (nodeMedia.mediaList) {
+                allMedia.mediaList.push(...nodeMedia.mediaList);
+              }
+              if (nodeMedia.imageList) allMedia.imageList.push(...nodeMedia.imageList);
+              if (nodeMedia.videoList) allMedia.videoList.push(...nodeMedia.videoList);
+              if (nodeMedia.textList) allMedia.textList.push(...nodeMedia.textList);
+            });
+
+            return [{
+              type: 'integrated' as const,
+              media: allMedia,
+              isIntegrated: true
+            }];
+          }
+
+          // If NodeSet is in 'loop' (individual) mode, treat each media-set separately
+          return inputData.nodeList.map((node: any) => ({
+            type: 'integrated' as const,
+            media: node.data?.media || {},
+            isIntegrated: true
+          }));
+        }
+
+        // Handle regular media set inputs
         const media = inputData.media || {};
         const setOutputMode = inputData.setOutputMode || 'individual';
 
@@ -453,31 +615,160 @@ export const NodeSetNodeRunner: NodeRunner = {
     else if (inputMode === 'append') {
       console.log('🔄 NodeSet Runner - Processing in APPEND mode...');
 
-      // Simply append each input as a separate media-set node, but ensure unified format
-      const appendProcessedNodes = inputDataList.map((inputData, index) => {
-        const media = inputData.media || {};
+      // Append mode: Respect setOutputMode for each input
+      const appendProcessedNodes: AppNode[] = [];
 
-        // Check if already in unified format
-        let unifiedMediaList;
-        if (media.mediaList) {
-          unifiedMediaList = media.mediaList;
-        } else {
-          // Convert to unified format
-          unifiedMediaList = convertToUnifiedMediaList(media);
+      inputDataList.forEach((inputData, inputIndex) => {
+        console.log(`🔄 NodeSet Runner - Processing append input ${inputIndex}:`, inputData.nodeList ? 'NodeSet' : 'Regular Node');
+
+        // Handle NodeSet inputs
+        if (inputData.nodeList && Array.isArray(inputData.nodeList)) {
+          const outputMode = inputData.outputMode || 'loop';
+          console.log(`🔄 NodeSet Runner - Append Input ${inputIndex} is NodeSet with outputMode:`, outputMode);
+
+          if (outputMode === 'direct') {
+            // Flatten all media from nodeList into one media-set
+            const allMedia: any = {
+              imageList: [],
+              videoList: [],
+              textList: [],
+              mediaList: []
+            };
+
+            inputData.nodeList.forEach((node: any) => {
+              const nodeMedia = node.data?.media || {};
+              if (nodeMedia.mediaList) {
+                allMedia.mediaList.push(...nodeMedia.mediaList);
+              }
+              if (nodeMedia.imageList) allMedia.imageList.push(...nodeMedia.imageList);
+              if (nodeMedia.videoList) allMedia.videoList.push(...nodeMedia.videoList);
+              if (nodeMedia.textList) allMedia.textList.push(...nodeMedia.textList);
+            });
+
+            const unifiedMediaList = allMedia.mediaList.length > 0
+              ? allMedia.mediaList
+              : convertToUnifiedMediaList(allMedia);
+
+            appendProcessedNodes.push({
+              id: `append-node-${Date.now()}-${inputIndex}-${Math.random().toString(36).substr(2, 9)}`,
+              type: "media-set" as const,
+              data: {
+                media: { mediaList: unifiedMediaList },
+                title: `Media-Set (NodeSet direct)`,
+                status: 'initial' as const,
+                timestamp: Date.now()
+              },
+              position: { x: 0, y: 0 }
+            } as AppNode);
+          } else {
+            // Loop mode: Add each media-set separately
+            inputData.nodeList.forEach((node: any, nodeIdx: number) => {
+              const nodeMedia = node.data?.media || {};
+              const unifiedMediaList = nodeMedia.mediaList || convertToUnifiedMediaList(nodeMedia);
+
+              appendProcessedNodes.push({
+                id: `append-node-${Date.now()}-${inputIndex}-${nodeIdx}-${Math.random().toString(36).substr(2, 9)}`,
+                type: "media-set" as const,
+                data: {
+                  media: { mediaList: unifiedMediaList },
+                  title: node.data?.title || `Media-Set ${nodeIdx + 1}`,
+                  status: 'initial' as const,
+                  timestamp: Date.now()
+                },
+                position: { x: 0, y: 0 }
+              } as AppNode);
+            });
+          }
+          return; // Done with this NodeSet input
         }
 
-        return {
-          id: `append-node-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
-          type: "media-set" as const,
-          data: {
-            ...inputData,
-            media: {
-              mediaList: unifiedMediaList
+        // Handle regular media set inputs
+        const media = inputData.media || {};
+        const setOutputMode = inputData.setOutputMode || 'individual';
+
+        console.log(`🔄 NodeSet Runner - Append Input ${inputIndex} setOutputMode:`, setOutputMode);
+
+        // If integrated mode, add all media as one media-set
+        if (setOutputMode === 'integrated') {
+          let unifiedMediaList;
+          if (media.mediaList) {
+            unifiedMediaList = media.mediaList;
+          } else {
+            unifiedMediaList = convertToUnifiedMediaList(media);
+          }
+
+          appendProcessedNodes.push({
+            id: `append-node-${Date.now()}-${inputIndex}-${Math.random().toString(36).substr(2, 9)}`,
+            type: "media-set" as const,
+            data: {
+              ...inputData,
+              media: { mediaList: unifiedMediaList },
+              timestamp: Date.now()
             },
-            timestamp: Date.now()
-          },
-          position: { x: 0, y: 0 }
-        } as AppNode;
+            position: { x: 0, y: 0 }
+          } as AppNode);
+        } else {
+          // Individual mode: Split each media item into separate media-sets
+          const allMediaItems: any[] = [];
+
+          // Collect all media items
+          if (media.mediaList) {
+            allMediaItems.push(...media.mediaList.map((item: any) => ({ type: item.type, data: item })));
+          } else {
+            if (media.imageList) {
+              allMediaItems.push(...media.imageList.map((img: any) => ({ type: 'image', data: img })));
+            }
+            if (media.videoList) {
+              allMediaItems.push(...media.videoList.map((vid: any) => ({ type: 'video', data: vid })));
+            }
+            if (media.textList) {
+              allMediaItems.push(...media.textList.map((txt: any) => ({ type: 'text', data: txt })));
+            }
+          }
+
+          // Create a separate media-set for each individual item
+          allMediaItems.forEach((item, itemIdx) => {
+            const singleItemMedia: any = {};
+
+            if (item.type === 'image') {
+              singleItemMedia.mediaList = [{
+                id: item.data.id || `media-${Date.now()}-${Math.random()}`,
+                type: 'image',
+                url: item.data.url,
+                fileName: item.data.fileName,
+                timestamp: item.data.timestamp || Date.now()
+              }];
+            } else if (item.type === 'video') {
+              singleItemMedia.mediaList = [{
+                id: item.data.id || `media-${Date.now()}-${Math.random()}`,
+                type: 'video',
+                url: item.data.url,
+                fileName: item.data.fileName,
+                timestamp: item.data.timestamp || Date.now()
+              }];
+            } else if (item.type === 'text') {
+              singleItemMedia.mediaList = [{
+                id: `media-${Date.now()}-${Math.random()}`,
+                type: 'text',
+                content: typeof item.data === 'string' ? item.data : item.data.content,
+                fileName: `text-${itemIdx + 1}.txt`,
+                timestamp: Date.now()
+              }];
+            }
+
+            appendProcessedNodes.push({
+              id: `append-node-${Date.now()}-${inputIndex}-${itemIdx}-${Math.random().toString(36).substr(2, 9)}`,
+              type: "media-set" as const,
+              data: {
+                media: singleItemMedia,
+                title: `Media-Set ${itemIdx + 1}`,
+                status: 'initial' as const,
+                timestamp: Date.now()
+              },
+              position: { x: 0, y: 0 }
+            } as AppNode);
+          });
+        }
       });
 
       updatedNodeList = [...updatedNodeList, ...appendProcessedNodes];

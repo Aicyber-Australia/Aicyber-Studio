@@ -264,6 +264,55 @@ export default function Workflow() {
     };
   }, [reactFlowStore, getInternalNode]);
 
+  // Validate connection before allowing it
+  const isValidConnection = useCallback((connection: any) => {
+    const sourceNode = store.getNodes().find(n => n.id === connection.source);
+    const targetNode = store.getNodes().find(n => n.id === connection.target);
+
+    if (!sourceNode || !targetNode) return false;
+
+    // Validation: ONLY MediaSet (not image-set, video-set, text-set) with mixed media types
+    // connecting to NodeSet in cross/sequence mode requires integrated mode
+    if (sourceNode.type === 'media-set' && targetNode.type === 'node-set') {
+      const media = sourceNode.data?.media;
+      const setOutputMode = sourceNode.data?.setOutputMode || 'integrated'; // media-set defaults to integrated
+      const targetInputMode = (targetNode.data as any)?.inputMode || 'sequence';
+
+      // ONLY check if MediaSet has MIXED media types (multiple types)
+      if (media?.mediaList && media.mediaList.length > 0) {
+        const mediaTypes = new Set(media.mediaList.map((item: any) => item.type));
+        const isMixedMediaSet = mediaTypes.size > 1; // More than one type = mixed
+
+        // ONLY if mixed types AND cross/sequence mode AND not integrated -> reject
+        if (isMixedMediaSet && (targetInputMode === 'cross' || targetInputMode === 'sequence') && setOutputMode !== 'integrated') {
+          showToast({
+            title: 'Connection Not Allowed',
+            description: 'MediaSet with mixed media types (e.g., images + videos) must be in "Integrated" output mode when connecting to NodeSet in Cross or Sequence mode for type safety',
+            variant: 'error',
+          });
+          return false;
+        }
+      }
+    }
+
+    // Validation: MediaSet (not other set types) can only connect to Action Nodes in integrated mode
+    const actionNodeTypes = ['text-to-image-node', 'image-to-image-node', 'image-to-text-node', 'edit-image-node'];
+    if (sourceNode.type === 'media-set' && actionNodeTypes.includes(targetNode.type)) {
+      const setOutputMode = sourceNode.data?.setOutputMode || 'integrated'; // media-set defaults to integrated
+      if (setOutputMode !== 'integrated') {
+        showToast({
+          title: 'Connection Not Allowed',
+          description: 'MediaSet must be in "Integrated" output mode to connect to Action Nodes',
+          variant: 'error',
+        });
+        return false;
+      }
+    }
+
+    // Image-set, video-set, text-set can connect with any output mode - no restrictions!
+    return true;
+  }, [store, showToast]);
+
   // Wrap event handlers with takeSnapshot for undo/redo
   const handleConnect: OnConnect = useCallback(
     (connection) => {
@@ -372,6 +421,7 @@ export default function Workflow() {
         onNodesChange={store.onNodesChange}
         onEdgesChange={store.onEdgesChange}
         onConnect={handleConnect}
+        isValidConnection={isValidConnection}
         connectionLineType={ConnectionLineType.SmoothStep}
         nodeTypes={nodeTypes}
         onDragOver={onDragOver}
