@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useState, useMemo } from 'react';
-import { Play, Trash, RotateCcw, CheckCircle2, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Play, Trash, RotateCcw, CheckCircle2, XCircle, ChevronDown, ChevronUp, Download } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -11,10 +11,11 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { WorkflowNodeData, ApiExecutionError } from '@/app/workflow/components/nodes';
+import { WorkflowNodeData, ApiExecutionError, createNodeByType } from '@/app/workflow/components/nodes';
 import { useWorkflowRunner } from '@/app/workflow/hooks/use-workflow-runner';
 import { useAppStore } from '@/app/workflow/store';
 import { useReactFlow, NodeResizer, getIncomers, useStore } from '@xyflow/react';
+import { canExtractMedia, extractMediaFromActionNode } from '@/app/workflow/utils/media-extraction';
 import {
   BaseNode,
   BaseNodeHeader,
@@ -41,7 +42,8 @@ interface ActionNodeBaseProps {
 function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeBaseProps) {
   const { runWorkflow } = useWorkflowRunner();
   const removeNode = useAppStore((s) => s.removeNode);
-  const { setNodes } = useReactFlow();
+  const addNode = useAppStore((s) => s.addNode);
+  const { setNodes, getNode } = useReactFlow();
 
   const [selectedModel, setSelectedModel] = useState<string>(data?.selectedModel || 'default');
   const [setOutputMode, setSetOutputMode] = useState<'individual' | 'integrated'>(data?.setOutputMode || 'individual');
@@ -162,6 +164,48 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
     return 'error' in response;
   };
 
+  // Handler to extract media and create a new media-set node
+  const handleExtractMedia = useCallback(() => {
+    const extractedData = extractMediaFromActionNode(data);
+
+    if (!extractedData) {
+      console.warn('No media data to extract from action node');
+      return;
+    }
+
+    // Get current node position
+    const currentNode = getNode(id);
+    if (!currentNode) {
+      console.warn('Current node not found');
+      return;
+    }
+
+    // Create a new media-set node positioned to the right of the action node
+    const newNodePosition = {
+      x: currentNode.position.x + (currentNode.width || ACTION_NODE_SIZE.width) + 100,
+      y: currentNode.position.y
+    };
+
+    const newMediaSetNode = createNodeByType({
+      type: 'media-set',
+      position: newNodePosition,
+      data: {
+        title: `Extracted Media (${extractedData.mediaList.length})`,
+        status: 'success',
+        media: extractedData,
+        setOutputMode: 'integrated'
+      }
+    });
+
+    // Add the new node
+    addNode(newMediaSetNode);
+
+    console.log(`Created new media-set node with ${extractedData.mediaList.length} items`, newMediaSetNode);
+  }, [data, id, getNode, addNode]);
+
+  // Check if extraction is available
+  const canExtract = canExtractMedia(data);
+
   return (
     <NodeStatusIndicator status={data?.status}>
       <NodeResizer
@@ -200,6 +244,15 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
                 <RotateCcw className="w-4 h-4" />
               </Button>
             )}
+            <Button
+              variant="ghost"
+              className="nodrag px-1!"
+              onClick={handleExtractMedia}
+              disabled={!canExtract}
+              title={canExtract ? "Extract media to new node" : "Complete execution to extract media"}
+            >
+              <Download className={`w-4 h-4 ${canExtract ? 'text-green-500' : 'text-gray-400'}`} />
+            </Button>
             <Button
               variant="ghost"
               className="nodrag px-1!"
