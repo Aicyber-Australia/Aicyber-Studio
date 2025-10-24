@@ -31,6 +31,8 @@ export type NodeSetData = {
   outputMode?: 'loop' | 'direct'; // How to send data to downstream nodes: 'loop' (individual - each media-set separate) or 'direct' (integrated - all flattened)
   executionMode?: 'concurrent' | 'progressive'; // How action nodes process multiple inputs: 'concurrent' (all at once) or 'progressive' (one-by-one with downstream execution)
   programmaticallyAdded?: boolean;
+  // Track which media items from each source node have been processed (for progressive mode deduplication)
+  processedMediaIds?: Record<string, string[]>; // sourceNodeId -> array of processed media IDs
 };
 
 
@@ -90,6 +92,8 @@ export type WorkflowNodeData = {
     errorCount: number;
     lastExecutionTime?: number;
   };
+  // Track which media items from each source node have been processed (for progressive mode deduplication)
+  processedMediaIds?: Record<string, string[]>; // sourceNodeId -> array of processed media IDs
 };
 
 export type WorkflowNodeProps = NodeProps<Node<WorkflowNodeData>> & {

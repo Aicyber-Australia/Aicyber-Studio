@@ -42,13 +42,182 @@ export function useWorkflowRunner() {
         data: { ...node.data, status: 'initial' },
       })),
     );
-    
+
     // 也更新 ReactFlow 的状态
     setReactFlowNodes(nodes => nodes.map(node => ({
       ...node,
       data: { ...node.data, status: 'initial' }
     })));
   }, [getNodes, setNodes, setReactFlowNodes]);
+
+  // Clear downstream nodes (media, status, processedMediaIds) while preserving mode selections
+  const clearDownstreamNodes = useCallback((startNodeId: string) => {
+    const edges = getReactFlowEdges();
+    const downstreamNodeIds = new Set<string>();
+
+    // Recursively collect all downstream node IDs
+    const collectDownstream = (nodeId: string) => {
+      const outgoing = edges.filter(e => e.source === nodeId);
+      outgoing.forEach(edge => {
+        if (!downstreamNodeIds.has(edge.target)) {
+          downstreamNodeIds.add(edge.target);
+          collectDownstream(edge.target);
+        }
+      });
+    };
+
+    collectDownstream(startNodeId);
+
+    console.log(`🔄 Clearing ${downstreamNodeIds.size} downstream nodes from ${startNodeId}`);
+
+    // Clear data for downstream nodes
+    setReactFlowNodes(nodes => nodes.map(node => {
+      if (downstreamNodeIds.has(node.id)) {
+        const nodeData = node.data as any;
+        // Build cleared data, preserving only mode selections
+        const clearedData: any = {
+          ...node.data,
+          status: 'initial',
+          media: undefined,
+          apiResponses: undefined,
+          executionMetadata: undefined,
+          processedMediaIds: undefined,
+          fileName: undefined,
+          timestamp: undefined,
+        };
+
+        // Preserve mode selections if they exist
+        if (nodeData.selectedModel !== undefined) clearedData.selectedModel = nodeData.selectedModel;
+        if (nodeData.executionMode !== undefined) clearedData.executionMode = nodeData.executionMode;
+        if (nodeData.setOutputMode !== undefined) clearedData.setOutputMode = nodeData.setOutputMode;
+        if (nodeData.prompt !== undefined) clearedData.prompt = nodeData.prompt;
+        if (nodeData.inputMode !== undefined) clearedData.inputMode = nodeData.inputMode;
+        if (nodeData.collectorMode !== undefined) clearedData.collectorMode = nodeData.collectorMode;
+        if (nodeData.outputMode !== undefined) clearedData.outputMode = nodeData.outputMode;
+        if (nodeData.nodeList !== undefined) clearedData.nodeList = [];
+
+        return {
+          ...node,
+          data: clearedData
+        };
+      }
+      return node;
+    }));
+
+    // Also update Zustand store
+    setNodes(
+      getNodes().map((node) => {
+        if (downstreamNodeIds.has(node.id)) {
+          const nodeData = node.data as any;
+          // Build cleared data, preserving only mode selections
+          const clearedData: any = {
+            ...node.data,
+            status: 'initial',
+            media: undefined,
+            apiResponses: undefined,
+            executionMetadata: undefined,
+            processedMediaIds: undefined,
+            fileName: undefined,
+            timestamp: undefined,
+          };
+
+          // Preserve mode selections if they exist
+          if (nodeData.selectedModel !== undefined) clearedData.selectedModel = nodeData.selectedModel;
+          if (nodeData.executionMode !== undefined) clearedData.executionMode = nodeData.executionMode;
+          if (nodeData.setOutputMode !== undefined) clearedData.setOutputMode = nodeData.setOutputMode;
+          if (nodeData.prompt !== undefined) clearedData.prompt = nodeData.prompt;
+          if (nodeData.inputMode !== undefined) clearedData.inputMode = nodeData.inputMode;
+          if (nodeData.collectorMode !== undefined) clearedData.collectorMode = nodeData.collectorMode;
+          if (nodeData.outputMode !== undefined) clearedData.outputMode = nodeData.outputMode;
+          if (nodeData.nodeList !== undefined) clearedData.nodeList = [];
+
+          return {
+            ...node,
+            data: clearedData
+          } as AppNode;
+        }
+        return node;
+      })
+    );
+  }, [getNodes, setNodes, getReactFlowEdges, setReactFlowNodes]);
+
+  // Clear all non-initial nodes (nodes that have incoming edges)
+  const clearAllDownstreamNodes = useCallback(() => {
+    const edges = getReactFlowEdges();
+    const nodesWithInputs = new Set(edges.map(e => e.target));
+
+    console.log(`🔄 Clearing all ${nodesWithInputs.size} downstream nodes`);
+
+    // Clear data for nodes with incoming edges
+    setReactFlowNodes(nodes => nodes.map(node => {
+      if (nodesWithInputs.has(node.id)) {
+        const nodeData = node.data as any;
+        // Build cleared data, preserving only mode selections
+        const clearedData: any = {
+          ...node.data,
+          status: 'initial',
+          media: undefined,
+          apiResponses: undefined,
+          executionMetadata: undefined,
+          processedMediaIds: undefined,
+          fileName: undefined,
+          timestamp: undefined,
+        };
+
+        // Preserve mode selections if they exist
+        if (nodeData.selectedModel !== undefined) clearedData.selectedModel = nodeData.selectedModel;
+        if (nodeData.executionMode !== undefined) clearedData.executionMode = nodeData.executionMode;
+        if (nodeData.setOutputMode !== undefined) clearedData.setOutputMode = nodeData.setOutputMode;
+        if (nodeData.prompt !== undefined) clearedData.prompt = nodeData.prompt;
+        if (nodeData.inputMode !== undefined) clearedData.inputMode = nodeData.inputMode;
+        if (nodeData.collectorMode !== undefined) clearedData.collectorMode = nodeData.collectorMode;
+        if (nodeData.outputMode !== undefined) clearedData.outputMode = nodeData.outputMode;
+        if (nodeData.nodeList !== undefined) clearedData.nodeList = [];
+
+        return {
+          ...node,
+          data: clearedData
+        };
+      }
+      return node;
+    }));
+
+    // Also update Zustand store
+    setNodes(
+      getNodes().map((node) => {
+        if (nodesWithInputs.has(node.id)) {
+          const nodeData = node.data as any;
+          // Build cleared data, preserving only mode selections
+          const clearedData: any = {
+            ...node.data,
+            status: 'initial',
+            media: undefined,
+            apiResponses: undefined,
+            executionMetadata: undefined,
+            processedMediaIds: undefined,
+            fileName: undefined,
+            timestamp: undefined,
+          };
+
+          // Preserve mode selections if they exist
+          if (nodeData.selectedModel !== undefined) clearedData.selectedModel = nodeData.selectedModel;
+          if (nodeData.executionMode !== undefined) clearedData.executionMode = nodeData.executionMode;
+          if (nodeData.setOutputMode !== undefined) clearedData.setOutputMode = nodeData.setOutputMode;
+          if (nodeData.prompt !== undefined) clearedData.prompt = nodeData.prompt;
+          if (nodeData.inputMode !== undefined) clearedData.inputMode = nodeData.inputMode;
+          if (nodeData.collectorMode !== undefined) clearedData.collectorMode = nodeData.collectorMode;
+          if (nodeData.outputMode !== undefined) clearedData.outputMode = nodeData.outputMode;
+          if (nodeData.nodeList !== undefined) clearedData.nodeList = [];
+
+          return {
+            ...node,
+            data: clearedData
+          } as AppNode;
+        }
+        return node;
+      })
+    );
+  }, [getNodes, setNodes, getReactFlowEdges, setReactFlowNodes]);
 
   const updateNodeStatus = useCallback(
     (nodeId: string, status: string) => {
@@ -73,7 +242,7 @@ export function useWorkflowRunner() {
 
   // 数据收集函数
   const collectInputData = useCallback(
-    (node: AppNode) => {
+    (node: AppNode, filterProcessed: boolean = false) => {
       const inputEdges = getReactFlowEdges().filter(edge => edge.target === node.id);
       console.log(`Input edges for ${node.id}:`, inputEdges);
 
@@ -81,8 +250,38 @@ export function useWorkflowRunner() {
       for (const edge of inputEdges) {
         const sourceNode = getNode(edge.source);
         if (sourceNode?.data) {
-          inputDataList.push(sourceNode.data);
-          console.log(`Node ${node.id} received data from ${edge.source}:`, sourceNode.data);
+          let nodeData: any = sourceNode.data;
+
+          // In progressive mode, filter out already-processed media items
+          if (filterProcessed && nodeData.media?.mediaList && Array.isArray(nodeData.media.mediaList)) {
+            // Get the set of already-processed media IDs for this source
+            const currentNodeData = node.data as any;
+            const processedIds = new Set(
+              (currentNodeData.processedMediaIds?.[edge.source] || []) as string[]
+            );
+
+            // Filter out processed media items
+            const unprocessedMediaList = nodeData.media.mediaList.filter(
+              (mediaItem: any) => !processedIds.has(mediaItem.url || mediaItem.id || JSON.stringify(mediaItem))
+            );
+
+            if (unprocessedMediaList.length > 0) {
+              nodeData = {
+                ...nodeData,
+                media: {
+                  ...nodeData.media,
+                  mediaList: unprocessedMediaList
+                }
+              };
+              console.log(`Node ${node.id} filtered data from ${edge.source}: ${nodeData.media.mediaList.length} -> ${unprocessedMediaList.length} items`);
+            } else {
+              console.log(`Node ${node.id} skipping ${edge.source}: all items already processed`);
+              continue; // Skip this source entirely if all items are processed
+            }
+          }
+
+          inputDataList.push(nodeData);
+          console.log(`Node ${node.id} received data from ${edge.source}:`, nodeData);
         }
       }
       return inputDataList;
@@ -115,7 +314,7 @@ export function useWorkflowRunner() {
 
   // Run阶段：重新获取类型并执行
   const processNode = useCallback(
-    async (node: AppNode, inputDataList: any[], skipDownstream: boolean = false) => {
+    async (node: AppNode, inputDataList: any[], skipDownstream: boolean = false, isProgressiveIteration: boolean = false) => {
       updateNodeStatus(node.id, 'loading');
       setLogMessages((prev) => [...prev, `${node.data.title} processing...`]);
 
@@ -132,21 +331,77 @@ export function useWorkflowRunner() {
       const updateNodeDataCallback = (partialData: any) => {
         console.log('🔄 Real-time update:', partialData);
 
-        // Update ReactFlow nodes
-        setReactFlowNodes(nodes => nodes.map(n =>
-          n.id === node.id
-            ? { ...n, data: { ...n.data, ...partialData } }
-            : n
-        ));
+        // If this is a progressive iteration (downstream node being called multiple times),
+        // we need to accumulate real-time updates
+        // Otherwise, the action-node-runner sends cumulative data, so just replace
+        if (isProgressiveIteration) {
+          console.log('🔄 Real-time update - Accumulating for progressive iteration');
+          setReactFlowNodes(nodes => nodes.map(n => {
+            if (n.id === node.id) {
+              const currentData = n.data as any;
+              const newData = { ...n.data, ...partialData };
 
-        // Update Zustand store
-        setNodes(
-          getNodes().map((n) =>
+              // Merge media lists if they exist
+              if (partialData.media?.mediaList && currentData.media?.mediaList) {
+                newData.media = {
+                  ...partialData.media,
+                  mediaList: [...currentData.media.mediaList, ...partialData.media.mediaList]
+                };
+              }
+
+              // Merge apiResponses if they exist
+              if (partialData.apiResponses && currentData.apiResponses) {
+                newData.apiResponses = [...currentData.apiResponses, ...partialData.apiResponses];
+              }
+
+              return { ...n, data: newData };
+            }
+            return n;
+          }));
+
+          // Update Zustand store
+          setNodes(
+            getNodes().map((n) => {
+              if (n.id === node.id) {
+                const currentData = n.data as any;
+                const newData = { ...n.data, ...partialData };
+
+                // Merge media lists if they exist
+                if (partialData.media?.mediaList && currentData.media?.mediaList) {
+                  newData.media = {
+                    ...partialData.media,
+                    mediaList: [...currentData.media.mediaList, ...partialData.media.mediaList]
+                  };
+                }
+
+                // Merge apiResponses if they exist
+                if (partialData.apiResponses && currentData.apiResponses) {
+                  newData.apiResponses = [...currentData.apiResponses, ...partialData.apiResponses];
+                }
+
+                return { ...n, data: newData } as AppNode;
+              }
+              return n;
+            }),
+          );
+        } else {
+          // Normal mode: action-node-runner sends cumulative data, just replace
+          // Update ReactFlow nodes
+          setReactFlowNodes(nodes => nodes.map(n =>
             n.id === node.id
-              ? ({ ...n, data: { ...n.data, ...partialData } } as AppNode)
-              : n,
-          ),
-        );
+              ? { ...n, data: { ...n.data, ...partialData } }
+              : n
+          ));
+
+          // Update Zustand store
+          setNodes(
+            getNodes().map((n) =>
+              n.id === node.id
+                ? ({ ...n, data: { ...n.data, ...partialData } } as AppNode)
+                : n,
+            ),
+          );
+        }
       };
 
       // Progressive mode callback - executes downstream workflow for each media set
@@ -176,24 +431,128 @@ export function useWorkflowRunner() {
           // Collect all nodes from this downstream node onwards
           const nodes = getNodes();
           const allEdges = getEdges();
-          const downstreamNodesToProcess = collectNodesToProcess(nodes, allEdges, downstreamNode.id);
+          let downstreamNodesToProcess = collectNodesToProcess(nodes, allEdges, downstreamNode.id);
+
+          // Filter out nodes that are themselves in progressive mode and have downstream connections
+          // They will handle their own downstream processing
+          downstreamNodesToProcess = downstreamNodesToProcess.filter((dsNode, index) => {
+            // Keep the first node (the immediate downstream)
+            if (index === 0) return true;
+
+            // For subsequent nodes, check if their immediate parent is in progressive mode
+            const parentEdges = allEdges.filter(e => e.target === dsNode.id);
+            const hasProgressiveParent = parentEdges.some(edge => {
+              const parentNode = nodes.find(n => n.id === edge.source);
+              const parentData = parentNode?.data as any;
+              return parentData?.executionMode === 'progressive';
+            });
+
+            // If parent is progressive, let the parent handle this node
+            if (hasProgressiveParent) {
+              console.log(`🔄 Progressive - Skipping ${dsNode.id} because parent is progressive`);
+              return false;
+            }
+
+            return true;
+          });
 
           // Execute each downstream node sequentially
-          for (const dsNode of downstreamNodesToProcess) {
+          for (let dsIndex = 0; dsIndex < downstreamNodesToProcess.length; dsIndex++) {
+            const dsNode = downstreamNodesToProcess[dsIndex];
+
             if (!isRunning.current) {
               throw new Error('Workflow stopped by user');
             }
 
             try {
-              // Collect input data for downstream node
-              const dsInputDataList = collectInputData(dsNode);
+              // Collect input data for downstream node, filtering out already-processed media
+              const dsInputDataList = collectInputData(dsNode, true);
+
+              // If no new data to process, skip this node
+              if (!dsInputDataList || dsInputDataList.length === 0) {
+                console.log(`🔄 Progressive - No new data for downstream node ${dsNode.id}, skipping`);
+                continue;
+              }
+
+              // Extract the media items that will be processed
+              const mediaItemsToProcess: string[] = [];
+              dsInputDataList.forEach((inputData: any) => {
+                if (inputData.media?.mediaList) {
+                  inputData.media.mediaList.forEach((item: any) => {
+                    mediaItemsToProcess.push(item.url || item.id || JSON.stringify(item));
+                  });
+                }
+              });
+
+              console.log(`🔄 Progressive - Processing ${mediaItemsToProcess.length} new items in ${dsNode.id}`);
 
               // Self-check
               await selfCheckNode(dsNode, dsInputDataList);
               await new Promise(resolve => setTimeout(resolve, 5));
 
-              // Process downstream node (skip its downstream to avoid infinite loop)
-              await processNode(dsNode, dsInputDataList, true);
+              // Process downstream node
+              // If this is the first node and it's progressive, allow it to handle its own downstream
+              // Otherwise skip downstream to avoid infinite loops
+              const skipDsDownstream = dsIndex > 0; // Only first node can handle its own downstream
+
+              // Mark as progressive iteration so results are accumulated
+              await processNode(dsNode, dsInputDataList, skipDsDownstream, true);
+
+              // After processing, mark ONLY the items we just processed
+              if (mediaItemsToProcess.length > 0) {
+                // IMPORTANT: We need to wait for state updates to propagate
+                await new Promise(resolve => setTimeout(resolve, 10));
+
+                // Get current processed IDs from the latest node state
+                const currentDsNode = getNode(dsNode.id);
+                const currentDsNodeData = currentDsNode?.data as any;
+                const currentProcessedIds = currentDsNodeData?.processedMediaIds?.[node.id] || [];
+
+                // Merge with new processed IDs
+                const updatedProcessedIds = [...currentProcessedIds, ...mediaItemsToProcess];
+
+                console.log(`🔄 Progressive - Marking ${mediaItemsToProcess.length} items as processed from ${node.id}. Total: ${updatedProcessedIds.length}`);
+                console.log(`🔄 Progressive - Processed IDs:`, updatedProcessedIds);
+
+                // Update downstream node to track these as processed - synchronously update both stores
+                const updateData = {
+                  processedMediaIds: {
+                    ...(currentDsNodeData?.processedMediaIds || {}),
+                    [node.id]: updatedProcessedIds
+                  }
+                };
+
+                // Update ReactFlow nodes
+                setReactFlowNodes(nodes => nodes.map(n =>
+                  n.id === dsNode.id
+                    ? {
+                        ...n,
+                        data: {
+                          ...n.data,
+                          ...updateData
+                        }
+                      }
+                    : n
+                ));
+
+                // Update Zustand store
+                setNodes(
+                  getNodes().map((n) =>
+                    n.id === dsNode.id
+                      ? {
+                          ...n,
+                          data: {
+                            ...n.data,
+                            ...updateData
+                          }
+                        } as AppNode
+                      : n
+                  )
+                );
+
+                // Wait for state to propagate
+                await new Promise(resolve => setTimeout(resolve, 10));
+              }
 
               await new Promise(resolve => setTimeout(resolve, 50));
             } catch (error) {
@@ -218,20 +577,96 @@ export function useWorkflowRunner() {
       console.log(`🔄 Process - Runner returned data:`, processedData);
 
       // 合并输出到节点 data (final update)
-      setReactFlowNodes(nodes => nodes.map(n =>
-        n.id === node.id
-          ? { ...n, data: { ...n.data, ...processedData } }
-          : n
-      ));
+      // If this is a progressive iteration (called multiple times from progressive callback),
+      // we need to ACCUMULATE results because each call processes different items
+      // Otherwise, just replace because real-time updates are already cumulative
+      if (isProgressiveIteration) {
+        console.log(`🔄 Process - Accumulating results for progressive iteration`);
+        setReactFlowNodes(nodes => nodes.map(n => {
+          if (n.id === node.id) {
+            const currentData = n.data as any;
+            const newData = { ...n.data, ...processedData };
 
-      // 同步更新 Zustand store
-      setNodes(
-        getNodes().map((n) =>
+            // Merge media lists if they exist
+            if (processedData.media?.mediaList && currentData.media?.mediaList) {
+              newData.media = {
+                ...processedData.media,
+                mediaList: [...currentData.media.mediaList, ...processedData.media.mediaList]
+              };
+            }
+
+            // Merge apiResponses if they exist
+            if (processedData.apiResponses && currentData.apiResponses) {
+              newData.apiResponses = [...currentData.apiResponses, ...processedData.apiResponses];
+            }
+
+            // Update execution metadata
+            if (processedData.executionMetadata && currentData.executionMetadata) {
+              newData.executionMetadata = {
+                totalExecutions: (currentData.executionMetadata.totalExecutions || 0) + (processedData.executionMetadata.totalExecutions || 0),
+                successCount: (currentData.executionMetadata.successCount || 0) + (processedData.executionMetadata.successCount || 0),
+                errorCount: (currentData.executionMetadata.errorCount || 0) + (processedData.executionMetadata.errorCount || 0),
+                lastExecutionTime: processedData.executionMetadata.lastExecutionTime
+              };
+            }
+
+            return { ...n, data: newData };
+          }
+          return n;
+        }));
+
+        // 同步更新 Zustand store
+        setNodes(
+          getNodes().map((n) => {
+            if (n.id === node.id) {
+              const currentData = n.data as any;
+              const newData = { ...n.data, ...processedData };
+
+              // Merge media lists if they exist
+              if (processedData.media?.mediaList && currentData.media?.mediaList) {
+                newData.media = {
+                  ...processedData.media,
+                  mediaList: [...currentData.media.mediaList, ...processedData.media.mediaList]
+                };
+              }
+
+              // Merge apiResponses if they exist
+              if (processedData.apiResponses && currentData.apiResponses) {
+                newData.apiResponses = [...currentData.apiResponses, ...processedData.apiResponses];
+              }
+
+              // Update execution metadata
+              if (processedData.executionMetadata && currentData.executionMetadata) {
+                newData.executionMetadata = {
+                  totalExecutions: (currentData.executionMetadata.totalExecutions || 0) + (processedData.executionMetadata.totalExecutions || 0),
+                  successCount: (currentData.executionMetadata.successCount || 0) + (processedData.executionMetadata.successCount || 0),
+                  errorCount: (currentData.executionMetadata.errorCount || 0) + (processedData.executionMetadata.errorCount || 0),
+                  lastExecutionTime: processedData.executionMetadata.lastExecutionTime
+                };
+              }
+
+              return { ...n, data: newData } as AppNode;
+            }
+            return n;
+          }),
+        );
+      } else {
+        // Normal mode: real-time updates are cumulative, just replace
+        setReactFlowNodes(nodes => nodes.map(n =>
           n.id === node.id
-            ? ({ ...n, data: { ...n.data, ...processedData } } as AppNode)
-            : n,
-        ),
-      );
+            ? { ...n, data: { ...n.data, ...processedData } }
+            : n
+        ));
+
+        // 同步更新 Zustand store
+        setNodes(
+          getNodes().map((n) =>
+            n.id === node.id
+              ? ({ ...n, data: { ...n.data, ...processedData } } as AppNode)
+              : n,
+          ),
+        );
+      }
 
       updateNodeStatus(node.id, 'success');
       setLogMessages((prev) => [...prev, `✅ ${node.data.title} completed successfully!`]);
@@ -256,6 +691,15 @@ export function useWorkflowRunner() {
 
       if (!_startNodeId) {
         return;
+      }
+
+      // Clear downstream nodes based on whether a specific start node was provided
+      if (startNodeId) {
+        // Individual node run - clear only downstream nodes
+        clearDownstreamNodes(startNodeId);
+      } else {
+        // Overall workflow run - clear all downstream nodes (keeping initial nodes)
+        clearAllDownstreamNodes();
       }
 
       setLogMessages(['Starting workflow...']);
@@ -331,7 +775,7 @@ export function useWorkflowRunner() {
 
       isRunning.current = false;
     },
-    [getNodes, getEdges, processNode, collectInputData, selfCheckNode, updateNodeStatus, showToast],
+    [getNodes, getEdges, processNode, collectInputData, selfCheckNode, updateNodeStatus, showToast, clearDownstreamNodes, clearAllDownstreamNodes],
   );
 
   return {
@@ -339,6 +783,8 @@ export function useWorkflowRunner() {
     runWorkflow,
     stopWorkflow,
     isRunning: isRunning.current,
+    clearDownstreamNodes,
+    clearAllDownstreamNodes,
   };
 }
 

@@ -44,6 +44,7 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
   const { setNodes } = useReactFlow();
 
   const [selectedModel, setSelectedModel] = useState<string>(data?.selectedModel || 'default');
+  const [setOutputMode, setSetOutputMode] = useState<'individual' | 'integrated'>(data?.setOutputMode || 'individual');
   const [executionMode, setExecutionMode] = useState<'concurrent' | 'progressive'>(data?.executionMode || 'concurrent');
   const [prompt, setPrompt] = useState<string>(data?.prompt || '');
   const [isTitleEditing, setIsTitleEditing] = useState(false);
@@ -54,8 +55,7 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
   const nodes = useStore((state) => state.nodes);
   const edges = useStore((state) => state.edges);
 
-  // Calculate execution count based on incoming connections
-  // This will automatically update when nodes or edges change
+  // Calculate execution count based on incoming connections (for internal use)
   const executionCount = useMemo(() => {
     const currentNode = nodes.find((n) => n.id === id);
 
@@ -87,11 +87,13 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
 
   const onReset = useCallback(() => {
     setSelectedModel('default');
+    setSetOutputMode('individual');
     setExecutionMode('concurrent');
     setPrompt('');
     setShowResponses(false);
     updateNodeData({
       selectedModel: 'default',
+      setOutputMode: 'individual',
       executionMode: 'concurrent',
       prompt: '',
       fileName: undefined,
@@ -112,6 +114,17 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
     setPrompt(value);
     updateNodeData({ prompt: value });
   }, [updateNodeData]);
+
+  const handleSetOutputModeChange = useCallback((value: 'individual' | 'integrated') => {
+    setSetOutputMode(value);
+    // When switching to integrated, force concurrent execution mode
+    if (value === 'integrated' && executionMode === 'progressive') {
+      setExecutionMode('concurrent');
+      updateNodeData({ setOutputMode: value, executionMode: 'concurrent' });
+    } else {
+      updateNodeData({ setOutputMode: value });
+    }
+  }, [updateNodeData, executionMode]);
 
   const handleExecutionModeChange = useCallback((value: 'concurrent' | 'progressive') => {
     setExecutionMode(value);
@@ -142,6 +155,11 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
             {executionCount > 0 && (
               <span className="ml-2 text-xs text-muted-foreground font-normal">
                 ({executionCount}x)
+              </span>
+            )}
+            {data?.executionMetadata && data.executionMetadata.errorCount > 0 && (
+              <span className="ml-2 text-xs text-red-500 font-normal">
+                ({data.executionMetadata.errorCount} errors)
               </span>
             )}
           </BaseNodeHeaderTitle>
@@ -190,9 +208,30 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
             </Select>
           </div>
 
+          {/* Output Mode Selection */}
+          <div className="flex justify-start flex-shrink-0 nodrag">
+            <Select value={setOutputMode} onValueChange={handleSetOutputModeChange}>
+              <SelectTrigger className="w-full h-9">
+                <SelectValue placeholder="Output mode:" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="individual">
+                  Individual (Separate outputs)
+                </SelectItem>
+                <SelectItem value="integrated">
+                  Integrated (Combined output)
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Execution Mode Selection */}
           <div className="flex justify-start flex-shrink-0 nodrag">
-            <Select value={executionMode} onValueChange={handleExecutionModeChange}>
+            <Select
+              value={executionMode}
+              onValueChange={handleExecutionModeChange}
+              disabled={setOutputMode === 'integrated'}
+            >
               <SelectTrigger className="w-full h-9">
                 <SelectValue placeholder="Execution mode:" />
               </SelectTrigger>
@@ -200,7 +239,7 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
                 <SelectItem value="concurrent">
                   Concurrent (All at once)
                 </SelectItem>
-                <SelectItem value="progressive">
+                <SelectItem value="progressive" disabled={setOutputMode === 'integrated'}>
                   Progressive (One-by-one)
                 </SelectItem>
               </SelectContent>
@@ -217,52 +256,36 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
             />
           </div>
 
-          {/* Execution Results Section */}
-          {data?.executionMetadata && (
+          {/* Execution Results Section - Only show if there are responses to display */}
+          {data.apiResponses && data.apiResponses.length > 0 && (
             <div className="flex-shrink-0 nodrag border-t pt-3 space-y-2">
-              {/* Execution Summary Bar */}
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
-                    <span className="text-green-600 font-medium">{data.executionMetadata.successCount}</span>
-                  </div>
-                  {data.executionMetadata.errorCount > 0 && (
-                    <div className="flex items-center gap-1">
-                      <XCircle className="w-3.5 h-3.5 text-red-500" />
-                      <span className="text-red-600 font-medium">{data.executionMetadata.errorCount}</span>
-                    </div>
+              {/* Show/Hide Details Button */}
+              <div className="flex items-center justify-end text-xs">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs"
+                  onClick={() => setShowResponses(!showResponses)}
+                >
+                  {showResponses ? (
+                    <>
+                      <ChevronUp className="w-3 h-3 mr-1" />
+                      Hide Details
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="w-3 h-3 mr-1" />
+                      Show Details
+                    </>
                   )}
-                  <span className="text-muted-foreground">
-                    / {data.executionMetadata.totalExecutions} total
-                  </span>
-                </div>
-                {data.apiResponses && data.apiResponses.length > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 text-xs"
-                    onClick={() => setShowResponses(!showResponses)}
-                  >
-                    {showResponses ? (
-                      <>
-                        <ChevronUp className="w-3 h-3 mr-1" />
-                        Hide
-                      </>
-                    ) : (
-                      <>
-                        <ChevronDown className="w-3 h-3 mr-1" />
-                        Details
-                      </>
-                    )}
-                  </Button>
-                )}
+                </Button>
               </div>
 
               {/* Response Details (Collapsible) */}
-              {showResponses && data.apiResponses && data.apiResponses.length > 0 && (
+              {showResponses && (
                 <div className="max-h-32 overflow-y-auto space-y-1.5 text-xs border rounded-md p-2 bg-muted/30">
-                  {data.apiResponses.map((response, idx) => (
+                  {/* Deduplicate responses by URL for display (progressive mode can cause duplicates in UI) */}
+                  {Array.from(new Map(data.apiResponses.map(r => [('url' in r ? r.url : null) || JSON.stringify(r), r])).values()).map((response, idx) => (
                     <div
                       key={idx}
                       className={`flex items-start gap-2 p-1.5 rounded ${

@@ -45,7 +45,11 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
     const connectedToActionNode = outgoingNodes.some((node) => actionNodeTypes.includes(node.type || ''));
 
     // Check if this MediaSet has MIXED media types (more than one type)
-    const mediaList = data?.media?.mediaList || [];
+    // Deduplicate mediaList by URL/ID for display (progressive mode can cause duplicates)
+    const rawMediaList = data?.media?.mediaList || [];
+    const mediaList = Array.from(
+      new Map(rawMediaList.map((item: any) => [item.url || item.id || JSON.stringify(item), item])).values()
+    );
     const mediaTypes = mediaList.length > 0 ? new Set(mediaList.map((item: any) => item.type)) : new Set();
     const hasMixedTypes = mediaTypes.size > 1; // More than one type = mixed
 
