@@ -426,6 +426,15 @@ export function useWorkflowRunner() {
           const downstreamNode = getNode(edge.target);
           if (!downstreamNode) continue;
 
+          // Check if downstream node is in concurrent mode
+          const downstreamNodeData = downstreamNode.data as any;
+          const isConcurrentDownstream = downstreamNodeData?.executionMode === 'concurrent';
+
+          if (isConcurrentDownstream) {
+            console.log(`🔄 Progressive - Skipping concurrent downstream node ${downstreamNode.id} - will be executed after progressive upstream completes`);
+            continue; // Skip concurrent nodes during progressive iteration
+          }
+
           console.log(`🔄 Progressive - Executing downstream node: ${downstreamNode.id}`);
 
           // Collect all nodes from this downstream node onwards
@@ -465,8 +474,48 @@ export function useWorkflowRunner() {
             }
 
             try {
-              // Collect input data for downstream node, filtering out already-processed media
-              const dsInputDataList = collectInputData(dsNode, true);
+              // For progressive mode, we need to collect ONLY the new items from this iteration
+              // Instead of pulling from accumulated mediaList and filtering, we build input from scratch
+
+              // Get all upstream nodes of dsNode
+              const dsUpstreamEdges = edges.filter(e => e.target === dsNode.id);
+              const dsInputDataList: any[] = [];
+
+              for (const upEdge of dsUpstreamEdges) {
+                const upstreamNode = getNode(upEdge.source);
+                if (!upstreamNode?.data) continue;
+
+                const upstreamData = upstreamNode.data as any;
+
+                if (upEdge.source === node.id) {
+                  // This is the current node - get only NEW items from this iteration
+                  // Check what was already processed
+                  const dsNodeData = getNode(dsNode.id)?.data as any;
+                  const processedIds = new Set(
+                    (dsNodeData?.processedMediaIds?.[node.id] || []) as string[]
+                  );
+
+                  if (upstreamData.media?.mediaList && Array.isArray(upstreamData.media.mediaList)) {
+                    // Filter to get only unprocessed items
+                    const unprocessedMediaList = upstreamData.media.mediaList.filter(
+                      (mediaItem: any) => !processedIds.has(mediaItem.url || mediaItem.id || JSON.stringify(mediaItem))
+                    );
+
+                    if (unprocessedMediaList.length > 0) {
+                      dsInputDataList.push({
+                        ...upstreamData,
+                        media: {
+                          ...upstreamData.media,
+                          mediaList: unprocessedMediaList
+                        }
+                      });
+                    }
+                  }
+                } else {
+                  // Other upstream nodes - include their full data
+                  dsInputDataList.push(upstreamData);
+                }
+              }
 
               // If no new data to process, skip this node
               if (!dsInputDataList || dsInputDataList.length === 0) {
@@ -668,10 +717,296 @@ export function useWorkflowRunner() {
         );
       }
 
-      updateNodeStatus(node.id, 'success');
-      setLogMessages((prev) => [...prev, `✅ ${node.data.title} completed successfully!`]);
-      console.log(`Node ${node.id} processing completed successfully!`);
+      // Only mark as 'success' if this is NOT a progressive iteration
+      // If isProgressiveIteration = true, this node will be called again, so keep it as 'loading'
+      if (!isProgressiveIteration) {
+        updateNodeStatus(node.id, 'success');
+        setLogMessages((prev) => [...prev, `✅ ${node.data.title} completed successfully!`]);
+        console.log(`Node ${node.id} processing completed successfully!`);
+      } else {
+        // Keep as loading - this node will be called again with more items
+        console.log(`Node ${node.id} iteration completed (still more to process)`);
+      }
       console.log(`Node ${node.id} final data:`, { ...node.data, ...processedData });
+
+      // If this was a progressive node, now execute any concurrent downstream nodes
+      // that were skipped during progressive iteration
+      // IMPORTANT: Only do this if NOT in a progressive iteration (isProgressiveIteration = false)
+      // If isProgressiveIteration = true, this node is being called from another progressive's callback
+      // and hasn't truly completed all work yet - it will be called again with more items
+      if (!skipDownstream && !isProgressiveIteration && (updatedNode?.data.executionMode === 'progressive' || node.data.executionMode === 'progressive')) {
+        console.log(`🔄 Progressive completed - Checking for downstream nodes (concurrent or progressive)`);
+
+        // Wait for status update to propagate
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        const edges = getReactFlowEdges();
+        const downstreamEdges = edges.filter(edge => edge.source === node.id);
+
+        for (const edge of downstreamEdges) {
+          const downstreamNode = getNode(edge.target) as AppNode | undefined;
+          if (!downstreamNode) continue;
+
+          const downstreamNodeData = downstreamNode.data as any;
+          const isConcurrentDownstream = downstreamNodeData?.executionMode === 'concurrent';
+          const isProgressiveDownstream = downstreamNodeData?.executionMode === 'progressive';
+
+          // Handle progressive downstream nodes first
+          // Recursively mark all chained progressive nodes as complete
+          if (isProgressiveDownstream) {
+            console.log(`🔄 Progressive completed - Found progressive downstream node ${downstreamNode.id}, marking it complete`);
+
+            // Recursively mark progressive downstream nodes as complete
+            const markProgressiveComplete = async (nodeToMark: any) => {
+              updateNodeStatus(nodeToMark.id, 'success');
+              await new Promise(resolve => setTimeout(resolve, 10));
+              console.log(`🔄 Progressive completed - Marked ${nodeToMark.id} as success`);
+
+              // Check this node's children
+              const childEdges = edges.filter(e => e.source === nodeToMark.id);
+              for (const childEdge of childEdges) {
+                const childNode = getNode(childEdge.target);
+                if (!childNode) continue;
+
+                const childData = childNode.data as any;
+                // If child is also progressive, mark it complete recursively
+                if (childData?.executionMode === 'progressive') {
+                  await markProgressiveComplete(childNode);
+                }
+              }
+            };
+
+            await markProgressiveComplete(downstreamNode);
+
+            // After marking all progressive nodes complete, look for concurrent nodes to execute
+            // We need to check from the LAST progressive node in the chain
+            const findLastProgressiveNode = (currentNode: any): any => {
+              const childEdges = edges.filter(e => e.source === currentNode.id);
+              for (const childEdge of childEdges) {
+                const childNode = getNode(childEdge.target);
+                if (!childNode) continue;
+                const childData = childNode.data as any;
+                if (childData?.executionMode === 'progressive') {
+                  return findLastProgressiveNode(childNode);
+                }
+              }
+              return currentNode;
+            };
+
+            const lastProgressiveNode = findLastProgressiveNode(downstreamNode);
+            console.log(`🔄 Progressive completed - Last progressive node in chain: ${lastProgressiveNode.id}`);
+
+            // Check if the last progressive node has concurrent children
+            const lastNodeEdges = edges.filter(e => e.source === lastProgressiveNode.id);
+            for (const lastEdge of lastNodeEdges) {
+              const concurrentNode = getNode(lastEdge.target) as AppNode | undefined;
+              if (!concurrentNode) continue;
+
+              const concurrentData = concurrentNode.data as any;
+              if (concurrentData?.executionMode === 'concurrent') {
+                console.log(`🔄 Progressive completed - Last progressive ${lastProgressiveNode.id} has concurrent child ${concurrentNode.id}, checking if ready to execute`);
+
+                // Check if already executed
+                if (concurrentData?.status === 'success' || concurrentData?.status === 'loading') {
+                  console.log(`🔄 Progressive completed - Concurrent node ${concurrentNode.id} already executed, skipping`);
+                  continue;
+                }
+
+                // Check if all upstream of this concurrent node are complete
+                const concurrentUpstreamEdges = edges.filter(e => e.target === concurrentNode.id);
+                const allComplete = concurrentUpstreamEdges.every(upEdge => {
+                  const upNode = getNode(upEdge.source) as AppNode | undefined;
+                  if (!upNode) return false;
+                  const upData = upNode.data as any;
+                  return upData?.status === 'success';
+                });
+
+                if (allComplete) {
+                  console.log(`🔄 Progressive completed - All upstream of concurrent ${concurrentNode.id} are complete, executing`);
+
+                  // Collect data ONLY from immediate upstream nodes (direct edges to concurrent)
+                  const concurrentInputData = [];
+                  for (const upEdge of concurrentUpstreamEdges) {
+                    const upNode = getNode(upEdge.source);
+                    if (!upNode?.data) continue;
+
+                    const upNodeData = upNode.data as any;
+
+                    // Deduplicate media items if this data has a mediaList
+                    if (upNodeData.media?.mediaList && Array.isArray(upNodeData.media.mediaList)) {
+                      const deduplicatedMediaList = [];
+                      const seenUrls = new Set<string>();
+
+                      for (const mediaItem of upNodeData.media.mediaList) {
+                        const uniqueKey = mediaItem.url || mediaItem.id || JSON.stringify(mediaItem);
+                        if (!seenUrls.has(uniqueKey)) {
+                          seenUrls.add(uniqueKey);
+                          deduplicatedMediaList.push(mediaItem);
+                        } else {
+                          console.log(`🔄 Progressive completed - Skipping duplicate media item: ${uniqueKey}`);
+                        }
+                      }
+
+                      console.log(`🔄 Progressive completed - Deduplicated ${upNodeData.media.mediaList.length} items to ${deduplicatedMediaList.length} items`);
+
+                      // Create deduplicated data
+                      const deduplicatedData = {
+                        ...upNodeData,
+                        media: {
+                          ...upNodeData.media,
+                          mediaList: deduplicatedMediaList
+                        }
+                      };
+                      concurrentInputData.push(deduplicatedData);
+                    } else {
+                      // No media list, just push as-is
+                      concurrentInputData.push(upNodeData);
+                    }
+
+                    console.log(`🔄 Progressive completed - Collecting data from immediate upstream ${upEdge.source}`);
+                  }
+
+                  if (concurrentInputData.length > 0) {
+                    try {
+                      await selfCheckNode(concurrentNode, concurrentInputData);
+                      await new Promise(resolve => setTimeout(resolve, 5));
+                      await processNode(concurrentNode, concurrentInputData, false, false);
+                    } catch (error) {
+                      console.error(`🔄 Progressive completed - Failed to execute concurrent ${concurrentNode.id}:`, error);
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          if (isConcurrentDownstream) {
+            console.log(`🔄 Progressive completed - Found concurrent downstream node ${downstreamNode.id}`);
+
+            // Check if this concurrent node was already executed
+            const concurrentNodeData = downstreamNode.data as any;
+            if (concurrentNodeData?.status === 'success' || concurrentNodeData?.status === 'loading') {
+              console.log(`🔄 Progressive completed - Concurrent node ${downstreamNode.id} already executed or executing, skipping`);
+              continue;
+            }
+
+            // Check if ALL upstream nodes of this concurrent node are complete
+            const upstreamEdges = edges.filter(e => e.target === downstreamNode.id);
+            const allUpstreamComplete = upstreamEdges.every(upEdge => {
+              const upstreamNode = getNode(upEdge.source) as AppNode | undefined;
+              if (!upstreamNode) return false;
+
+              const upstreamData = upstreamNode.data as any;
+              // Consider the current node as complete since we just marked it
+              const isComplete = upEdge.source === node.id || upstreamData?.status === 'success';
+
+              console.log(`🔄 Progressive completed - Upstream node ${upEdge.source} status: ${upstreamData?.status}, isCurrentNode: ${upEdge.source === node.id}, complete: ${isComplete}`);
+              return isComplete;
+            });
+
+            if (!allUpstreamComplete) {
+              console.log(`🔄 Progressive completed - Skipping concurrent node ${downstreamNode.id} - not all upstream nodes are complete yet`);
+              continue;
+            }
+
+            console.log(`🔄 Progressive completed - All upstream nodes complete, executing concurrent downstream node ${downstreamNode.id} with all collected data`);
+
+            try {
+              // For concurrent nodes after progressive completion, we need to collect data carefully
+              // Only collect from the IMMEDIATE upstream nodes (direct edges), not from grandparent nodes
+              // This ensures Progressive1→Progressive2→Concurrent only uses Progressive2's output
+              const immediateUpstreamEdges = edges.filter(e => e.target === downstreamNode.id);
+              const dsInputDataList: any[] = [];
+
+              for (const upEdge of immediateUpstreamEdges) {
+                let upstreamDataToAdd: any;
+
+                if (upEdge.source === node.id) {
+                  // This is the current node that just completed
+                  // Use the processed data we just computed (not from getNode, which might be stale)
+                  upstreamDataToAdd = {
+                    ...node.data,
+                    ...processedData,
+                    status: 'success'
+                  };
+                  console.log(`🔄 Progressive completed - Using fresh data from current node ${node.id}`);
+                } else {
+                  // This is another upstream node - fetch from state
+                  const upstreamNode = getNode(upEdge.source);
+                  if (!upstreamNode?.data) continue;
+
+                  const upstreamData = upstreamNode.data as any;
+
+                  // Only include nodes that have completed
+                  if (upstreamData?.status === 'success') {
+                    upstreamDataToAdd = upstreamData;
+                    console.log(`🔄 Progressive completed - Using data from upstream node ${upEdge.source} (status: ${upstreamData?.status})`);
+                  } else {
+                    continue;
+                  }
+                }
+
+                // Deduplicate media items if this data has a mediaList
+                if (upstreamDataToAdd.media?.mediaList && Array.isArray(upstreamDataToAdd.media.mediaList)) {
+                  const deduplicatedMediaList = [];
+                  const seenUrls = new Set<string>();
+
+                  for (const mediaItem of upstreamDataToAdd.media.mediaList) {
+                    const uniqueKey = mediaItem.url || mediaItem.id || JSON.stringify(mediaItem);
+                    if (!seenUrls.has(uniqueKey)) {
+                      seenUrls.add(uniqueKey);
+                      deduplicatedMediaList.push(mediaItem);
+                    } else {
+                      console.log(`🔄 Progressive completed - Skipping duplicate media item: ${uniqueKey}`);
+                    }
+                  }
+
+                  console.log(`🔄 Progressive completed - Deduplicated ${upstreamDataToAdd.media.mediaList.length} items to ${deduplicatedMediaList.length} items from ${upEdge.source}`);
+
+                  // Create deduplicated data
+                  const deduplicatedData = {
+                    ...upstreamDataToAdd,
+                    media: {
+                      ...upstreamDataToAdd.media,
+                      mediaList: deduplicatedMediaList
+                    }
+                  };
+                  dsInputDataList.push(deduplicatedData);
+                } else {
+                  // No media list, just push as-is
+                  dsInputDataList.push(upstreamDataToAdd);
+                }
+              }
+
+              if (!dsInputDataList || dsInputDataList.length === 0) {
+                console.log(`🔄 Progressive completed - No data for concurrent downstream node ${downstreamNode.id}, skipping`);
+                continue;
+              }
+
+              console.log(`🔄 Progressive completed - Concurrent node ${downstreamNode.id} will process ${dsInputDataList.length} input sources from immediate upstream nodes`);
+              console.log(`🔄 Progressive completed - Concurrent node ${downstreamNode.id} execution mode: ${downstreamNodeData?.executionMode}`);
+              console.log(`🔄 Progressive completed - Concurrent node ${downstreamNode.id} input data:`, dsInputDataList);
+
+              // Self-check
+              await selfCheckNode(downstreamNode, dsInputDataList);
+              await new Promise(resolve => setTimeout(resolve, 5));
+
+              // Execute the concurrent node with all accumulated data in CONCURRENT mode
+              // The node should execute all items at once, not progressively
+              // skipDownstream = false to allow it to execute its own downstream nodes
+              // isProgressiveIteration = false to ensure results are replaced, not accumulated
+              await processNode(downstreamNode, dsInputDataList, false, false);
+
+              console.log(`🔄 Progressive completed - Concurrent node ${downstreamNode.id} execution finished`);
+
+              await new Promise(resolve => setTimeout(resolve, 50));
+            } catch (error) {
+              console.error(`🔄 Progressive completed - Concurrent downstream node ${downstreamNode.id} failed:`, error);
+              throw error;
+            }
+          }
+        }
+      }
     },
     [updateNodeStatus, getNode, getNodes, setNodes, getEdges, getReactFlowEdges, setReactFlowNodes, showToast, collectInputData, selfCheckNode],
   );
@@ -733,7 +1068,21 @@ export function useWorkflowRunner() {
               outgoing.forEach(edge => {
                 if (!downstreamNodeIds.has(edge.target)) {
                   downstreamNodeIds.add(edge.target);
-                  collectDownstreamIds(edge.target);
+
+                  // Check if this downstream node is concurrent - if so, don't collect its children
+                  // because concurrent nodes will be handled separately after progressive completes
+                  const targetNode = nodesToProcess.find(n => n.id === edge.target);
+                  const targetNodeData = targetNode?.data as any;
+                  const isConcurrent = targetNodeData?.executionMode === 'concurrent';
+
+                  if (isConcurrent) {
+                    console.log(`🔄 Main workflow - Found concurrent downstream node ${edge.target}, will not collect its children`);
+                  }
+
+                  if (!isConcurrent) {
+                    // Only collect children of non-concurrent nodes
+                    collectDownstreamIds(edge.target);
+                  }
                 }
               });
             };
@@ -743,6 +1092,8 @@ export function useWorkflowRunner() {
             const currentIndex = nodesToProcess.indexOf(node);
             for (let i = nodesToProcess.length - 1; i > currentIndex; i--) {
               if (downstreamNodeIds.has(nodesToProcess[i].id)) {
+                const removedNode = nodesToProcess[i];
+                console.log(`🔄 Main workflow - Removing ${removedNode.id} (executionMode: ${(removedNode.data as any)?.executionMode}) from queue (will be handled by progressive parent)`);
                 nodesToProcess.splice(i, 1);
               }
             }

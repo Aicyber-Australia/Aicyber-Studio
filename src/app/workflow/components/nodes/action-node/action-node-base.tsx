@@ -56,19 +56,45 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
   const edges = useStore((state) => state.edges);
 
   // Calculate execution count based on incoming connections (for internal use)
-  const executionCount = useMemo(() => {
+  // Only show execution count when upstream nodes are NOT action nodes
+  const { executionCount, shouldShowExecutionCount } = useMemo(() => {
     const currentNode = nodes.find((n) => n.id === id);
 
-    if (!currentNode) return 0;
+    if (!currentNode) return { executionCount: 0, shouldShowExecutionCount: false };
 
     // Get all incoming nodes
     const incomingNodes = getIncomers(currentNode, nodes, edges);
+
+    if (incomingNodes.length === 0) {
+      return { executionCount: 0, shouldShowExecutionCount: false };
+    }
+
+    // Check if all incoming nodes are action nodes
+    // Action nodes are registered in the API service registry
+    const actionNodeTypes = [
+      'text-to-image-node',
+      'image-to-image-node',
+      'image-replicate-node',
+      'image-to-text-node',
+      'edit-image-node',
+      'text-to-video-node',
+      'video-to-video-node'
+    ];
+
+    const hasActionNodeUpstream = incomingNodes.some((node) =>
+      node.type ? actionNodeTypes.includes(node.type) : false
+    );
+
+    // Only show execution count if NO action nodes are upstream
+    const shouldShow = !hasActionNodeUpstream;
 
     // Extract data from incoming nodes
     const inputDataList = incomingNodes.map((node) => node.data);
 
     // Calculate execution count using utility function
-    return getExecutionCount(inputDataList);
+    const count = getExecutionCount(inputDataList);
+
+    return { executionCount: count, shouldShowExecutionCount: shouldShow };
   }, [id, nodes, edges]);
 
   const onPlay = useCallback(() => runWorkflow(id), [id, runWorkflow]);
@@ -152,7 +178,7 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
             onEditingChange={setIsTitleEditing}
           >
             {data?.title || 'Action Node'}
-            {executionCount > 0 && (
+            {shouldShowExecutionCount && executionCount > 0 && (
               <span className="ml-2 text-xs text-muted-foreground font-normal">
                 ({executionCount}x)
               </span>
