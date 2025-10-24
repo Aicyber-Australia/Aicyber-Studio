@@ -118,21 +118,42 @@ export function useWorkflowRunner() {
     async (node: AppNode, inputDataList: any[]) => {
       updateNodeStatus(node.id, 'loading');
       setLogMessages((prev) => [...prev, `${node.data.title} processing...`]);
-      
+
       // 重新获取节点类型（可能已经被自检阶段修改）
       const updatedNode = getNode(node.id);
       const finalNodeType = updatedNode?.type || node.type;
       console.log('🔄 Process - Original type:', node.type, 'Final type:', finalNodeType);
-      
+
       // 根据最终类型选择Runner
       const runner = nodeRunnerRegistry.getRunner(finalNodeType as string);
       console.log('🔄 Process - Using runner for type:', finalNodeType);
 
-      // 执行Runner
-      const processedData = await runner.run(updatedNode || node, inputDataList);
+      // Create real-time update callback for action nodes
+      const updateNodeDataCallback = (partialData: any) => {
+        console.log('🔄 Real-time update:', partialData);
+
+        // Update ReactFlow nodes
+        setReactFlowNodes(nodes => nodes.map(n =>
+          n.id === node.id
+            ? { ...n, data: { ...n.data, ...partialData } }
+            : n
+        ));
+
+        // Update Zustand store
+        setNodes(
+          getNodes().map((n) =>
+            n.id === node.id
+              ? ({ ...n, data: { ...n.data, ...partialData } } as AppNode)
+              : n,
+          ),
+        );
+      };
+
+      // 执行Runner with update callback
+      const processedData = await runner.run(updatedNode || node, inputDataList, updateNodeDataCallback);
       console.log(`🔄 Process - Runner returned data:`, processedData);
 
-      // 合并输出到节点 data
+      // 合并输出到节点 data (final update)
       setReactFlowNodes(nodes => nodes.map(n =>
         n.id === node.id
           ? { ...n, data: { ...n.data, ...processedData } }

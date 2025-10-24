@@ -115,7 +115,7 @@ function NodeSet({ id, data, selected }: WorkflowNodeProps) {
 
         incomingNodes.forEach((node) => {
           if (node.type === 'media-set') {
-            const media = node.data?.media;
+            const media = node.data?.media as any;
             const setOutputMode = node.data?.setOutputMode || 'individual';
 
             // Check if MediaSet has mixed media types
@@ -125,7 +125,7 @@ function NodeSet({ id, data, selected }: WorkflowNodeProps) {
 
               // If mixed types and not integrated, this is problematic
               if (isMixedMediaSet && setOutputMode !== 'integrated') {
-                problematicMediaSets.push(node.data?.title || node.id);
+                problematicMediaSets.push((node.data?.title as string) || node.id);
               }
             }
           }

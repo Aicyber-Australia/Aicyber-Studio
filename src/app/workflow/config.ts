@@ -12,8 +12,8 @@ export const VIDEO_NODE_SIZE = { width: 280, height: 200 };
 // Text nodes need more height for text display
 export const TEXT_NODE_SIZE = { width: 280, height: 200 };
 
-// Action node needs more height for the UI elements
-export const ACTION_NODE_SIZE = { width: 280, height: 220 };
+// Action node needs more height for the UI elements and results display
+export const ACTION_NODE_SIZE = { width: 280, height: 280 };
 
 // Node set needs height to display list of nodes
 export const NODE_SET_SIZE = { width: 280, height: 200 };

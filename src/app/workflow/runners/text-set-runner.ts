@@ -19,7 +19,7 @@ export const TextSetNodeRunner: NodeRunner = {
     return { isValid: true };
   },
 
-  run: async (node: any, inputDataList: any[]) => {
+  run: async (node: any, inputDataList: any[], updateNodeData?: (data: any) => void) => {
     console.log('🔄 TextSet Runner - Starting run for node:', node.id);
     console.log('🔄 TextSet Runner - Node type:', node.type);
     console.log('🔄 TextSet Runner - Input data list length:', inputDataList.length);

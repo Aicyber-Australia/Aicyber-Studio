@@ -74,7 +74,7 @@ export const TextFrameNodeRunner: NodeRunner = {
     return { isValid: false };
   },
 
-  run: async (node: any, inputDataList: any[]) => {
+  run: async (node: any, inputDataList: any[], updateNodeData?: (data: any) => void) => {
     console.log('🔄 Text Frame Runner - Starting run for node:', node.id);
     console.log('🔄 Text Frame Runner - Node type:', node.type);
     console.log('🔄 Text Frame Runner - Input data list length:', inputDataList.length);

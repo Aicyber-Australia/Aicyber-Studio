@@ -33,6 +33,18 @@ export type NodeSetData = {
 };
 
 
+export type ApiExecutionResponse = {
+  url: string;
+  type: 'text' | 'image' | 'video';
+  metadata?: Record<string, unknown>;
+};
+
+export type ApiExecutionError = {
+  error: string;
+  errorCode?: string;
+  metadata?: Record<string, unknown>;
+};
+
 export type WorkflowNodeData = {
   title?: string;
   label?: string;
@@ -68,6 +80,14 @@ export type WorkflowNodeData = {
     }>;
   };
   textContent?: string;
+  // Action node response storage
+  apiResponses?: Array<ApiExecutionResponse | ApiExecutionError>;
+  executionMetadata?: {
+    totalExecutions: number;
+    successCount: number;
+    errorCount: number;
+    lastExecutionTime?: number;
+  };
 };
 
 export type WorkflowNodeProps = NodeProps<Node<WorkflowNodeData>> & {

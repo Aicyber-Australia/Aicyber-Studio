@@ -79,7 +79,7 @@ export const VideoFrameNodeRunner: NodeRunner = {
     return { isValid: false };
   },
 
-  run: async (node: any, inputDataList: any[]) => {
+  run: async (node: any, inputDataList: any[], updateNodeData?: (data: any) => void) => {
     console.log('🔄 Frame Runner - Starting run for node:', node.id);
     console.log('🔄 Frame Runner - Node type:', node.type);
     console.log('🔄 Frame Runner - Input data list length:', inputDataList.length);

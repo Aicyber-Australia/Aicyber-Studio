@@ -6,7 +6,7 @@ export const DefaultNodeRunner: NodeRunner = {
   validate: () => {
     return { isValid: true };
   },
-  run: async () => {
+  run: async (node: any, inputDataList: any[], updateNodeData?: (data: any) => void) => {
     await new Promise((resolve) => setTimeout(resolve, 500));
     return {};
   },

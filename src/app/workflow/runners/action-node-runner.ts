@@ -1,5 +1,5 @@
 import { NodeRunner } from './types';
-import { AppNode } from '../components/nodes';
+import { AppNode, ApiExecutionResponse, ApiExecutionError } from '../components/nodes';
 import { getApiCallFunction, getRegisteredNodeTypes } from '../../api/services/service-registrar';
 import { normalizeInputsToMediaSets } from './media-set-utils';
 
@@ -53,7 +53,7 @@ export const ActionNodeRunner: NodeRunner<AppNode> = {
     return { isValid: true };
   },
 
-  async run(node: AppNode, inputDataList: any[]): Promise<any> {
+  async run(node: AppNode, inputDataList: any[], updateNodeData?: (data: any) => void): Promise<any> {
     try {
       console.log(`ActionNodeRunner - Running ${node.type} with data:`, node.data);
       console.log(`ActionNodeRunner - Input data list:`, inputDataList);
@@ -70,23 +70,168 @@ export const ActionNodeRunner: NodeRunner<AppNode> = {
       const apiService = getApiCallFunction(node.type);
       console.log(`ActionNodeRunner - Got API service function for ${node.type}`);
 
-      // 传递整个node和normalized mediaSets给服务
-      // The service will receive mediaSets instead of raw inputDataList
-      const result = await apiService(node, mediaSets);
+      // Initialize shared state
+      const apiResponses: Array<ApiExecutionResponse | ApiExecutionError> = [];
+      const resultMediaList: any[] = [];
+      let successCount = 0;
+      let errorCount = 0;
 
-      console.log(`ActionNodeRunner - Service result:`, result);
-      console.log(`ActionNodeRunner - Service result stringified:`, JSON.stringify(result, null, 2));
+      // Helper function to update node with current state
+      const pushUpdate = () => {
+        if (updateNodeData) {
+          updateNodeData({
+            media: {
+              mediaList: [...resultMediaList]
+            },
+            apiResponses: [...apiResponses],
+            executionMetadata: {
+              totalExecutions: executionCount,
+              successCount,
+              errorCount,
+              lastExecutionTime: Date.now()
+            }
+          });
+        }
+      };
 
-      // Include execution metadata in result
-      if (result && typeof result === 'object') {
-        return {
-          ...result,
-          executionCount,
-          mediaSetsProcessed: mediaSets.length
-        };
-      }
+      // Execute all API calls concurrently
+      const promises = mediaSets.map(async (mediaSet, i) => {
+        console.log(`ActionNodeRunner - Starting mediaSet ${i + 1}/${mediaSets.length}`);
 
-      return result;
+        try {
+          // Call API service with single mediaSet
+          const singleResult = await apiService(node, [mediaSet]);
+
+          console.log(`ActionNodeRunner - MediaSet ${i + 1} result:`, singleResult);
+
+          // Extract response data
+          if (singleResult && typeof singleResult === 'object') {
+            const resultData = singleResult as any;
+
+            // Check if it's an error response
+            if ('error' in resultData) {
+              const errorResponse: ApiExecutionError = {
+                error: resultData.error,
+                errorCode: resultData.errorCode,
+                metadata: resultData.metadata
+              };
+              apiResponses.push(errorResponse);
+              errorCount++;
+              console.log(`ActionNodeRunner - MediaSet ${i + 1} returned error:`, errorResponse.error);
+
+              // Push real-time update
+              pushUpdate();
+            } else {
+              // Extract media from successful response
+              if (resultData.media) {
+                let hasMedia = false;
+
+                // Process imageList
+                if (resultData.media.imageList && Array.isArray(resultData.media.imageList)) {
+                  resultData.media.imageList.forEach((img: any) => {
+                    const response: ApiExecutionResponse = {
+                      url: img.url,
+                      type: 'image',
+                      metadata: resultData.metadata
+                    };
+                    apiResponses.push(response);
+                    resultMediaList.push({
+                      id: `media-${Date.now()}-${Math.random()}`,
+                      type: 'image',
+                      url: img.url,
+                      fileName: img.fileName || `result-${i + 1}.jpg`,
+                      timestamp: Date.now()
+                    });
+                    hasMedia = true;
+                  });
+                }
+
+                // Process videoList
+                if (resultData.media.videoList && Array.isArray(resultData.media.videoList)) {
+                  resultData.media.videoList.forEach((vid: any) => {
+                    const response: ApiExecutionResponse = {
+                      url: vid.url,
+                      type: 'video',
+                      metadata: resultData.metadata
+                    };
+                    apiResponses.push(response);
+                    resultMediaList.push({
+                      id: `media-${Date.now()}-${Math.random()}`,
+                      type: 'video',
+                      url: vid.url,
+                      fileName: vid.fileName || `result-${i + 1}.mp4`,
+                      timestamp: Date.now()
+                    });
+                    hasMedia = true;
+                  });
+                }
+
+                // Process textList
+                if (resultData.media.textList && Array.isArray(resultData.media.textList)) {
+                  resultData.media.textList.forEach((text: string) => {
+                    const response: ApiExecutionResponse = {
+                      url: '', // Text doesn't have URL
+                      type: 'text',
+                      metadata: { ...resultData.metadata, content: text }
+                    };
+                    apiResponses.push(response);
+                    resultMediaList.push({
+                      id: `media-${Date.now()}-${Math.random()}`,
+                      type: 'text',
+                      content: text,
+                      fileName: `result-${i + 1}.txt`,
+                      timestamp: Date.now()
+                    });
+                    hasMedia = true;
+                  });
+                }
+
+                if (hasMedia) {
+                  successCount++;
+                }
+
+                // Push real-time update
+                pushUpdate();
+              }
+            }
+          }
+        } catch (error) {
+          // Handle execution error
+          const errorResponse: ApiExecutionError = {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            metadata: { mediaSetIndex: i }
+          };
+          apiResponses.push(errorResponse);
+          errorCount++;
+          console.error(`ActionNodeRunner - MediaSet ${i + 1} execution failed:`, error);
+
+          // Push real-time update
+          pushUpdate();
+        }
+      });
+
+      // Wait for all API calls to complete
+      await Promise.all(promises);
+
+      console.log(`ActionNodeRunner - All executions complete. Success: ${successCount}, Errors: ${errorCount}`);
+      console.log(`ActionNodeRunner - API Responses:`, apiResponses);
+      console.log(`ActionNodeRunner - Result media list:`, resultMediaList);
+
+      // Return final result with media list and execution metadata
+      return {
+        media: {
+          mediaList: resultMediaList
+        },
+        apiResponses,
+        executionMetadata: {
+          totalExecutions: executionCount,
+          successCount,
+          errorCount,
+          lastExecutionTime: Date.now()
+        },
+        executionCount,
+        mediaSetsProcessed: mediaSets.length
+      };
     } catch (error) {
       console.error(`ActionNodeRunner error for ${node.type}:`, error);
       throw new Error(`${node.type} execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`);

@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useCallback, useState, useMemo, useEffect } from 'react';
-import { Play, Trash, RotateCcw } from 'lucide-react';
+import React, { useCallback, useState, useMemo } from 'react';
+import { Play, Trash, RotateCcw, CheckCircle2, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { WorkflowNodeData } from '@/app/workflow/components/nodes';
+import { WorkflowNodeData, ApiExecutionError } from '@/app/workflow/components/nodes';
 import { useWorkflowRunner } from '@/app/workflow/hooks/use-workflow-runner';
 import { useAppStore } from '@/app/workflow/store';
 import { useReactFlow, NodeResizer, getIncomers, useStore } from '@xyflow/react';
@@ -46,6 +46,7 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
   const [selectedModel, setSelectedModel] = useState<string>(data?.selectedModel || 'default');
   const [prompt, setPrompt] = useState<string>(data?.prompt || '');
   const [isTitleEditing, setIsTitleEditing] = useState(false);
+  const [showResponses, setShowResponses] = useState(false);
 
   // Subscribe to ReactFlow store for real-time updates
   // This will re-render when nodes or edges change
@@ -86,13 +87,16 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
   const onReset = useCallback(() => {
     setSelectedModel('default');
     setPrompt('');
-    updateNodeData({ 
-      selectedModel: 'default', 
+    setShowResponses(false);
+    updateNodeData({
+      selectedModel: 'default',
       prompt: '',
       fileName: undefined,
       timestamp: undefined,
       status: 'initial',
-      media: undefined
+      media: undefined,
+      apiResponses: undefined,
+      executionMetadata: undefined
     });
   }, [updateNodeData]);
 
@@ -105,6 +109,11 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
     setPrompt(value);
     updateNodeData({ prompt: value });
   }, [updateNodeData]);
+
+  // Helper to check if a response is an error
+  const isError = (response: any): response is ApiExecutionError => {
+    return 'error' in response;
+  };
 
   return (
     <NodeStatusIndicator status={data?.status}>
@@ -155,7 +164,7 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
             </Button>
           </div>
         </BaseNodeHeader>
-        
+
         <BaseNodeContent className="flex-1 flex flex-col space-y-4">
           {/* Model Selection - Small expandable box */}
           <div className="flex justify-start flex-shrink-0 nodrag">
@@ -182,6 +191,91 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
               className="w-full h-full p-3 border border-input rounded-md bg-transparent text-sm placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] outline-none resize-none"
             />
           </div>
+
+          {/* Execution Results Section */}
+          {data?.executionMetadata && (
+            <div className="flex-shrink-0 nodrag border-t pt-3 space-y-2">
+              {/* Execution Summary Bar */}
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                    <span className="text-green-600 font-medium">{data.executionMetadata.successCount}</span>
+                  </div>
+                  {data.executionMetadata.errorCount > 0 && (
+                    <div className="flex items-center gap-1">
+                      <XCircle className="w-3.5 h-3.5 text-red-500" />
+                      <span className="text-red-600 font-medium">{data.executionMetadata.errorCount}</span>
+                    </div>
+                  )}
+                  <span className="text-muted-foreground">
+                    / {data.executionMetadata.totalExecutions} total
+                  </span>
+                </div>
+                {data.apiResponses && data.apiResponses.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    onClick={() => setShowResponses(!showResponses)}
+                  >
+                    {showResponses ? (
+                      <>
+                        <ChevronUp className="w-3 h-3 mr-1" />
+                        Hide
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="w-3 h-3 mr-1" />
+                        Details
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+
+              {/* Response Details (Collapsible) */}
+              {showResponses && data.apiResponses && data.apiResponses.length > 0 && (
+                <div className="max-h-32 overflow-y-auto space-y-1.5 text-xs border rounded-md p-2 bg-muted/30">
+                  {data.apiResponses.map((response, idx) => (
+                    <div
+                      key={idx}
+                      className={`flex items-start gap-2 p-1.5 rounded ${
+                        isError(response) ? 'bg-red-50 dark:bg-red-950/20' : 'bg-green-50 dark:bg-green-950/20'
+                      }`}
+                    >
+                      {isError(response) ? (
+                        <>
+                          <XCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-red-700 dark:text-red-300 font-medium">Error {idx + 1}</div>
+                            <div className="text-red-600 dark:text-red-400 truncate">{response.error}</div>
+                            {response.errorCode && (
+                              <div className="text-red-500 dark:text-red-500 text-[10px]">Code: {response.errorCode}</div>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="w-3.5 h-3.5 text-green-500 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-green-700 dark:text-green-300 font-medium">
+                              {response.type.charAt(0).toUpperCase() + response.type.slice(1)} {idx + 1}
+                            </div>
+                            {response.url && (
+                              <div className="text-green-600 dark:text-green-400 truncate text-[10px]">
+                                {response.url}
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </BaseNodeContent>
         {children}
       </BaseNode>

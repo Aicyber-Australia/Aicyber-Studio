@@ -239,7 +239,7 @@ export const NodeSetNodeRunner: NodeRunner = {
     return { isValid: true };
   },
 
-  run: async (node: AppNode, inputDataList: any[]) => {
+  run: async (node: AppNode, inputDataList: any[], updateNodeData?: (data: any) => void) => {
 
     console.log('🔄 NodeSet Runner - Starting run for node:', node.id);
     console.log('🔄 NodeSet Runner - Input data list length:', inputDataList.length);
