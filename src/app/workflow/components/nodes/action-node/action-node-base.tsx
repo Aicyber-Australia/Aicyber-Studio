@@ -44,6 +44,7 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
   const { setNodes } = useReactFlow();
 
   const [selectedModel, setSelectedModel] = useState<string>(data?.selectedModel || 'default');
+  const [executionMode, setExecutionMode] = useState<'concurrent' | 'progressive'>(data?.executionMode || 'concurrent');
   const [prompt, setPrompt] = useState<string>(data?.prompt || '');
   const [isTitleEditing, setIsTitleEditing] = useState(false);
   const [showResponses, setShowResponses] = useState(false);
@@ -86,10 +87,12 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
 
   const onReset = useCallback(() => {
     setSelectedModel('default');
+    setExecutionMode('concurrent');
     setPrompt('');
     setShowResponses(false);
     updateNodeData({
       selectedModel: 'default',
+      executionMode: 'concurrent',
       prompt: '',
       fileName: undefined,
       timestamp: undefined,
@@ -108,6 +111,11 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
   const handlePromptChange = useCallback((value: string) => {
     setPrompt(value);
     updateNodeData({ prompt: value });
+  }, [updateNodeData]);
+
+  const handleExecutionModeChange = useCallback((value: 'concurrent' | 'progressive') => {
+    setExecutionMode(value);
+    updateNodeData({ executionMode: value });
   }, [updateNodeData]);
 
   // Helper to check if a response is an error
@@ -178,6 +186,23 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
                     {model.label}
                   </SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Execution Mode Selection */}
+          <div className="flex justify-start flex-shrink-0 nodrag">
+            <Select value={executionMode} onValueChange={handleExecutionModeChange}>
+              <SelectTrigger className="w-full h-9">
+                <SelectValue placeholder="Execution mode:" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="concurrent">
+                  Concurrent (All at once)
+                </SelectItem>
+                <SelectItem value="progressive">
+                  Progressive (One-by-one)
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>

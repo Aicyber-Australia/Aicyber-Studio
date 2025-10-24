@@ -29,6 +29,7 @@ export type NodeSetData = {
   inputMode?: 'cross' | 'sequence' | 'append'; // How to process upstream input nodes
   collectorMode?: 'collector' | 'normal'; // Whether to accumulate data across runs
   outputMode?: 'loop' | 'direct'; // How to send data to downstream nodes: 'loop' (individual - each media-set separate) or 'direct' (integrated - all flattened)
+  executionMode?: 'concurrent' | 'progressive'; // How action nodes process multiple inputs: 'concurrent' (all at once) or 'progressive' (one-by-one with downstream execution)
   programmaticallyAdded?: boolean;
 };
 
@@ -51,6 +52,7 @@ export type WorkflowNodeData = {
   icon?: keyof typeof iconMapping;
   status?: 'loading' | 'success' | 'error' | 'initial';
   setOutputMode?: 'individual' | 'integrated'; // How set nodes (image-set, text-set, media-set) output: individual items or as one unit
+  executionMode?: 'concurrent' | 'progressive'; // How action nodes process multiple inputs: 'concurrent' (all at once) or 'progressive' (one-by-one with downstream execution)
   fileName?: string;
   timestamp?: number;
   selectedModel?: string;

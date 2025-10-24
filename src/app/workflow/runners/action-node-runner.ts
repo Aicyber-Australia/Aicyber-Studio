@@ -53,7 +53,7 @@ export const ActionNodeRunner: NodeRunner<AppNode> = {
     return { isValid: true };
   },
 
-  async run(node: AppNode, inputDataList: any[], updateNodeData?: (data: any) => void): Promise<any> {
+  async run(node: AppNode, inputDataList: any[], updateNodeData?: (data: any) => void, progressiveCallback?: (mediaSetIndex: number, mediaSet: any, continueDownstream: () => Promise<void>) => Promise<void>): Promise<any> {
     try {
       console.log(`ActionNodeRunner - Running ${node.type} with data:`, node.data);
       console.log(`ActionNodeRunner - Input data list:`, inputDataList);
@@ -94,8 +94,12 @@ export const ActionNodeRunner: NodeRunner<AppNode> = {
         }
       };
 
-      // Execute all API calls concurrently
-      const promises = mediaSets.map(async (mediaSet, i) => {
+      // Check execution mode
+      const executionMode = node.data.executionMode || 'concurrent';
+      console.log(`ActionNodeRunner - Execution mode: ${executionMode}`);
+
+      // Helper function to process a single mediaSet
+      const processSingleMediaSet = async (mediaSet: any, i: number) => {
         console.log(`ActionNodeRunner - Starting mediaSet ${i + 1}/${mediaSets.length}`);
 
         try {
@@ -121,10 +125,14 @@ export const ActionNodeRunner: NodeRunner<AppNode> = {
 
               // Push real-time update
               pushUpdate();
+
+              // In progressive mode, return null to indicate skip
+              return null;
             } else {
               // Extract media from successful response
               if (resultData.media) {
                 let hasMedia = false;
+                const currentBatchMedia: any[] = [];
 
                 // Process imageList
                 if (resultData.media.imageList && Array.isArray(resultData.media.imageList)) {
@@ -135,13 +143,15 @@ export const ActionNodeRunner: NodeRunner<AppNode> = {
                       metadata: resultData.metadata
                     };
                     apiResponses.push(response);
-                    resultMediaList.push({
+                    const mediaItem = {
                       id: `media-${Date.now()}-${Math.random()}`,
                       type: 'image',
                       url: img.url,
                       fileName: img.fileName || `result-${i + 1}.jpg`,
                       timestamp: Date.now()
-                    });
+                    };
+                    resultMediaList.push(mediaItem);
+                    currentBatchMedia.push(mediaItem);
                     hasMedia = true;
                   });
                 }
@@ -155,13 +165,15 @@ export const ActionNodeRunner: NodeRunner<AppNode> = {
                       metadata: resultData.metadata
                     };
                     apiResponses.push(response);
-                    resultMediaList.push({
+                    const mediaItem = {
                       id: `media-${Date.now()}-${Math.random()}`,
                       type: 'video',
                       url: vid.url,
                       fileName: vid.fileName || `result-${i + 1}.mp4`,
                       timestamp: Date.now()
-                    });
+                    };
+                    resultMediaList.push(mediaItem);
+                    currentBatchMedia.push(mediaItem);
                     hasMedia = true;
                   });
                 }
@@ -175,13 +187,15 @@ export const ActionNodeRunner: NodeRunner<AppNode> = {
                       metadata: { ...resultData.metadata, content: text }
                     };
                     apiResponses.push(response);
-                    resultMediaList.push({
+                    const mediaItem = {
                       id: `media-${Date.now()}-${Math.random()}`,
                       type: 'text',
                       content: text,
                       fileName: `result-${i + 1}.txt`,
                       timestamp: Date.now()
-                    });
+                    };
+                    resultMediaList.push(mediaItem);
+                    currentBatchMedia.push(mediaItem);
                     hasMedia = true;
                   });
                 }
@@ -192,6 +206,8 @@ export const ActionNodeRunner: NodeRunner<AppNode> = {
 
                 // Push real-time update
                 pushUpdate();
+
+                return currentBatchMedia;
               }
             }
           }
@@ -207,11 +223,47 @@ export const ActionNodeRunner: NodeRunner<AppNode> = {
 
           // Push real-time update
           pushUpdate();
-        }
-      });
 
-      // Wait for all API calls to complete
-      await Promise.all(promises);
+          // In progressive mode, return null to indicate skip
+          return null;
+        }
+
+        return null;
+      };
+
+      if (executionMode === 'progressive' && progressiveCallback) {
+        // Progressive mode: execute one by one with downstream execution
+        console.log('ActionNodeRunner - Using progressive execution mode');
+
+        for (let i = 0; i < mediaSets.length; i++) {
+          const mediaSet = mediaSets[i];
+
+          // Process single mediaSet and get result
+          const batchMedia = await processSingleMediaSet(mediaSet, i);
+
+          // If error occurred, skip to next (batchMedia will be null)
+          if (batchMedia === null) {
+            console.log(`ActionNodeRunner - Skipping mediaSet ${i + 1} due to error`);
+            continue;
+          }
+
+          // Execute downstream workflow with this result
+          await progressiveCallback(i, mediaSet, async () => {
+            console.log(`ActionNodeRunner - Progressive: executing downstream for mediaSet ${i + 1}`);
+            // Downstream execution happens in the callback
+          });
+        }
+      } else {
+        // Concurrent mode: execute all API calls concurrently
+        console.log('ActionNodeRunner - Using concurrent execution mode');
+
+        const promises = mediaSets.map(async (mediaSet, i) => {
+          await processSingleMediaSet(mediaSet, i);
+        });
+
+        // Wait for all API calls to complete
+        await Promise.all(promises);
+      }
 
       console.log(`ActionNodeRunner - All executions complete. Success: ${successCount}, Errors: ${errorCount}`);
       console.log(`ActionNodeRunner - API Responses:`, apiResponses);

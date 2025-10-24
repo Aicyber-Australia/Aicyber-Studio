@@ -115,7 +115,7 @@ export function useWorkflowRunner() {
 
   // Run阶段：重新获取类型并执行
   const processNode = useCallback(
-    async (node: AppNode, inputDataList: any[]) => {
+    async (node: AppNode, inputDataList: any[], skipDownstream: boolean = false) => {
       updateNodeStatus(node.id, 'loading');
       setLogMessages((prev) => [...prev, `${node.data.title} processing...`]);
 
@@ -149,8 +149,72 @@ export function useWorkflowRunner() {
         );
       };
 
-      // 执行Runner with update callback
-      const processedData = await runner.run(updatedNode || node, inputDataList, updateNodeDataCallback);
+      // Progressive mode callback - executes downstream workflow for each media set
+      const progressiveCallback = async (
+        mediaSetIndex: number,
+        _mediaSet: any,
+        _continueDownstream: () => Promise<void>
+      ) => {
+        console.log(`🔄 Progressive - Processing mediaSet ${mediaSetIndex + 1}, executing downstream workflow`);
+
+        // Get downstream nodes
+        const edges = getReactFlowEdges();
+        const downstreamEdges = edges.filter(edge => edge.source === node.id);
+
+        if (downstreamEdges.length === 0) {
+          console.log('🔄 Progressive - No downstream nodes');
+          return;
+        }
+
+        // Execute each downstream node
+        for (const edge of downstreamEdges) {
+          const downstreamNode = getNode(edge.target);
+          if (!downstreamNode) continue;
+
+          console.log(`🔄 Progressive - Executing downstream node: ${downstreamNode.id}`);
+
+          // Collect all nodes from this downstream node onwards
+          const nodes = getNodes();
+          const allEdges = getEdges();
+          const downstreamNodesToProcess = collectNodesToProcess(nodes, allEdges, downstreamNode.id);
+
+          // Execute each downstream node sequentially
+          for (const dsNode of downstreamNodesToProcess) {
+            if (!isRunning.current) {
+              throw new Error('Workflow stopped by user');
+            }
+
+            try {
+              // Collect input data for downstream node
+              const dsInputDataList = collectInputData(dsNode);
+
+              // Self-check
+              await selfCheckNode(dsNode, dsInputDataList);
+              await new Promise(resolve => setTimeout(resolve, 5));
+
+              // Process downstream node (skip its downstream to avoid infinite loop)
+              await processNode(dsNode, dsInputDataList, true);
+
+              await new Promise(resolve => setTimeout(resolve, 50));
+            } catch (error) {
+              // If downstream workflow errors, terminate entire workflow
+              console.error(`🔄 Progressive - Downstream node ${dsNode.id} failed:`, error);
+              isRunning.current = false;
+              throw error;
+            }
+          }
+        }
+      };
+
+      // 执行Runner with update callback and progressive callback
+      const processedData = await runner.run(
+        updatedNode || node,
+        inputDataList,
+        updateNodeDataCallback,
+        (!skipDownstream && (updatedNode?.data.executionMode === 'progressive' || node.data.executionMode === 'progressive'))
+          ? progressiveCallback
+          : undefined
+      );
       console.log(`🔄 Process - Runner returned data:`, processedData);
 
       // 合并输出到节点 data (final update)
@@ -174,7 +238,7 @@ export function useWorkflowRunner() {
       console.log(`Node ${node.id} processing completed successfully!`);
       console.log(`Node ${node.id} final data:`, { ...node.data, ...processedData });
     },
-    [updateNodeStatus, getNode, getNodes, setNodes, getReactFlowEdges, setReactFlowNodes, showToast],
+    [updateNodeStatus, getNode, getNodes, setNodes, getEdges, getReactFlowEdges, setReactFlowNodes, showToast, collectInputData, selfCheckNode],
   );
 
   const runWorkflow = useCallback(
@@ -202,6 +266,9 @@ export function useWorkflowRunner() {
         if (!isRunning.current) break;
 
         try {
+          // Check if node is in progressive mode
+          const isProgressiveMode = node.data.executionMode === 'progressive';
+
           // 第一步：收集数据（只收集一次）
           const inputDataList = collectInputData(node);
 
@@ -212,6 +279,30 @@ export function useWorkflowRunner() {
 
           // 第三步：执行（重新获取类型并处理数据）
           await processNode(node, inputDataList);
+
+          // In progressive mode, downstream nodes are already processed
+          // So we need to skip them in the main workflow loop
+          if (isProgressiveMode) {
+            const downstreamNodeIds = new Set<string>();
+            const collectDownstreamIds = (nodeId: string) => {
+              const outgoing = edges.filter(e => e.source === nodeId);
+              outgoing.forEach(edge => {
+                if (!downstreamNodeIds.has(edge.target)) {
+                  downstreamNodeIds.add(edge.target);
+                  collectDownstreamIds(edge.target);
+                }
+              });
+            };
+            collectDownstreamIds(node.id);
+
+            // Remove downstream nodes from processing queue
+            const currentIndex = nodesToProcess.indexOf(node);
+            for (let i = nodesToProcess.length - 1; i > currentIndex; i--) {
+              if (downstreamNodeIds.has(nodesToProcess[i].id)) {
+                nodesToProcess.splice(i, 1);
+              }
+            }
+          }
 
           // 等待状态更新完成，确保下一个节点能获取到最新数据
           await new Promise(resolve => setTimeout(resolve, 50));
@@ -240,7 +331,7 @@ export function useWorkflowRunner() {
 
       isRunning.current = false;
     },
-    [getNodes, getEdges, processNode],
+    [getNodes, getEdges, processNode, collectInputData, selfCheckNode, updateNodeStatus, showToast],
   );
 
   return {
