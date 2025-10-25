@@ -544,10 +544,11 @@ export function useWorkflowRunner() {
           return;
         }
 
-        // Execute each downstream node
-        for (const edge of downstreamEdges) {
+        // Execute each downstream node - PARALLEL for multiple branches
+        // When there are multiple downstream edges (branches/subflows), execute them in parallel
+        const subflowPromises = downstreamEdges.map(async (edge) => {
           const downstreamNode = getNode(edge.target);
-          if (!downstreamNode) continue;
+          if (!downstreamNode) return;
 
           // CRITICAL: Check if this downstream node belongs to the current subflow
           // A node belongs to current subflow if ALL its upstream nodes are either:
@@ -569,7 +570,7 @@ export function useWorkflowRunner() {
 
           if (!isInCurrentSubflow) {
             console.log(`🔄 Progressive - Skipping ${downstreamNode.id} - belongs to different subflow or waiting for other upstream nodes`);
-            continue;
+            return;
           }
 
           console.log(`🔄 Progressive - Node ${downstreamNode.id} confirmed in current subflow, proceeding`);
@@ -588,7 +589,7 @@ export function useWorkflowRunner() {
               console.log(`⏸️ Concurrent node ${downstreamNode.id} still waiting for upstream nodes to complete`);
             }
 
-            continue; // Skip concurrent nodes during progressive iteration
+            return; // Skip concurrent nodes during progressive iteration
           }
 
           console.log(`🔄 Progressive - Executing downstream node: ${downstreamNode.id}`);
@@ -621,7 +622,7 @@ export function useWorkflowRunner() {
             return true;
           });
 
-          // Execute each downstream node sequentially
+          // Execute each downstream node sequentially within this subflow
           for (let dsIndex = 0; dsIndex < downstreamNodesToProcess.length; dsIndex++) {
             const dsNode = downstreamNodesToProcess[dsIndex];
 
@@ -768,6 +769,15 @@ export function useWorkflowRunner() {
               throw error;
             }
           }
+        });
+
+        // Wait for all subflows to complete in parallel
+        if (downstreamEdges.length > 1) {
+          console.log(`🔄 Progressive - Waiting for ${downstreamEdges.length} parallel subflows to complete`);
+        }
+        await Promise.all(subflowPromises);
+        if (downstreamEdges.length > 1) {
+          console.log(`🔄 Progressive - All ${downstreamEdges.length} parallel subflows completed`);
         }
       };
 
@@ -923,9 +933,10 @@ export function useWorkflowRunner() {
         const edges = getReactFlowEdges();
         const downstreamEdges = edges.filter(edge => edge.source === node.id);
 
-        for (const edge of downstreamEdges) {
+        // Execute downstream nodes in parallel when there are multiple branches
+        const downstreamPromises = downstreamEdges.map(async (edge) => {
           const downstreamNode = getNode(edge.target) as AppNode | undefined;
-          if (!downstreamNode) continue;
+          if (!downstreamNode) return;
 
           const downstreamNodeData = downstreamNode.data as any;
           const isConcurrentDownstream = downstreamNodeData?.executionMode === 'concurrent';
@@ -1070,7 +1081,7 @@ export function useWorkflowRunner() {
             // Check if already executed
             if (downstreamNodeData?.status === 'success' || downstreamNodeData?.status === 'loading') {
               console.log(`🔄 ${nodeType} completed - Progressive node ${downstreamNode.id} already executed or executing, skipping`);
-              continue;
+              return;
             }
 
             // Check if all upstream nodes are complete
@@ -1085,7 +1096,7 @@ export function useWorkflowRunner() {
 
             if (!allUpstreamComplete) {
               console.log(`🔄 ${nodeType} completed - Progressive node ${downstreamNode.id} waiting for all upstream to complete`);
-              continue;
+              return;
             }
 
             // Collect input data from upstream nodes
@@ -1125,7 +1136,7 @@ export function useWorkflowRunner() {
             const concurrentNodeData = downstreamNode.data as any;
             if (concurrentNodeData?.status === 'success' || concurrentNodeData?.status === 'loading') {
               console.log(`🔄 ${nodeType} completed - Concurrent node ${downstreamNode.id} already executed or executing, skipping`);
-              continue;
+              return;
             }
 
             // Check if ALL upstream nodes of this concurrent node are complete using helper function
@@ -1147,7 +1158,7 @@ export function useWorkflowRunner() {
             if (!allUpstreamComplete) {
               console.log(`⏸️ Concurrent node ${downstreamNode.id} cannot execute - not all upstream nodes are completed`);
               console.log(`🔄 ${nodeType} completed - Skipping concurrent node ${downstreamNode.id} - not all upstream nodes are complete yet`);
-              continue;
+              return;
             }
 
             console.log(`🔄 ${nodeType} completed - All upstream nodes complete, executing concurrent downstream node ${downstreamNode.id} with all collected data`);
@@ -1221,7 +1232,7 @@ export function useWorkflowRunner() {
 
               if (!dsInputDataList || dsInputDataList.length === 0) {
                 console.log(`🔄 ${nodeType} completed - No data for concurrent downstream node ${downstreamNode.id}, skipping`);
-                continue;
+                return;
               }
 
               console.log(`🔄 ${nodeType} completed - Concurrent node ${downstreamNode.id} will process ${dsInputDataList.length} input sources from immediate upstream nodes`);
@@ -1247,6 +1258,15 @@ export function useWorkflowRunner() {
               throw error;
             }
           }
+        });
+
+        // Wait for all downstream branches to complete in parallel
+        if (downstreamEdges.length > 1) {
+          console.log(`🔄 ${nodeType} completed - Waiting for ${downstreamEdges.length} parallel downstream branches to complete`);
+        }
+        await Promise.all(downstreamPromises);
+        if (downstreamEdges.length > 1) {
+          console.log(`🔄 ${nodeType} completed - All ${downstreamEdges.length} parallel downstream branches completed`);
         }
       }
     },
