@@ -592,6 +592,38 @@ export function useWorkflowRunner() {
             return; // Skip concurrent nodes during progressive iteration
           }
 
+          // Additional validation for Progressive nodes in Progressive mode
+          const isProgressiveDownstream = downstreamNodeData?.executionMode === 'progressive';
+          if (isProgressiveDownstream) {
+            // Check if any input edges contain non-action nodes
+            const downstreamUpstreamEdges = edges.filter(e => e.target === downstreamNode.id);
+            let hasIncompleteNonActionNode = false;
+
+            for (const upEdge of downstreamUpstreamEdges) {
+              const upstreamNode = getNode(upEdge.source);
+              if (!upstreamNode) continue;
+
+              const upstreamNodeType = upstreamNode.type as string;
+              const upstreamNodeData = upstreamNode.data as any;
+              const isUpstreamActionNode = isActionNode(upstreamNodeType);
+
+              // If upstream is a non-action node, check if it's completed
+              if (!isUpstreamActionNode) {
+                const isCompleted = upstreamNodeData?.status === 'success';
+                if (!isCompleted) {
+                  hasIncompleteNonActionNode = true;
+                  console.log(`🔄 Progressive - Downstream progressive node ${downstreamNode.id} has incomplete non-action upstream ${upEdge.source} (status: ${upstreamNodeData?.status})`);
+                  break;
+                }
+              }
+            }
+
+            if (hasIncompleteNonActionNode) {
+              console.log(`🔄 Progressive - Skipping progressive downstream node ${downstreamNode.id} - non-action upstream nodes not completed`);
+              return; // Skip this progressive node - it's not runnable yet
+            }
+          }
+
           console.log(`🔄 Progressive - Executing downstream node: ${downstreamNode.id}`);
 
           // Collect all nodes from this downstream node onwards
