@@ -37,6 +37,32 @@ function deduplicateMediaSets(mediaSets: MediaSet[]): MediaSet[] {
   return deduplicated;
 }
 
+/**
+ * Deduplicates media items based on their content.
+ * Two media items are considered duplicates if they have the same type and URL/content.
+ */
+function deduplicateMediaItems(existingMedia: any[], newMedia: any): boolean {
+  // Check if this media item already exists
+  for (const existing of existingMedia) {
+    // Compare based on type
+    if (existing.type !== newMedia.type) {
+      continue;
+    }
+
+    // For images and videos, compare by URL
+    if ((newMedia.type === 'image' || newMedia.type === 'video') && existing.url === newMedia.url) {
+      return true; // Duplicate found
+    }
+
+    // For text, compare by content
+    if (newMedia.type === 'text' && existing.content === newMedia.content) {
+      return true; // Duplicate found
+    }
+  }
+
+  return false; // Not a duplicate
+}
+
 export const ActionNodeRunner: NodeRunner<AppNode> = {
   nodeType: 'action-node', // 通用类型
 
@@ -188,9 +214,15 @@ export const ActionNodeRunner: NodeRunner<AppNode> = {
                       fileName: img.fileName || `result-${i + 1}.jpg`,
                       timestamp: Date.now()
                     };
-                    resultMediaList.push(mediaItem);
-                    currentBatchMedia.push(mediaItem);
-                    hasMedia = true;
+
+                    // Only add if not a duplicate
+                    if (!deduplicateMediaItems(resultMediaList, mediaItem)) {
+                      resultMediaList.push(mediaItem);
+                      currentBatchMedia.push(mediaItem);
+                      hasMedia = true;
+                    } else {
+                      console.log(`ActionNodeRunner - Skipping duplicate image: ${img.url}`);
+                    }
                   });
                 }
 
@@ -210,9 +242,15 @@ export const ActionNodeRunner: NodeRunner<AppNode> = {
                       fileName: vid.fileName || `result-${i + 1}.mp4`,
                       timestamp: Date.now()
                     };
-                    resultMediaList.push(mediaItem);
-                    currentBatchMedia.push(mediaItem);
-                    hasMedia = true;
+
+                    // Only add if not a duplicate
+                    if (!deduplicateMediaItems(resultMediaList, mediaItem)) {
+                      resultMediaList.push(mediaItem);
+                      currentBatchMedia.push(mediaItem);
+                      hasMedia = true;
+                    } else {
+                      console.log(`ActionNodeRunner - Skipping duplicate video: ${vid.url}`);
+                    }
                   });
                 }
 
@@ -232,9 +270,15 @@ export const ActionNodeRunner: NodeRunner<AppNode> = {
                       fileName: `result-${i + 1}.txt`,
                       timestamp: Date.now()
                     };
-                    resultMediaList.push(mediaItem);
-                    currentBatchMedia.push(mediaItem);
-                    hasMedia = true;
+
+                    // Only add if not a duplicate
+                    if (!deduplicateMediaItems(resultMediaList, mediaItem)) {
+                      resultMediaList.push(mediaItem);
+                      currentBatchMedia.push(mediaItem);
+                      hasMedia = true;
+                    } else {
+                      console.log(`ActionNodeRunner - Skipping duplicate text content`);
+                    }
                   });
                 }
 

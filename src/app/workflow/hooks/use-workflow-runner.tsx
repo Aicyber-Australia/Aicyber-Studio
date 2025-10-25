@@ -45,6 +45,35 @@ function deduplicateApiResponses(responses: any[]): any[] {
 }
 
 /**
+ * Deduplicates media items based on their content (URL for images/videos, content for text).
+ * This prevents duplicate media entries during progressive iterations.
+ */
+function deduplicateMediaItems(mediaItems: any[]): any[] {
+  const seen = new Set<string>();
+  const deduplicated: any[] = [];
+
+  for (const item of mediaItems) {
+    // Create a unique key based on type and URL/content
+    let key: string;
+    if (item.type === 'text') {
+      key = `text:${item.content || ''}`;
+    } else if (item.type === 'image' || item.type === 'video') {
+      key = `${item.type}:${item.url || ''}`;
+    } else {
+      // Fallback for unknown types
+      key = JSON.stringify(item);
+    }
+
+    if (!seen.has(key)) {
+      seen.add(key);
+      deduplicated.push(item);
+    }
+  }
+
+  return deduplicated;
+}
+
+/**
  * This is a demo workflow runner that runs a simplified version of a workflow.
  * You can customize how nodes are processed by overriding `processNode` or
  * even replacing the entire `collectNodesToProcess` function with your own logic.
@@ -430,11 +459,12 @@ export function useWorkflowRunner() {
               const currentData = n.data as any;
               const newData = { ...n.data, ...partialData };
 
-              // Merge media lists if they exist
+              // Merge media lists if they exist (with deduplication)
               if (partialData.media?.mediaList && currentData.media?.mediaList) {
+                const mergedMediaList = [...currentData.media.mediaList, ...partialData.media.mediaList];
                 newData.media = {
                   ...partialData.media,
-                  mediaList: [...currentData.media.mediaList, ...partialData.media.mediaList]
+                  mediaList: deduplicateMediaItems(mergedMediaList)
                 };
               }
 
@@ -456,11 +486,12 @@ export function useWorkflowRunner() {
                 const currentData = n.data as any;
                 const newData = { ...n.data, ...partialData };
 
-                // Merge media lists if they exist
+                // Merge media lists if they exist (with deduplication)
                 if (partialData.media?.mediaList && currentData.media?.mediaList) {
+                  const mergedMediaList = [...currentData.media.mediaList, ...partialData.media.mediaList];
                   newData.media = {
                     ...partialData.media,
-                    mediaList: [...currentData.media.mediaList, ...partialData.media.mediaList]
+                    mediaList: deduplicateMediaItems(mergedMediaList)
                   };
                 }
 
@@ -762,11 +793,12 @@ export function useWorkflowRunner() {
             const currentData = n.data as any;
             const newData = { ...n.data, ...processedData };
 
-            // Merge media lists if they exist
+            // Merge media lists if they exist (with deduplication)
             if (processedData.media?.mediaList && currentData.media?.mediaList) {
+              const mergedMediaList = [...currentData.media.mediaList, ...processedData.media.mediaList];
               newData.media = {
                 ...processedData.media,
-                mediaList: [...currentData.media.mediaList, ...processedData.media.mediaList]
+                mediaList: deduplicateMediaItems(mergedMediaList)
               };
             }
 
@@ -798,11 +830,12 @@ export function useWorkflowRunner() {
               const currentData = n.data as any;
               const newData = { ...n.data, ...processedData };
 
-              // Merge media lists if they exist
+              // Merge media lists if they exist (with deduplication)
               if (processedData.media?.mediaList && currentData.media?.mediaList) {
+                const mergedMediaList = [...currentData.media.mediaList, ...processedData.media.mediaList];
                 newData.media = {
                   ...processedData.media,
-                  mediaList: [...currentData.media.mediaList, ...processedData.media.mediaList]
+                  mediaList: deduplicateMediaItems(mergedMediaList)
                 };
               }
 
