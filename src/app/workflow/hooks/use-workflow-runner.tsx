@@ -595,9 +595,10 @@ export function useWorkflowRunner() {
           // Additional validation for Progressive nodes in Progressive mode
           const isProgressiveDownstream = downstreamNodeData?.executionMode === 'progressive';
           if (isProgressiveDownstream) {
-            // Check if any input edges contain non-action nodes
+            // Check if any input edges contain nodes that must be fully completed
+            // This includes: concurrent nodes (action or non-action) OR non-action nodes in any mode
             const downstreamUpstreamEdges = edges.filter(e => e.target === downstreamNode.id);
-            let hasIncompleteNonActionNode = false;
+            let hasIncompleteRequiredNode = false;
 
             for (const upEdge of downstreamUpstreamEdges) {
               const upstreamNode = getNode(upEdge.source);
@@ -606,20 +607,25 @@ export function useWorkflowRunner() {
               const upstreamNodeType = upstreamNode.type as string;
               const upstreamNodeData = upstreamNode.data as any;
               const isUpstreamActionNode = isActionNode(upstreamNodeType);
+              const upstreamExecutionMode = upstreamNodeData?.executionMode;
 
-              // If upstream is a non-action node, check if it's completed
-              if (!isUpstreamActionNode) {
+              // Check if this upstream node must be fully completed:
+              // 1. Concurrent mode (action or non-action) - must wait for full completion
+              // 2. Non-action node in any mode - must wait for completion
+              const mustWaitForCompletion = upstreamExecutionMode === 'concurrent' || !isUpstreamActionNode;
+
+              if (mustWaitForCompletion) {
                 const isCompleted = upstreamNodeData?.status === 'success';
                 if (!isCompleted) {
-                  hasIncompleteNonActionNode = true;
-                  console.log(`🔄 Progressive - Downstream progressive node ${downstreamNode.id} has incomplete non-action upstream ${upEdge.source} (status: ${upstreamNodeData?.status})`);
+                  hasIncompleteRequiredNode = true;
+                  console.log(`🔄 Progressive - Downstream progressive node ${downstreamNode.id} has incomplete upstream ${upEdge.source} (type: ${isUpstreamActionNode ? 'action' : 'non-action'}, mode: ${upstreamExecutionMode}, status: ${upstreamNodeData?.status})`);
                   break;
                 }
               }
             }
 
-            if (hasIncompleteNonActionNode) {
-              console.log(`🔄 Progressive - Skipping progressive downstream node ${downstreamNode.id} - non-action upstream nodes not completed`);
+            if (hasIncompleteRequiredNode) {
+              console.log(`🔄 Progressive - Skipping progressive downstream node ${downstreamNode.id} - required upstream nodes not completed`);
               return; // Skip this progressive node - it's not runnable yet
             }
           }
@@ -701,7 +707,25 @@ export function useWorkflowRunner() {
                     }
                   }
                 } else {
-                  // Other upstream nodes - include their full data
+                  // Other upstream nodes - check if they must be fully completed before using their data
+                  const upstreamNodeType = upstreamNode.type as string;
+                  const isUpstreamActionNode = isActionNode(upstreamNodeType);
+                  const upstreamExecutionMode = upstreamData?.executionMode;
+
+                  // Must wait for completion if:
+                  // 1. Concurrent mode (action or non-action) - must wait for full completion
+                  // 2. Non-action node in any mode - must wait for completion
+                  const mustWaitForCompletion = upstreamExecutionMode === 'concurrent' || !isUpstreamActionNode;
+
+                  if (mustWaitForCompletion) {
+                    const isCompleted = upstreamData?.status === 'success';
+                    if (!isCompleted) {
+                      console.log(`🔄 Progressive - Skipping data from incomplete upstream ${upEdge.source} (type: ${isUpstreamActionNode ? 'action' : 'non-action'}, mode: ${upstreamExecutionMode}, status: ${upstreamData?.status}) for downstream node ${dsNode.id}`);
+                      continue; // Skip this upstream node's data
+                    }
+                  }
+
+                  // Include their full data
                   dsInputDataList.push(upstreamData);
                 }
               }
