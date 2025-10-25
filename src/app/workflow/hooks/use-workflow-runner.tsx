@@ -1623,7 +1623,9 @@ export function useWorkflowRunner() {
               }
 
               // Skip if already successfully completed (may have been executed by concurrent/progressive parent)
-              const nodeData = node.data as any;
+              // IMPORTANT: Get fresh node data from the store instead of using stale data from nodesToProcess
+              const freshNode = getNode(node.id);
+              const nodeData = freshNode?.data as any;
               if (nodeData?.status === 'success') {
                 console.log(`⏭️ Skipping ${node.id} - already executed with status: success`);
                 // Mark as processed so it's considered complete for downstream nodes
