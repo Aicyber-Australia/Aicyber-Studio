@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Play, Trash, RotateCcw } from 'lucide-react';
+import { Play, Trash, RotateCcw, PauseCircle } from 'lucide-react';
 import { NodeResizer, useReactFlow } from '@xyflow/react';
 
 import { Button } from '@/components/ui/button';
@@ -37,6 +37,7 @@ function WorkflowNode({
   const removeNode = useAppStore((s) => s.removeNode);
   const { setNodes, getNode } = useReactFlow();
   const [isTitleEditing, setIsTitleEditing] = useState(false);
+  const [hasBreakpoint, setHasBreakpoint] = useState<boolean>(data?.hasBreakpoint || false);
   const onPlay = useCallback(() => runWorkflow(id), [id, runWorkflow]);
   const onRemove = useCallback(() => removeNode(id), [id, removeNode]);
 
@@ -47,6 +48,16 @@ function WorkflowNode({
       )
     );
   }, [id, setNodes]);
+
+  const handleBreakpointToggle = useCallback(() => {
+    const newValue = !hasBreakpoint;
+    setHasBreakpoint(newValue);
+    setNodes((nodes) =>
+      nodes.map((node) =>
+        node.id === id ? { ...node, data: { ...node.data, hasBreakpoint: newValue } } : node
+      )
+    );
+  }, [hasBreakpoint, id, setNodes]);
 
   const IconComponent = data?.icon ? iconMapping[data.icon] : undefined;
 
@@ -92,6 +103,14 @@ function WorkflowNode({
                 <RotateCcw className="w-4 h-4" />
               </Button>
             )}
+            <Button
+              variant="ghost"
+              className="nodrag px-1!"
+              onClick={handleBreakpointToggle}
+              title={hasBreakpoint ? "Remove breakpoint (workflow will pause after this node)" : "Add breakpoint"}
+            >
+              <PauseCircle className={`w-4 h-4 ${hasBreakpoint ? 'text-red-500' : 'text-gray-400'}`} />
+            </Button>
             <Button variant="ghost" className="nodrag px-1!" onClick={onPlay}>
               <Play className="stroke-blue-500 fill-blue-500" />
             </Button>

@@ -33,6 +33,8 @@ export type NodeSetData = {
   programmaticallyAdded?: boolean;
   // Track which media items from each source node have been processed (for progressive mode deduplication)
   processedMediaIds?: Record<string, string[]>; // sourceNodeId -> array of processed media IDs
+  // Breakpoint: pause workflow execution when this node completes
+  hasBreakpoint?: boolean;
 };
 
 
@@ -94,6 +96,8 @@ export type WorkflowNodeData = {
   };
   // Track which media items from each source node have been processed (for progressive mode deduplication)
   processedMediaIds?: Record<string, string[]>; // sourceNodeId -> array of processed media IDs
+  // Breakpoint: pause workflow execution when this node completes
+  hasBreakpoint?: boolean;
 };
 
 export type WorkflowNodeProps = NodeProps<Node<WorkflowNodeData>> & {

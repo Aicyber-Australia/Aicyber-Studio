@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useState, useMemo, useEffect } from 'react';
-import { Play, Trash, RotateCcw, CheckCircle2, XCircle, ChevronDown, ChevronUp, Download } from 'lucide-react';
+import { Play, Trash, RotateCcw, CheckCircle2, XCircle, ChevronDown, ChevronUp, Download, PauseCircle } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -51,6 +51,7 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
   const [prompt, setPrompt] = useState<string>(data?.prompt || '');
   const [isTitleEditing, setIsTitleEditing] = useState(false);
   const [showResponses, setShowResponses] = useState(false);
+  const [hasBreakpoint, setHasBreakpoint] = useState<boolean>(data?.hasBreakpoint || false);
 
   // Subscribe to ReactFlow store for real-time updates
   // This will re-render when nodes or edges change
@@ -63,10 +64,22 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
 
     if (!currentNode) return { executionCount: 0, shouldShowExecutionCount: false, isExecutionModeLocked: false, lockReason: '' };
 
+    // Check if this node has a breakpoint set
+    const nodeHasBreakpoint = (currentNode.data as any)?.hasBreakpoint === true;
+
     // Get all incoming nodes
     const incomingNodes = getIncomers(currentNode, nodes, edges);
 
     if (incomingNodes.length === 0) {
+      // No incoming nodes, but check for breakpoint lock
+      if (nodeHasBreakpoint) {
+        return {
+          executionCount: 0,
+          shouldShowExecutionCount: false,
+          isExecutionModeLocked: true,
+          lockReason: 'Locked to Concurrent: Breakpoint is set'
+        };
+      }
       return { executionCount: 0, shouldShowExecutionCount: false, isExecutionModeLocked: false, lockReason: '' };
     }
 
@@ -106,14 +119,20 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
     const count = getExecutionCount(inputDataList);
 
     // Check if execution mode must be locked to concurrent
-    // Lock if: multiple action nodes OR (action node(s) + other node types)
+    // Lock if:
+    // 1. Breakpoint is set, OR
+    // 2. Multiple action nodes upstream, OR
+    // 3. Action node(s) + other node types upstream
     const mustBeConcurrent =
+      nodeHasBreakpoint ||
       (actionNodeCount > 1) ||
       (actionNodeCount >= 1 && otherNodeCount >= 1);
 
     let reason = '';
     if (mustBeConcurrent) {
-      if (actionNodeCount > 1 && otherNodeCount >= 1) {
+      if (nodeHasBreakpoint) {
+        reason = 'Locked to Concurrent: Breakpoint is set';
+      } else if (actionNodeCount > 1 && otherNodeCount >= 1) {
         reason = `Locked to Concurrent: ${actionNodeCount} action node(s) + ${otherNodeCount} other node(s) upstream`;
       } else if (actionNodeCount > 1) {
         reason = `Locked to Concurrent: ${actionNodeCount} action nodes upstream`;
@@ -143,11 +162,11 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
   // Auto-enforce concurrent mode when restriction applies
   useEffect(() => {
     if (isExecutionModeLocked && executionMode !== 'concurrent') {
-      console.log(`⚠️ Auto-enforcing concurrent mode for action node ${id} due to upstream restrictions`);
+      console.log(`⚠️ Auto-enforcing concurrent mode for action node ${id}: ${lockReason}`);
       setExecutionMode('concurrent');
       updateNodeData({ executionMode: 'concurrent' });
     }
-  }, [isExecutionModeLocked, executionMode, id, updateNodeData]);
+  }, [isExecutionModeLocked, executionMode, id, lockReason, updateNodeData]);
 
   const handleTitleChange = useCallback((newTitle: string) => {
     updateNodeData({ title: newTitle });
@@ -198,6 +217,20 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
     setExecutionMode(value);
     updateNodeData({ executionMode: value });
   }, [updateNodeData]);
+
+  const handleBreakpointToggle = useCallback(() => {
+    const newValue = !hasBreakpoint;
+    setHasBreakpoint(newValue);
+
+    // If setting breakpoint on action node, force to concurrent mode
+    // The lock will be enforced by the useMemo above, but we set it immediately for consistency
+    if (newValue && executionMode !== 'concurrent') {
+      setExecutionMode('concurrent');
+      updateNodeData({ hasBreakpoint: newValue, executionMode: 'concurrent' });
+    } else {
+      updateNodeData({ hasBreakpoint: newValue });
+    }
+  }, [hasBreakpoint, executionMode, updateNodeData]);
 
   // Helper to check if a response is an error
   const isError = (response: any): response is ApiExecutionError => {
@@ -300,6 +333,14 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
               title="重置节点"
             >
               <RotateCcw className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              className="nodrag px-1!"
+              onClick={handleBreakpointToggle}
+              title={hasBreakpoint ? "Remove breakpoint (workflow will pause after this node)" : "Add breakpoint"}
+            >
+              <PauseCircle className={`w-4 h-4 ${hasBreakpoint ? 'text-red-500' : 'text-gray-400'}`} />
             </Button>
             <Button variant="ghost" className="nodrag px-1!" onClick={onPlay}>
               <Play className="stroke-blue-500 fill-blue-500" />

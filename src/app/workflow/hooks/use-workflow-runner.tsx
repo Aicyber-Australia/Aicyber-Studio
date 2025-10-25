@@ -52,6 +52,7 @@ function deduplicateApiResponses(responses: any[]): any[] {
 export function useWorkflowRunner() {
   const [logMessages, setLogMessages] = useState<string[]>([]);
   const isRunning = useRef(false);
+  const breakpointNodeId = useRef<string | null>(null); // Track which node hit a breakpoint
   const { getNodes, setNodes, getEdges } = useAppStore(useShallow(selector));
   const { getNode, setNodes: setReactFlowNodes, getEdges: getReactFlowEdges } = useReactFlow();
   const { showToast } = useToast();
@@ -177,6 +178,7 @@ export function useWorkflowRunner() {
         if (nodeData.collectorMode !== undefined) clearedData.collectorMode = nodeData.collectorMode;
         if (nodeData.outputMode !== undefined) clearedData.outputMode = nodeData.outputMode;
         if (nodeData.nodeList !== undefined) clearedData.nodeList = [];
+        if (nodeData.hasBreakpoint !== undefined) clearedData.hasBreakpoint = nodeData.hasBreakpoint;
 
         return {
           ...node,
@@ -255,6 +257,7 @@ export function useWorkflowRunner() {
         if (nodeData.collectorMode !== undefined) clearedData.collectorMode = nodeData.collectorMode;
         if (nodeData.outputMode !== undefined) clearedData.outputMode = nodeData.outputMode;
         if (nodeData.nodeList !== undefined) clearedData.nodeList = [];
+        if (nodeData.hasBreakpoint !== undefined) clearedData.hasBreakpoint = nodeData.hasBreakpoint;
 
         return {
           ...node,
@@ -817,6 +820,21 @@ export function useWorkflowRunner() {
         updateNodeStatus(node.id, 'success');
         setLogMessages((prev) => [...prev, `✅ ${node.data.title} completed successfully!`]);
         console.log(`Node ${node.id} processing completed successfully!`);
+
+        // Check for breakpoint after node completion
+        const nodeData = (updatedNode?.data || node.data) as any;
+        if (nodeData?.hasBreakpoint) {
+          console.log(`🔴 Breakpoint hit at node ${node.id} (${node.data.title})`);
+          setLogMessages((prev) => [...prev, `🔴 Breakpoint: Paused at ${node.data.title}`]);
+          showToast({
+            title: "Breakpoint Hit",
+            description: `Workflow paused at ${node.data.title}. Click Resume to continue.`,
+            variant: "default",
+          });
+          breakpointNodeId.current = node.id;
+          isRunning.current = false;
+          throw new Error('BREAKPOINT'); // Special error to stop workflow execution
+        }
       } else {
         // Keep as loading - this node will be called again with more items
         console.log(`Node ${node.id} iteration completed (still more to process)`);
@@ -1492,6 +1510,12 @@ export function useWorkflowRunner() {
               console.error(`Node ${node.id} processing failed:`, error);
               const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
+              // Check if this is a breakpoint hit (not a real error)
+              if (errorMessage === 'BREAKPOINT') {
+                console.log(`🔴 Workflow paused at breakpoint in node ${node.id}`);
+                return; // Exit workflow cleanly (node is already marked as success)
+              }
+
               // Update node status to error
               updateNodeStatus(node.id, 'error');
 
@@ -1635,6 +1659,12 @@ export function useWorkflowRunner() {
             console.error(`Node ${node.id} processing failed:`, error);
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
+            // Check if this is a breakpoint hit (not a real error)
+            if (errorMessage === 'BREAKPOINT') {
+              console.log(`🔴 Workflow paused at breakpoint in node ${node.id}`);
+              return; // Exit workflow cleanly (node is already marked as success)
+            }
+
             // Update node status to error
             updateNodeStatus(node.id, 'error');
 
@@ -1679,11 +1709,190 @@ export function useWorkflowRunner() {
     [getNodes, getEdges, processNode, collectInputData, selfCheckNode, updateNodeStatus, showToast, clearDownstreamNodes, clearAllDownstreamNodes, areAllUpstreamNodesCompleted, executeUpstreamNodesIfNeeded],
   );
 
+  const resumeWorkflow = useCallback(async () => {
+    if (isRunning.current) {
+      console.warn('⚠️ Workflow is already running');
+      return;
+    }
+
+    const breakpointNode = breakpointNodeId.current;
+    if (!breakpointNode) {
+      console.warn('⚠️ No breakpoint to resume from');
+      showToast({
+        title: "No Breakpoint",
+        description: "There is no paused workflow to resume.",
+        variant: "default"
+      });
+      return;
+    }
+
+    console.log(`▶️ Resuming workflow from breakpoint at node ${breakpointNode}`);
+    setLogMessages((prev) => [...prev, `▶️ Resuming workflow from ${getNode(breakpointNode)?.data.title || breakpointNode}...`]);
+
+    // Clear the breakpoint reference
+    breakpointNodeId.current = null;
+
+    // Get downstream nodes to continue execution
+    const edges = getReactFlowEdges();
+    const downstreamEdges = edges.filter(edge => edge.source === breakpointNode);
+
+    if (downstreamEdges.length === 0) {
+      console.log('✅ No downstream nodes to execute - workflow complete');
+      setLogMessages((prev) => [...prev, '✅ Workflow complete (no downstream nodes).']);
+      showToast({
+        title: "Workflow Complete",
+        description: "No more nodes to execute.",
+        variant: "default"
+      });
+      return;
+    }
+
+    // Start execution from downstream nodes
+    isRunning.current = true;
+
+    const nodes = getNodes();
+    const allEdges = getEdges();
+
+    try {
+      // Collect all downstream nodes to process
+      const nodesToProcess: AppNode[] = [];
+      const visited = new Set<string>();
+
+      for (const downstreamEdge of downstreamEdges) {
+        const downstreamStartNodes = collectNodesToProcess(nodes, allEdges, downstreamEdge.target);
+        for (const node of downstreamStartNodes) {
+          if (!visited.has(node.id)) {
+            visited.add(node.id);
+            nodesToProcess.push(node);
+          }
+        }
+      }
+
+      console.log(`▶️ Resuming with ${nodesToProcess.length} nodes to process`);
+
+      // Process each node sequentially (similar to runWorkflow logic)
+      for (const node of nodesToProcess) {
+        if (!isRunning.current) break;
+
+        try {
+          // Check if node is in concurrent mode and verify all upstream nodes are completed
+          const nodeData = node.data as any;
+          const isConcurrentMode = nodeData?.executionMode === 'concurrent';
+          const isProgressiveMode = nodeData?.executionMode === 'progressive';
+
+          if (isConcurrentMode) {
+            const allUpstreamComplete = areAllUpstreamNodesCompleted(node.id);
+
+            if (!allUpstreamComplete) {
+              console.log(`⏸️ Concurrent node ${node.id} waiting for upstream completion`);
+              try {
+                await executeUpstreamNodesIfNeeded(node.id);
+                const allUpstreamCompleteAfterExecution = areAllUpstreamNodesCompleted(node.id);
+
+                if (!allUpstreamCompleteAfterExecution) {
+                  console.log(`❌ Cannot execute concurrent node ${node.id} - upstream nodes not ready`);
+                  updateNodeStatus(node.id, 'initial');
+                  continue;
+                }
+              } catch (error) {
+                console.error(`❌ Failed to execute upstream nodes for ${node.id}:`, error);
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                updateNodeStatus(node.id, 'error');
+                setLogMessages((prev) => [...prev, `❌ ${node.data.title} failed: ${errorMessage}`]);
+                isRunning.current = false;
+                return;
+              }
+            }
+          }
+
+          // Collect data, self-check, and process
+          const inputDataList = collectInputData(node);
+          await selfCheckNode(node, inputDataList);
+          await new Promise(resolve => setTimeout(resolve, 5));
+          await processNode(node, inputDataList);
+
+          // Handle progressive mode downstream tracking
+          if (isProgressiveMode) {
+            const downstreamNodeIds = new Set<string>();
+            const collectDownstreamIds = (nodeId: string) => {
+              const outgoing = allEdges.filter(e => e.source === nodeId);
+              outgoing.forEach(edge => {
+                if (!downstreamNodeIds.has(edge.target)) {
+                  downstreamNodeIds.add(edge.target);
+                  const targetNode = nodesToProcess.find(n => n.id === edge.target);
+                  const targetNodeData = targetNode?.data as any;
+                  const isConcurrent = targetNodeData?.executionMode === 'concurrent';
+                  if (!isConcurrent) {
+                    collectDownstreamIds(edge.target);
+                  }
+                }
+              });
+            };
+            collectDownstreamIds(node.id);
+
+            // Remove downstream nodes from processing queue
+            const currentIndex = nodesToProcess.indexOf(node);
+            for (let i = nodesToProcess.length - 1; i > currentIndex; i--) {
+              if (downstreamNodeIds.has(nodesToProcess[i].id)) {
+                nodesToProcess.splice(i, 1);
+              }
+            }
+          }
+
+          await new Promise(resolve => setTimeout(resolve, 50));
+
+        } catch (error) {
+          console.error(`Node ${node.id} processing failed:`, error);
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+          // Check if this is a breakpoint hit
+          if (errorMessage === 'BREAKPOINT') {
+            console.log(`🔴 Workflow paused again at breakpoint in node ${node.id}`);
+            return;
+          }
+
+          updateNodeStatus(node.id, 'error');
+          setLogMessages((prev) => [...prev, `❌ Workflow stopped: ${node.data.title} - ${errorMessage}`]);
+          showToast({
+            title: "Workflow Error",
+            description: `${node.data.title}: ${errorMessage}`,
+            variant: "error"
+          });
+          isRunning.current = false;
+          return;
+        }
+      }
+
+      if (isRunning.current) {
+        setLogMessages((prev) => [...prev, '✅ Workflow resumed and completed successfully!']);
+        showToast({
+          title: "Workflow Complete",
+          description: "All nodes executed successfully.",
+          variant: "default"
+        });
+      }
+
+    } catch (error) {
+      console.error('❌ Error during resume:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setLogMessages((prev) => [...prev, `❌ Resume failed: ${errorMessage}`]);
+      showToast({
+        title: "Resume Error",
+        description: errorMessage,
+        variant: "error"
+      });
+    } finally {
+      isRunning.current = false;
+    }
+  }, [breakpointNodeId, getNode, getNodes, getEdges, getReactFlowEdges, showToast, areAllUpstreamNodesCompleted, executeUpstreamNodesIfNeeded, collectInputData, selfCheckNode, processNode, updateNodeStatus]);
+
   return {
     logMessages,
     runWorkflow,
     stopWorkflow,
+    resumeWorkflow,
     isRunning: isRunning.current,
+    hasBreakpoint: breakpointNodeId.current !== null,
     clearDownstreamNodes,
     clearAllDownstreamNodes,
   };

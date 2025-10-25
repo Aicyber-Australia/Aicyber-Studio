@@ -19,7 +19,7 @@ import {
 } from '@xyflow/react';
 import { useShallow } from 'zustand/react/shallow';
 import { useTheme } from 'next-themes';
-import { MousePointer2, Hand, Play, Pause, Trash2, Divide } from 'lucide-react';
+import { MousePointer2, Hand, Play, Pause, Trash2, Divide, PlayCircle } from 'lucide-react';
 import { useCopilotReadable } from '@copilotkit/react-core';
 
 import { nodeTypes } from '@/app/workflow/components/nodes';
@@ -71,7 +71,7 @@ export default function Workflow() {
   const reactFlowStore = useStoreApi();
   const { getInternalNode, fitView } = useReactFlow();
   const [isSelectMode, setIsSelectMode] = useState(true);
-  const { runWorkflow, stopWorkflow, isRunning } = useWorkflowRunner();
+  const { runWorkflow, stopWorkflow, resumeWorkflow, isRunning, hasBreakpoint } = useWorkflowRunner();
   const [selectedNodes, setSelectedNodes] = useState<any[]>([]);
   const runLayout = useLayout();
   const { showToast } = useToast();
@@ -598,6 +598,18 @@ export default function Workflow() {
         >
           {isRunning ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
         </Button>
+
+        {hasBreakpoint && !isRunning && (
+          <Button
+            onClick={() => resumeWorkflow()}
+            variant="ghost"
+            size="icon"
+            title="Resume Workflow (from breakpoint)"
+            className="text-orange-500 hover:text-orange-600"
+          >
+            <PlayCircle className="h-5 w-5" />
+          </Button>
+        )}
 
         <Button
           onClick={handleClearCanvas}
