@@ -905,13 +905,17 @@ export function useWorkflowRunner() {
       }
       console.log(`Node ${node.id} final data:`, { ...node.data, ...processedData });
 
-      // If this was a progressive node, now execute any concurrent downstream nodes
-      // that were skipped during progressive iteration
+      // If this was a progressive OR concurrent node, now execute any downstream nodes
+      // that need to be triggered after this node completes
       // IMPORTANT: Only do this if NOT in a progressive iteration (isProgressiveIteration = false)
       // If isProgressiveIteration = true, this node is being called from another progressive's callback
       // and hasn't truly completed all work yet - it will be called again with more items
-      if (!skipDownstream && !isProgressiveIteration && (updatedNode?.data.executionMode === 'progressive' || node.data.executionMode === 'progressive')) {
-        console.log(`🔄 Progressive completed - Checking for downstream nodes (concurrent or progressive)`);
+      const isProgressiveNode = updatedNode?.data.executionMode === 'progressive' || node.data.executionMode === 'progressive';
+      const isConcurrentNode = updatedNode?.data.executionMode === 'concurrent' || node.data.executionMode === 'concurrent';
+
+      if (!skipDownstream && !isProgressiveIteration && (isProgressiveNode || isConcurrentNode)) {
+        const nodeType = isProgressiveNode ? 'Progressive' : 'Concurrent';
+        console.log(`🔄 ${nodeType} completed - Checking for downstream nodes`);
 
         // Wait for status update to propagate
         await new Promise(resolve => setTimeout(resolve, 10));
@@ -928,8 +932,9 @@ export function useWorkflowRunner() {
           const isProgressiveDownstream = downstreamNodeData?.executionMode === 'progressive';
 
           // Handle progressive downstream nodes first
-          // Recursively mark all chained progressive nodes as complete
-          if (isProgressiveDownstream) {
+          // Only mark progressive children as complete if the PARENT is also progressive
+          // If the parent is concurrent, the progressive child needs to actually execute
+          if (isProgressiveDownstream && isProgressiveNode) {
             console.log(`🔄 Progressive completed - Found progressive downstream node ${downstreamNode.id}, marking it complete`);
 
             // Recursively mark progressive downstream nodes as complete
@@ -1057,13 +1062,69 @@ export function useWorkflowRunner() {
             }
           }
 
+          // Handle progressive downstream when parent is concurrent
+          // Concurrent → Progressive: Execute the progressive node normally
+          if (isProgressiveDownstream && isConcurrentNode) {
+            console.log(`🔄 ${nodeType} completed - Found progressive downstream node ${downstreamNode.id}, executing it`);
+
+            // Check if already executed
+            if (downstreamNodeData?.status === 'success' || downstreamNodeData?.status === 'loading') {
+              console.log(`🔄 ${nodeType} completed - Progressive node ${downstreamNode.id} already executed or executing, skipping`);
+              continue;
+            }
+
+            // Check if all upstream nodes are complete
+            const upstreamEdges = edges.filter(e => e.target === downstreamNode.id);
+            const allUpstreamComplete = upstreamEdges.every(upEdge => {
+              const upstreamNode = getNode(upEdge.source) as AppNode | undefined;
+              if (!upstreamNode) return false;
+              const upstreamData = upstreamNode.data as any;
+              const isComplete = upEdge.source === node.id || upstreamData?.status === 'success';
+              return isComplete;
+            });
+
+            if (!allUpstreamComplete) {
+              console.log(`🔄 ${nodeType} completed - Progressive node ${downstreamNode.id} waiting for all upstream to complete`);
+              continue;
+            }
+
+            // Collect input data from upstream nodes
+            const progressiveInputData = [];
+            for (const upEdge of upstreamEdges) {
+              let upstreamDataToAdd: any;
+              if (upEdge.source === node.id) {
+                upstreamDataToAdd = { ...node.data, ...processedData, status: 'success' };
+              } else {
+                const upstreamNode = getNode(upEdge.source);
+                if (upstreamNode?.data && (upstreamNode.data as any)?.status === 'success') {
+                  upstreamDataToAdd = upstreamNode.data;
+                } else {
+                  continue;
+                }
+              }
+              progressiveInputData.push(upstreamDataToAdd);
+            }
+
+            if (progressiveInputData.length > 0) {
+              try {
+                console.log(`🔄 ${nodeType} completed - Executing progressive node ${downstreamNode.id} with ${progressiveInputData.length} inputs`);
+                await selfCheckNode(downstreamNode, progressiveInputData);
+                await new Promise(resolve => setTimeout(resolve, 5));
+                await processNode(downstreamNode, progressiveInputData, false, false, currentSubflowContext);
+              } catch (error) {
+                console.error(`🔄 ${nodeType} completed - Failed to execute progressive ${downstreamNode.id}:`, error);
+                throw error;
+              }
+            }
+          }
+
           if (isConcurrentDownstream) {
-            console.log(`🔄 Progressive completed - Found concurrent downstream node ${downstreamNode.id}`);
+            console.log(`🔄 ${nodeType} completed - Found concurrent downstream node ${downstreamNode.id}`);
 
             // Check if this concurrent node was already executed
             const concurrentNodeData = downstreamNode.data as any;
             if (concurrentNodeData?.status === 'success' || concurrentNodeData?.status === 'loading') {
-              console.log(`🔄 Progressive completed - Concurrent node ${downstreamNode.id} already executed or executing, skipping`);
+              console.log(`🔄 ${nodeType} completed - Concurrent node ${downstreamNode.id} already executed or executing, skipping`);
               continue;
             }
 
@@ -1079,17 +1140,17 @@ export function useWorkflowRunner() {
               // Consider the current node as complete since we just marked it
               const isComplete = upEdge.source === node.id || upstreamData?.status === 'success';
 
-              console.log(`🔄 Progressive completed - Upstream node ${upEdge.source} status: ${upstreamData?.status}, isCurrentNode: ${upEdge.source === node.id}, complete: ${isComplete}`);
+              console.log(`🔄 ${nodeType} completed - Upstream node ${upEdge.source} status: ${upstreamData?.status}, isCurrentNode: ${upEdge.source === node.id}, complete: ${isComplete}`);
               return isComplete;
             });
 
             if (!allUpstreamComplete) {
               console.log(`⏸️ Concurrent node ${downstreamNode.id} cannot execute - not all upstream nodes are completed`);
-              console.log(`🔄 Progressive completed - Skipping concurrent node ${downstreamNode.id} - not all upstream nodes are complete yet`);
+              console.log(`🔄 ${nodeType} completed - Skipping concurrent node ${downstreamNode.id} - not all upstream nodes are complete yet`);
               continue;
             }
 
-            console.log(`🔄 Progressive completed - All upstream nodes complete, executing concurrent downstream node ${downstreamNode.id} with all collected data`);
+            console.log(`🔄 ${nodeType} completed - All upstream nodes complete, executing concurrent downstream node ${downstreamNode.id} with all collected data`);
 
             try {
               // For concurrent nodes after progressive completion, we need to collect data carefully
@@ -1109,7 +1170,7 @@ export function useWorkflowRunner() {
                     ...processedData,
                     status: 'success'
                   };
-                  console.log(`🔄 Progressive completed - Using fresh data from current node ${node.id}`);
+                  console.log(`🔄 ${nodeType} completed - Using fresh data from current node ${node.id}`);
                 } else {
                   // This is another upstream node - fetch from state
                   const upstreamNode = getNode(upEdge.source);
@@ -1120,7 +1181,7 @@ export function useWorkflowRunner() {
                   // Only include nodes that have completed
                   if (upstreamData?.status === 'success') {
                     upstreamDataToAdd = upstreamData;
-                    console.log(`🔄 Progressive completed - Using data from upstream node ${upEdge.source} (status: ${upstreamData?.status})`);
+                    console.log(`🔄 ${nodeType} completed - Using data from upstream node ${upEdge.source} (status: ${upstreamData?.status})`);
                   } else {
                     continue;
                   }
@@ -1137,11 +1198,11 @@ export function useWorkflowRunner() {
                       seenUrls.add(uniqueKey);
                       deduplicatedMediaList.push(mediaItem);
                     } else {
-                      console.log(`🔄 Progressive completed - Skipping duplicate media item: ${uniqueKey}`);
+                      console.log(`🔄 ${nodeType} completed - Skipping duplicate media item: ${uniqueKey}`);
                     }
                   }
 
-                  console.log(`🔄 Progressive completed - Deduplicated ${upstreamDataToAdd.media.mediaList.length} items to ${deduplicatedMediaList.length} items from ${upEdge.source}`);
+                  console.log(`🔄 ${nodeType} completed - Deduplicated ${upstreamDataToAdd.media.mediaList.length} items to ${deduplicatedMediaList.length} items from ${upEdge.source}`);
 
                   // Create deduplicated data
                   const deduplicatedData = {
@@ -1159,13 +1220,13 @@ export function useWorkflowRunner() {
               }
 
               if (!dsInputDataList || dsInputDataList.length === 0) {
-                console.log(`🔄 Progressive completed - No data for concurrent downstream node ${downstreamNode.id}, skipping`);
+                console.log(`🔄 ${nodeType} completed - No data for concurrent downstream node ${downstreamNode.id}, skipping`);
                 continue;
               }
 
-              console.log(`🔄 Progressive completed - Concurrent node ${downstreamNode.id} will process ${dsInputDataList.length} input sources from immediate upstream nodes`);
-              console.log(`🔄 Progressive completed - Concurrent node ${downstreamNode.id} execution mode: ${downstreamNodeData?.executionMode}`);
-              console.log(`🔄 Progressive completed - Concurrent node ${downstreamNode.id} input data:`, dsInputDataList);
+              console.log(`🔄 ${nodeType} completed - Concurrent node ${downstreamNode.id} will process ${dsInputDataList.length} input sources from immediate upstream nodes`);
+              console.log(`🔄 ${nodeType} completed - Concurrent node ${downstreamNode.id} execution mode: ${downstreamNodeData?.executionMode}`);
+              console.log(`🔄 ${nodeType} completed - Concurrent node ${downstreamNode.id} input data:`, dsInputDataList);
 
               // Self-check
               await selfCheckNode(downstreamNode, dsInputDataList);
@@ -1178,11 +1239,11 @@ export function useWorkflowRunner() {
               // Pass subflow context to concurrent node
               await processNode(downstreamNode, dsInputDataList, false, false, currentSubflowContext);
 
-              console.log(`🔄 Progressive completed - Concurrent node ${downstreamNode.id} execution finished`);
+              console.log(`🔄 ${nodeType} completed - Concurrent node ${downstreamNode.id} execution finished`);
 
               await new Promise(resolve => setTimeout(resolve, 50));
             } catch (error) {
-              console.error(`🔄 Progressive completed - Concurrent downstream node ${downstreamNode.id} failed:`, error);
+              console.error(`🔄 ${nodeType} completed - Concurrent downstream node ${downstreamNode.id} failed:`, error);
               throw error;
             }
           }
@@ -1509,9 +1570,21 @@ export function useWorkflowRunner() {
                 return false;
               }
 
+              // Skip if already successfully completed (may have been executed by concurrent/progressive parent)
+              const nodeData = node.data as any;
+              if (nodeData?.status === 'success') {
+                console.log(`⏭️ Skipping ${node.id} - already executed with status: success`);
+                // Mark as processed so it's considered complete for downstream nodes
+                processedNodes.add(node.id);
+                return false;
+              }
+
               const upstreamEdges = edges.filter(e => e.target === node.id);
               return upstreamEdges.every(edge => processedNodes.has(edge.source));
             });
+
+            // Remove nodes that were already processed (executed by parent nodes) from remaining list
+            remainingNodesToProcess = remainingNodesToProcess.filter(n => !processedNodes.has(n.id));
 
             if (readyNodes.length === 0) {
               // No ready nodes, wait a bit for executing nodes to complete
@@ -1651,8 +1724,8 @@ export function useWorkflowRunner() {
                             } else {
                               // Non-concurrent node - will be handled by progressive callback
                               downstreamNodeIds.add(edge.target);
-                              // Recursively collect its children
-                              collectDownstreamIds(edge.target);
+                              // DO NOT recursively collect children - only collect immediate downstream
+                              // This prevents orphaning nodes that are downstream of concurrent nodes
                             }
                           }
                         });
