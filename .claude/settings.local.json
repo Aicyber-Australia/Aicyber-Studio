@@ -7,7 +7,8 @@
       "Bash(npm install:*)",
       "Bash(npm run build:*)",
       "Bash(git mv:*)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []

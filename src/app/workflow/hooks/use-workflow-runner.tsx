@@ -399,9 +399,13 @@ export function useWorkflowRunner() {
 
   // Run阶段：重新获取类型并执行
   const processNode = useCallback(
-    async (node: AppNode, inputDataList: any[], skipDownstream: boolean = false, isProgressiveIteration: boolean = false) => {
+    async (node: AppNode, inputDataList: any[], skipDownstream: boolean = false, isProgressiveIteration: boolean = false, subflowContext: Set<string> = new Set()) => {
       updateNodeStatus(node.id, 'loading');
       setLogMessages((prev) => [...prev, `${node.data.title} processing...`]);
+
+      // Initialize or update subflow context - tracks which nodes are part of this execution path
+      const currentSubflowContext = new Set(subflowContext);
+      currentSubflowContext.add(node.id);
 
       // 重新获取节点类型（可能已经被自检阶段修改）
       const updatedNode = getNode(node.id);
@@ -498,6 +502,7 @@ export function useWorkflowRunner() {
         _continueDownstream: () => Promise<void>
       ) => {
         console.log(`🔄 Progressive - Processing mediaSet ${mediaSetIndex + 1}, executing downstream workflow`);
+        console.log(`🔄 Progressive - Current subflow context:`, Array.from(currentSubflowContext));
 
         // Get downstream nodes
         const edges = getReactFlowEdges();
@@ -512,6 +517,31 @@ export function useWorkflowRunner() {
         for (const edge of downstreamEdges) {
           const downstreamNode = getNode(edge.target);
           if (!downstreamNode) continue;
+
+          // CRITICAL: Check if this downstream node belongs to the current subflow
+          // A node belongs to current subflow if ALL its upstream nodes are either:
+          // 1. In the current subflow context, OR
+          // 2. Have no connection to other parallel subflows
+          const downstreamUpstreamEdges = edges.filter(e => e.target === downstreamNode.id);
+          const isInCurrentSubflow = downstreamUpstreamEdges.every(upEdge => {
+            // If the upstream is in our current context, it's definitely part of this subflow
+            if (currentSubflowContext.has(upEdge.source)) {
+              return true;
+            }
+
+            // If the upstream is NOT in our context, check if it's completed
+            // If it's completed, this node might be waiting for multiple subflows to converge
+            const upNode = getNode(upEdge.source);
+            const upNodeData = upNode?.data as any;
+            return upNodeData?.status === 'success';
+          });
+
+          if (!isInCurrentSubflow) {
+            console.log(`🔄 Progressive - Skipping ${downstreamNode.id} - belongs to different subflow or waiting for other upstream nodes`);
+            continue;
+          }
+
+          console.log(`🔄 Progressive - Node ${downstreamNode.id} confirmed in current subflow, proceeding`);
 
           // Check if downstream node is in concurrent mode
           const downstreamNodeData = downstreamNode.data as any;
@@ -640,7 +670,8 @@ export function useWorkflowRunner() {
               const skipDsDownstream = dsIndex > 0; // Only first node can handle its own downstream
 
               // Mark as progressive iteration so results are accumulated
-              await processNode(dsNode, dsInputDataList, skipDsDownstream, true);
+              // Pass subflow context to ensure downstream nodes track their execution path
+              await processNode(dsNode, dsInputDataList, skipDsDownstream, true, currentSubflowContext);
 
               // After processing, mark ONLY the items we just processed
               if (mediaItemsToProcess.length > 0) {
@@ -982,7 +1013,8 @@ export function useWorkflowRunner() {
                     try {
                       await selfCheckNode(concurrentNode, concurrentInputData);
                       await new Promise(resolve => setTimeout(resolve, 5));
-                      await processNode(concurrentNode, concurrentInputData, false, false);
+                      // Pass subflow context to concurrent node
+                      await processNode(concurrentNode, concurrentInputData, false, false, currentSubflowContext);
                     } catch (error) {
                       console.error(`🔄 Progressive completed - Failed to execute concurrent ${concurrentNode.id}:`, error);
                     }
@@ -1110,7 +1142,8 @@ export function useWorkflowRunner() {
               // The node should execute all items at once, not progressively
               // skipDownstream = false to allow it to execute its own downstream nodes
               // isProgressiveIteration = false to ensure results are replaced, not accumulated
-              await processNode(downstreamNode, dsInputDataList, false, false);
+              // Pass subflow context to concurrent node
+              await processNode(downstreamNode, dsInputDataList, false, false, currentSubflowContext);
 
               console.log(`🔄 Progressive completed - Concurrent node ${downstreamNode.id} execution finished`);
 
@@ -1182,10 +1215,26 @@ export function useWorkflowRunner() {
 
         // Now execute this upstream node
         try {
+          // Build subflow context for the upstream node
+          const buildSubflowContext = (nodeId: string, visited: Set<string> = new Set()): Set<string> => {
+            if (visited.has(nodeId)) return visited;
+            visited.add(nodeId);
+
+            const edges = getReactFlowEdges();
+            const upstreamEdges = edges.filter(e => e.target === nodeId);
+            for (const upEdge of upstreamEdges) {
+              buildSubflowContext(upEdge.source, visited);
+            }
+
+            return visited;
+          };
+
+          const upstreamSubflowContext = buildSubflowContext(upEdge.source);
+
           const inputDataList = collectInputData(upstreamNode as AppNode);
           await selfCheckNode(upstreamNode as AppNode, inputDataList);
           await new Promise(resolve => setTimeout(resolve, 5));
-          await processNode(upstreamNode as AppNode, inputDataList);
+          await processNode(upstreamNode as AppNode, inputDataList, false, false, upstreamSubflowContext);
           await new Promise(resolve => setTimeout(resolve, 50));
 
           console.log(`✅ Successfully executed upstream node ${upEdge.source}`);
@@ -1204,10 +1253,26 @@ export function useWorkflowRunner() {
         if (canNodeRun(upEdge.source)) {
           console.log(`🚀 Retrying execution of upstream node ${upEdge.source}`);
           try {
+            // Build subflow context for the upstream node
+            const buildSubflowContext = (nodeId: string, visited: Set<string> = new Set()): Set<string> => {
+              if (visited.has(nodeId)) return visited;
+              visited.add(nodeId);
+
+              const edges = getReactFlowEdges();
+              const upstreamEdges = edges.filter(e => e.target === nodeId);
+              for (const upEdge of upstreamEdges) {
+                buildSubflowContext(upEdge.source, visited);
+              }
+
+              return visited;
+            };
+
+            const upstreamSubflowContext = buildSubflowContext(upEdge.source);
+
             const inputDataList = collectInputData(upstreamNode as AppNode);
             await selfCheckNode(upstreamNode as AppNode, inputDataList);
             await new Promise(resolve => setTimeout(resolve, 5));
-            await processNode(upstreamNode as AppNode, inputDataList);
+            await processNode(upstreamNode as AppNode, inputDataList, false, false, upstreamSubflowContext);
             await new Promise(resolve => setTimeout(resolve, 50));
 
             console.log(`✅ Successfully executed upstream node ${upEdge.source}`);
@@ -1363,321 +1428,268 @@ export function useWorkflowRunner() {
       }
 
       // Execute all starting nodes (nodes without input edges) concurrently
-      if (startNodeIds.length > 1) {
-        console.log(`🚀 Executing ${startNodeIds.length} starting nodes in parallel`);
+      console.log(`🚀 Executing ${startNodeIds.length} starting node(s) in parallel`);
 
-        try {
-          await Promise.all(
-            startNodeIds.map(async (nodeId) => {
-              const startNode = nodes.find(n => n.id === nodeId);
-              if (!startNode) return;
+      try {
+        await Promise.all(
+          startNodeIds.map(async (nodeId) => {
+            const startNode = nodes.find(n => n.id === nodeId);
+            if (!startNode) return;
 
-              console.log(`🔄 Starting concurrent execution of node ${nodeId}`);
+            console.log(`🔄 Starting concurrent execution of node ${nodeId}`);
 
-              // Collect data for this starting node
-              const inputDataList = collectInputData(startNode);
+            // Create a new subflow context for each independent starting node
+            // This ensures that parallel subflows don't interfere with each other
+            const independentSubflowContext = new Set<string>();
 
-              // Self-check
-              await selfCheckNode(startNode, inputDataList);
-              await new Promise(resolve => setTimeout(resolve, 5));
+            // Collect data for this starting node
+            const inputDataList = collectInputData(startNode);
 
-              // Process the node
-              await processNode(startNode, inputDataList);
-              await new Promise(resolve => setTimeout(resolve, 50));
-            })
-          );
+            // Self-check
+            await selfCheckNode(startNode, inputDataList);
+            await new Promise(resolve => setTimeout(resolve, 5));
 
-          console.log(`✅ All ${startNodeIds.length} starting nodes completed`);
+            // Process the node with its own subflow context
+            await processNode(startNode, inputDataList, false, false, independentSubflowContext);
+            await new Promise(resolve => setTimeout(resolve, 50));
+          })
+        );
+
+        console.log(`✅ All ${startNodeIds.length} starting node(s) completed`);
 
           // Remove starting nodes from nodesToProcess since they're already executed
           const startNodeIdsSet = new Set(startNodeIds);
-          const remainingNodesToProcess = nodesToProcess.filter(node => !startNodeIdsSet.has(node.id));
+          let remainingNodesToProcess = nodesToProcess.filter(node => !startNodeIdsSet.has(node.id));
 
-          // Continue with remaining nodes
-          for (const node of remainingNodesToProcess) {
+          // Continue with remaining nodes - execute independent branches in parallel
+          const processedNodes = new Set(startNodeIds);
+          const executingNodes = new Set<string>(); // Track nodes currently executing
+
+          while (remainingNodesToProcess.length > 0 || executingNodes.size > 0) {
             if (!isRunning.current) break;
 
-            try {
-              // Check if node is in concurrent mode and verify all upstream nodes are completed
-              const nodeData = node.data as any;
-              const isConcurrentMode = nodeData?.executionMode === 'concurrent';
-              const isProgressiveMode = nodeData?.executionMode === 'progressive';
+            // Find all nodes that can run now (all upstream dependencies satisfied)
+            // and are not already executing
+            const readyNodes = remainingNodesToProcess.filter(node => {
+              // Skip if already executing
+              if (executingNodes.has(node.id)) {
+                return false;
+              }
 
-              if (isConcurrentMode) {
-                // For concurrent nodes, enforce that ALL upstream nodes must be completed
-                const allUpstreamComplete = areAllUpstreamNodesCompleted(node.id);
+              const upstreamEdges = edges.filter(e => e.target === node.id);
+              return upstreamEdges.every(edge => processedNodes.has(edge.source));
+            });
 
-                if (!allUpstreamComplete) {
-                  console.log(`⏸️ RESTRICTION: Concurrent node ${node.id} cannot start - not all upstream nodes are completed`);
-                  console.log(`🔄 Attempting to execute pending upstream nodes first...`);
+            if (readyNodes.length === 0) {
+              // No ready nodes, wait a bit for executing nodes to complete
+              if (executingNodes.size > 0) {
+                console.log(`⏸️ Waiting for ${executingNodes.size} nodes to complete:`, Array.from(executingNodes));
+                // Wait a short time and check again
+                await new Promise(resolve => setTimeout(resolve, 100));
+                continue;
+              } else if (remainingNodesToProcess.length > 0) {
+                console.warn('⚠️ No more ready nodes but remaining nodes exist - possible circular dependency');
+                console.log('Remaining nodes:', remainingNodesToProcess.map(n => `${n.id} (${n.data.title})`));
+                console.log('Executing nodes:', Array.from(executingNodes));
+                console.log('Processed nodes:', Array.from(processedNodes));
+                break;
+              } else {
+                // All done
+                break;
+              }
+            }
 
-                  setLogMessages((prev) => [...prev, `⏸️ ${node.data.title} checking upstream dependencies...`]);
+            console.log(`🚀 Starting ${readyNodes.length} ready nodes:`, readyNodes.map(n => `${n.id} (${n.data.title})`));
 
+            // Start each ready node asynchronously (don't wait for completion)
+            readyNodes.forEach((node) => {
+              executingNodes.add(node.id);
+
+              // Create promise wrapper to track this node's execution
+              const executeNode = async () => {
                   try {
-                    // Try to execute any pending upstream nodes
-                    await executeUpstreamNodesIfNeeded(node.id);
+                    // Build subflow context for this node from its upstream nodes
+                    // Collect all upstream node IDs recursively to understand which subflow this belongs to
+                    const buildSubflowContext = (nodeId: string, visited: Set<string> = new Set()): Set<string> => {
+                      if (visited.has(nodeId)) return visited;
+                      visited.add(nodeId);
 
-                    // Check again if all upstream are now completed
-                    const allUpstreamCompleteAfterExecution = areAllUpstreamNodesCompleted(node.id);
+                      const upstreamEdges = edges.filter(e => e.target === nodeId);
+                      for (const upEdge of upstreamEdges) {
+                        buildSubflowContext(upEdge.source, visited);
+                      }
 
-                    if (!allUpstreamCompleteAfterExecution) {
-                      console.log(`❌ Still cannot execute concurrent node ${node.id} - upstream nodes not ready`);
-                      setLogMessages((prev) => [...prev, `⏸️ ${node.data.title} waiting for upstream nodes...`]);
+                      return visited;
+                    };
 
-                      // Mark node as initial to indicate it hasn't started yet
-                      updateNodeStatus(node.id, 'initial');
+                    const nodeSubflowContext = buildSubflowContext(node.id);
+                    console.log(`🔄 Main workflow - Node ${node.id} subflow context:`, Array.from(nodeSubflowContext));
 
-                      // Skip this node for now
-                      continue;
+                    // Check if node is in concurrent mode and verify all upstream nodes are completed
+                    const nodeData = node.data as any;
+                    const isConcurrentMode = nodeData?.executionMode === 'concurrent';
+                    const isProgressiveMode = nodeData?.executionMode === 'progressive';
+
+                    if (isConcurrentMode) {
+                      // For concurrent nodes, enforce that ALL upstream nodes must be completed
+                      const allUpstreamComplete = areAllUpstreamNodesCompleted(node.id);
+
+                      if (!allUpstreamComplete) {
+                        console.log(`⏸️ RESTRICTION: Concurrent node ${node.id} cannot start - not all upstream nodes are completed`);
+                        console.log(`🔄 Attempting to execute pending upstream nodes first...`);
+
+                        setLogMessages((prev) => [...prev, `⏸️ ${node.data.title} checking upstream dependencies...`]);
+
+                        try {
+                          // Try to execute any pending upstream nodes
+                          await executeUpstreamNodesIfNeeded(node.id);
+
+                          // Check again if all upstream are now completed
+                          const allUpstreamCompleteAfterExecution = areAllUpstreamNodesCompleted(node.id);
+
+                          if (!allUpstreamCompleteAfterExecution) {
+                            console.log(`❌ Still cannot execute concurrent node ${node.id} - upstream nodes not ready`);
+                            setLogMessages((prev) => [...prev, `⏸️ ${node.data.title} waiting for upstream nodes...`]);
+
+                            // Mark node as initial to indicate it hasn't started yet
+                            updateNodeStatus(node.id, 'initial');
+
+                            // Skip this node for now
+                            return;
+                          }
+
+                          console.log(`✅ All upstream nodes for ${node.id} executed successfully - proceeding with concurrent node`);
+                          setLogMessages((prev) => [...prev, `✅ ${node.data.title} ready to execute`]);
+                        } catch (error) {
+                          console.error(`❌ Failed to execute upstream nodes for ${node.id}:`, error);
+                          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+                          updateNodeStatus(node.id, 'error');
+                          setLogMessages((prev) => [...prev, `❌ ${node.data.title} failed: ${errorMessage}`]);
+                          showToast({
+                            title: "Upstream Execution Error",
+                            description: `${node.data.title}: ${errorMessage}`,
+                            variant: "error"
+                          });
+                          throw error;
+                        }
+                      } else {
+                        console.log(`✅ Concurrent node ${node.id} all upstream nodes completed - proceeding with execution`);
+                      }
                     }
 
-                    console.log(`✅ All upstream nodes for ${node.id} executed successfully - proceeding with concurrent node`);
-                    setLogMessages((prev) => [...prev, `✅ ${node.data.title} ready to execute`]);
+                    // 第一步：收集数据（只收集一次）
+                    const inputDataList = collectInputData(node);
+
+                    // 第二步：自检（只负责类型转换）
+                    await selfCheckNode(node, inputDataList);
+
+                    await new Promise(resolve => setTimeout(resolve, 5));
+
+                    // 第三步：执行（重新获取类型并处理数据）
+                    // Pass the subflow context to ensure proper isolation
+                    await processNode(node, inputDataList, false, false, nodeSubflowContext);
+
+                    // In progressive mode, downstream nodes are already processed
+                    // So we need to skip them in the main workflow loop
+                    if (isProgressiveMode) {
+                      const downstreamNodeIds = new Set<string>();
+                      const collectDownstreamIds = (nodeId: string) => {
+                        const outgoing = edges.filter(e => e.source === nodeId);
+                        outgoing.forEach(edge => {
+                          if (!downstreamNodeIds.has(edge.target)) {
+                            // Check if this downstream node is concurrent
+                            const targetNode = remainingNodesToProcess.find(n => n.id === edge.target);
+                            const targetNodeData = targetNode?.data as any;
+                            const isConcurrent = targetNodeData?.executionMode === 'concurrent';
+
+                            if (isConcurrent) {
+                              // Check if this concurrent node has multiple upstream nodes
+                              const targetUpstreamEdges = edges.filter(e => e.target === edge.target);
+                              const hasMultipleUpstreams = targetUpstreamEdges.length > 1;
+
+                              if (hasMultipleUpstreams) {
+                                console.log(`🔄 Main workflow - Found concurrent downstream node ${edge.target} with ${targetUpstreamEdges.length} upstream nodes, KEEPING in main queue`);
+                                // Don't add to downstreamNodeIds - let the main workflow handle it
+                              } else {
+                                console.log(`🔄 Main workflow - Found concurrent downstream node ${edge.target} with single upstream, will be handled by progressive parent`);
+                                downstreamNodeIds.add(edge.target);
+                              }
+                            } else {
+                              // Non-concurrent node - will be handled by progressive callback
+                              downstreamNodeIds.add(edge.target);
+                              // Recursively collect its children
+                              collectDownstreamIds(edge.target);
+                            }
+                          }
+                        });
+                      };
+                      collectDownstreamIds(node.id);
+
+                      // Remove downstream nodes from processing queue
+                      remainingNodesToProcess = remainingNodesToProcess.filter(n => {
+                        if (downstreamNodeIds.has(n.id)) {
+                          console.log(`🔄 Main workflow - Removing ${n.id} (executionMode: ${(n.data as any)?.executionMode}) from queue (will be handled by progressive parent)`);
+                          return false;
+                        }
+                        return true;
+                      });
+                    }
+
+                    // 等待状态更新完成，确保下一个节点能获取到最新数据
+                    await new Promise(resolve => setTimeout(resolve, 50));
+
                   } catch (error) {
-                    console.error(`❌ Failed to execute upstream nodes for ${node.id}:`, error);
+                    console.error(`Node ${node.id} processing failed:`, error);
                     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
+                    // Check if this is a breakpoint hit (not a real error)
+                    if (errorMessage === 'BREAKPOINT') {
+                      console.log(`🔴 Workflow paused at breakpoint in node ${node.id}`);
+                      isRunning.current = false;
+                      // Don't throw, just mark as error and stop
+                    }
+
+                    // Update node status to error
                     updateNodeStatus(node.id, 'error');
-                    setLogMessages((prev) => [...prev, `❌ ${node.data.title} failed: ${errorMessage}`]);
+
+                    setLogMessages((prev) => [...prev, `❌ Workflow stopped due to error in ${node.data.title}: ${errorMessage}`]);
                     showToast({
-                      title: "Upstream Execution Error",
+                      title: "Workflow Error",
                       description: `${node.data.title}: ${errorMessage}`,
                       variant: "error"
                     });
                     isRunning.current = false;
-                    return;
+                  } finally {
+                    // Mark node as no longer executing
+                    executingNodes.delete(node.id);
+                    // Mark node as processed (even if error, to avoid infinite loops)
+                    processedNodes.add(node.id);
+                    console.log(`✅ Node ${node.id} (${node.data.title}) completed. Executing: ${executingNodes.size}, Remaining: ${remainingNodesToProcess.length}`);
                   }
-                } else {
-                  console.log(`✅ Concurrent node ${node.id} all upstream nodes completed - proceeding with execution`);
-                }
-              }
-
-              // 第一步：收集数据（只收集一次）
-              const inputDataList = collectInputData(node);
-
-              // 第二步：自检（只负责类型转换）
-              await selfCheckNode(node, inputDataList);
-
-              await new Promise(resolve => setTimeout(resolve, 5));
-
-              // 第三步：执行（重新获取类型并处理数据）
-              await processNode(node, inputDataList);
-
-              // In progressive mode, downstream nodes are already processed
-              // So we need to skip them in the main workflow loop
-              if (isProgressiveMode) {
-                const downstreamNodeIds = new Set<string>();
-                const collectDownstreamIds = (nodeId: string) => {
-                  const outgoing = edges.filter(e => e.source === nodeId);
-                  outgoing.forEach(edge => {
-                    if (!downstreamNodeIds.has(edge.target)) {
-                      downstreamNodeIds.add(edge.target);
-
-                      // Check if this downstream node is concurrent - if so, don't collect its children
-                      // because concurrent nodes will be handled separately after progressive completes
-                      const targetNode = remainingNodesToProcess.find(n => n.id === edge.target);
-                      const targetNodeData = targetNode?.data as any;
-                      const isConcurrent = targetNodeData?.executionMode === 'concurrent';
-
-                      if (isConcurrent) {
-                        console.log(`🔄 Main workflow - Found concurrent downstream node ${edge.target}, will not collect its children`);
-                      }
-
-                      if (!isConcurrent) {
-                        // Only collect children of non-concurrent nodes
-                        collectDownstreamIds(edge.target);
-                      }
-                    }
-                  });
-                };
-                collectDownstreamIds(node.id);
-
-                // Remove downstream nodes from processing queue
-                const currentIndex = remainingNodesToProcess.indexOf(node);
-                for (let i = remainingNodesToProcess.length - 1; i > currentIndex; i--) {
-                  if (downstreamNodeIds.has(remainingNodesToProcess[i].id)) {
-                    const removedNode = remainingNodesToProcess[i];
-                    console.log(`🔄 Main workflow - Removing ${removedNode.id} (executionMode: ${(removedNode.data as any)?.executionMode}) from queue (will be handled by progressive parent)`);
-                    remainingNodesToProcess.splice(i, 1);
-                  }
-                }
-              }
-
-              // 等待状态更新完成，确保下一个节点能获取到最新数据
-              await new Promise(resolve => setTimeout(resolve, 50));
-
-            } catch (error) {
-              console.error(`Node ${node.id} processing failed:`, error);
-              const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-              // Check if this is a breakpoint hit (not a real error)
-              if (errorMessage === 'BREAKPOINT') {
-                console.log(`🔴 Workflow paused at breakpoint in node ${node.id}`);
-                return; // Exit workflow cleanly (node is already marked as success)
-              }
-
-              // Update node status to error
-              updateNodeStatus(node.id, 'error');
-
-              setLogMessages((prev) => [...prev, `❌ Workflow stopped due to error in ${node.data.title}: ${errorMessage}`]);
-              showToast({
-                title: "Workflow Error",
-                description: `${node.data.title}: ${errorMessage}`,
-                variant: "error"
-              });
-              isRunning.current = false;
-              return; // 停止工作流
-            }
-          }
-        } catch (error) {
-          console.error('❌ Error executing starting nodes:', error);
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          setLogMessages((prev) => [...prev, `❌ Workflow stopped: ${errorMessage}`]);
-          showToast({
-            title: "Workflow Error",
-            description: errorMessage,
-            variant: "error"
-          });
-          isRunning.current = false;
-          return;
-        }
-      } else {
-        // Single starting node - use original sequential logic
-        for (const node of nodesToProcess) {
-          if (!isRunning.current) break;
-
-          try {
-            // Check if node is in concurrent mode and verify all upstream nodes are completed
-            const nodeData = node.data as any;
-            const isConcurrentMode = nodeData?.executionMode === 'concurrent';
-            const isProgressiveMode = nodeData?.executionMode === 'progressive';
-
-            if (isConcurrentMode) {
-              // For concurrent nodes, enforce that ALL upstream nodes must be completed
-              const allUpstreamComplete = areAllUpstreamNodesCompleted(node.id);
-
-              if (!allUpstreamComplete) {
-                console.log(`⏸️ RESTRICTION: Concurrent node ${node.id} cannot start - not all upstream nodes are completed`);
-                console.log(`🔄 Attempting to execute pending upstream nodes first...`);
-
-                setLogMessages((prev) => [...prev, `⏸️ ${node.data.title} checking upstream dependencies...`]);
-
-                try {
-                  // Try to execute any pending upstream nodes
-                  await executeUpstreamNodesIfNeeded(node.id);
-
-                  // Check again if all upstream are now completed
-                  const allUpstreamCompleteAfterExecution = areAllUpstreamNodesCompleted(node.id);
-
-                  if (!allUpstreamCompleteAfterExecution) {
-                    console.log(`❌ Still cannot execute concurrent node ${node.id} - upstream nodes not ready`);
-                    setLogMessages((prev) => [...prev, `⏸️ ${node.data.title} waiting for upstream nodes...`]);
-
-                    // Mark node as initial to indicate it hasn't started yet
-                    updateNodeStatus(node.id, 'initial');
-
-                    // Skip this node for now
-                    continue;
-                  }
-
-                  console.log(`✅ All upstream nodes for ${node.id} executed successfully - proceeding with concurrent node`);
-                  setLogMessages((prev) => [...prev, `✅ ${node.data.title} ready to execute`]);
-                } catch (error) {
-                  console.error(`❌ Failed to execute upstream nodes for ${node.id}:`, error);
-                  const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-                  updateNodeStatus(node.id, 'error');
-                  setLogMessages((prev) => [...prev, `❌ ${node.data.title} failed: ${errorMessage}`]);
-                  showToast({
-                    title: "Upstream Execution Error",
-                    description: `${node.data.title}: ${errorMessage}`,
-                    variant: "error"
-                  });
-                  isRunning.current = false;
-                  return;
-                }
-              } else {
-                console.log(`✅ Concurrent node ${node.id} all upstream nodes completed - proceeding with execution`);
-              }
-            }
-
-            // 第一步：收集数据（只收集一次）
-            const inputDataList = collectInputData(node);
-
-            // 第二步：自检（只负责类型转换）
-            await selfCheckNode(node, inputDataList);
-
-            await new Promise(resolve => setTimeout(resolve, 5));
-
-            // 第三步：执行（重新获取类型并处理数据）
-            await processNode(node, inputDataList);
-
-            // In progressive mode, downstream nodes are already processed
-            // So we need to skip them in the main workflow loop
-            if (isProgressiveMode) {
-              const downstreamNodeIds = new Set<string>();
-              const collectDownstreamIds = (nodeId: string) => {
-                const outgoing = edges.filter(e => e.source === nodeId);
-                outgoing.forEach(edge => {
-                  if (!downstreamNodeIds.has(edge.target)) {
-                    downstreamNodeIds.add(edge.target);
-
-                    // Check if this downstream node is concurrent - if so, don't collect its children
-                    // because concurrent nodes will be handled separately after progressive completes
-                    const targetNode = nodesToProcess.find(n => n.id === edge.target);
-                    const targetNodeData = targetNode?.data as any;
-                    const isConcurrent = targetNodeData?.executionMode === 'concurrent';
-
-                    if (isConcurrent) {
-                      console.log(`🔄 Main workflow - Found concurrent downstream node ${edge.target}, will not collect its children`);
-                    }
-
-                    if (!isConcurrent) {
-                      // Only collect children of non-concurrent nodes
-                      collectDownstreamIds(edge.target);
-                    }
-                  }
-                });
               };
-              collectDownstreamIds(node.id);
 
-              // Remove downstream nodes from processing queue
-              const currentIndex = nodesToProcess.indexOf(node);
-              for (let i = nodesToProcess.length - 1; i > currentIndex; i--) {
-                if (downstreamNodeIds.has(nodesToProcess[i].id)) {
-                  const removedNode = nodesToProcess[i];
-                  console.log(`🔄 Main workflow - Removing ${removedNode.id} (executionMode: ${(removedNode.data as any)?.executionMode}) from queue (will be handled by progressive parent)`);
-                  nodesToProcess.splice(i, 1);
-                }
-              }
-            }
-
-            // 等待状态更新完成，确保下一个节点能获取到最新数据
-            await new Promise(resolve => setTimeout(resolve, 50));
-
-          } catch (error) {
-            console.error(`Node ${node.id} processing failed:`, error);
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-            // Check if this is a breakpoint hit (not a real error)
-            if (errorMessage === 'BREAKPOINT') {
-              console.log(`🔴 Workflow paused at breakpoint in node ${node.id}`);
-              return; // Exit workflow cleanly (node is already marked as success)
-            }
-
-            // Update node status to error
-            updateNodeStatus(node.id, 'error');
-
-            setLogMessages((prev) => [...prev, `❌ Workflow stopped due to error in ${node.data.title}: ${errorMessage}`]);
-            showToast({
-              title: "Workflow Error",
-              description: `${node.data.title}: ${errorMessage}`,
-              variant: "error"
+              // Start the node execution (fire and forget - it will update executingNodes when done)
+              executeNode();
             });
-            isRunning.current = false;
-            return; // 停止工作流
+
+            // Remove nodes that are now executing from remaining list
+            remainingNodesToProcess = remainingNodesToProcess.filter(n => !executingNodes.has(n.id));
+
+            // Small delay before checking for more ready nodes
+            await new Promise(resolve => setTimeout(resolve, 10));
           }
-        }
+      } catch (error) {
+        console.error('❌ Error executing starting nodes:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        setLogMessages((prev) => [...prev, `❌ Workflow stopped: ${errorMessage}`]);
+        showToast({
+          title: "Workflow Error",
+          description: errorMessage,
+          variant: "error"
+        });
+        isRunning.current = false;
+        return;
       }
 
       if (isRunning.current) {
@@ -1805,11 +1817,27 @@ export function useWorkflowRunner() {
             }
           }
 
+          // Build subflow context for this node
+          const buildSubflowContext = (nodeId: string, visited: Set<string> = new Set()): Set<string> => {
+            if (visited.has(nodeId)) return visited;
+            visited.add(nodeId);
+
+            const edges = getReactFlowEdges();
+            const upstreamEdges = edges.filter(e => e.target === nodeId);
+            for (const upEdge of upstreamEdges) {
+              buildSubflowContext(upEdge.source, visited);
+            }
+
+            return visited;
+          };
+
+          const nodeSubflowContext = buildSubflowContext(node.id);
+
           // Collect data, self-check, and process
           const inputDataList = collectInputData(node);
           await selfCheckNode(node, inputDataList);
           await new Promise(resolve => setTimeout(resolve, 5));
-          await processNode(node, inputDataList);
+          await processNode(node, inputDataList, false, false, nodeSubflowContext);
 
           // Handle progressive mode downstream tracking
           if (isProgressiveMode) {
