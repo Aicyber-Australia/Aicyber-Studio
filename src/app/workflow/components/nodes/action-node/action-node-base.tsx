@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useState, useMemo } from 'react';
+import React, { useCallback, useState, useMemo, useEffect } from 'react';
 import { Play, Trash, RotateCcw, CheckCircle2, XCircle, ChevronDown, ChevronUp, Download } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -57,18 +57,17 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
   const nodes = useStore((state) => state.nodes);
   const edges = useStore((state) => state.edges);
 
-  // Calculate execution count based on incoming connections (for internal use)
-  // Only show execution count when upstream nodes are NOT action nodes
-  const { executionCount, shouldShowExecutionCount } = useMemo(() => {
+  // Calculate execution count and check execution mode restrictions
+  const { executionCount, shouldShowExecutionCount, isExecutionModeLocked, lockReason } = useMemo(() => {
     const currentNode = nodes.find((n) => n.id === id);
 
-    if (!currentNode) return { executionCount: 0, shouldShowExecutionCount: false };
+    if (!currentNode) return { executionCount: 0, shouldShowExecutionCount: false, isExecutionModeLocked: false, lockReason: '' };
 
     // Get all incoming nodes
     const incomingNodes = getIncomers(currentNode, nodes, edges);
 
     if (incomingNodes.length === 0) {
-      return { executionCount: 0, shouldShowExecutionCount: false };
+      return { executionCount: 0, shouldShowExecutionCount: false, isExecutionModeLocked: false, lockReason: '' };
     }
 
     // Check if all incoming nodes are action nodes
@@ -83,9 +82,19 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
       'video-to-video-node'
     ];
 
-    const hasActionNodeUpstream = incomingNodes.some((node) =>
-      node.type ? actionNodeTypes.includes(node.type) : false
-    );
+    // Count action nodes and other node types upstream
+    let actionNodeCount = 0;
+    let otherNodeCount = 0;
+
+    incomingNodes.forEach((node) => {
+      if (node.type && actionNodeTypes.includes(node.type)) {
+        actionNodeCount++;
+      } else {
+        otherNodeCount++;
+      }
+    });
+
+    const hasActionNodeUpstream = actionNodeCount > 0;
 
     // Only show execution count if NO action nodes are upstream
     const shouldShow = !hasActionNodeUpstream;
@@ -96,7 +105,29 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
     // Calculate execution count using utility function
     const count = getExecutionCount(inputDataList);
 
-    return { executionCount: count, shouldShowExecutionCount: shouldShow };
+    // Check if execution mode must be locked to concurrent
+    // Lock if: multiple action nodes OR (action node(s) + other node types)
+    const mustBeConcurrent =
+      (actionNodeCount > 1) ||
+      (actionNodeCount >= 1 && otherNodeCount >= 1);
+
+    let reason = '';
+    if (mustBeConcurrent) {
+      if (actionNodeCount > 1 && otherNodeCount >= 1) {
+        reason = `Locked to Concurrent: ${actionNodeCount} action node(s) + ${otherNodeCount} other node(s) upstream`;
+      } else if (actionNodeCount > 1) {
+        reason = `Locked to Concurrent: ${actionNodeCount} action nodes upstream`;
+      } else {
+        reason = `Locked to Concurrent: Mixed upstream node types`;
+      }
+    }
+
+    return {
+      executionCount: count,
+      shouldShowExecutionCount: shouldShow,
+      isExecutionModeLocked: mustBeConcurrent,
+      lockReason: reason
+    };
   }, [id, nodes, edges]);
 
   const onPlay = useCallback(() => runWorkflow(id), [id, runWorkflow]);
@@ -108,6 +139,15 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
       )
     );
   }, [id, setNodes]);
+
+  // Auto-enforce concurrent mode when restriction applies
+  useEffect(() => {
+    if (isExecutionModeLocked && executionMode !== 'concurrent') {
+      console.log(`⚠️ Auto-enforcing concurrent mode for action node ${id} due to upstream restrictions`);
+      setExecutionMode('concurrent');
+      updateNodeData({ executionMode: 'concurrent' });
+    }
+  }, [isExecutionModeLocked, executionMode, id, updateNodeData]);
 
   const handleTitleChange = useCallback((newTitle: string) => {
     updateNodeData({ title: newTitle });
@@ -305,11 +345,11 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
           </div>
 
           {/* Execution Mode Selection */}
-          <div className="flex justify-start flex-shrink-0 nodrag">
+          <div className="flex flex-col justify-start flex-shrink-0 nodrag space-y-1">
             <Select
               value={executionMode}
               onValueChange={handleExecutionModeChange}
-              disabled={setOutputMode === 'integrated'}
+              disabled={setOutputMode === 'integrated' || isExecutionModeLocked}
             >
               <SelectTrigger className="w-full h-9">
                 <SelectValue placeholder="Execution mode:" />
@@ -318,11 +358,16 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
                 <SelectItem value="concurrent">
                   Concurrent (All at once)
                 </SelectItem>
-                <SelectItem value="progressive" disabled={setOutputMode === 'integrated'}>
+                <SelectItem value="progressive" disabled={setOutputMode === 'integrated' || isExecutionModeLocked}>
                   Progressive (One-by-one)
                 </SelectItem>
               </SelectContent>
             </Select>
+            {isExecutionModeLocked && (
+              <div className="text-[10px] text-amber-600 dark:text-amber-400 leading-tight">
+                {lockReason}
+              </div>
+            )}
           </div>
 
           {/* Large Text Input Area */}

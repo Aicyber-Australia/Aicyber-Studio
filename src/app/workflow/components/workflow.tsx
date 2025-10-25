@@ -325,8 +325,63 @@ export default function Workflow() {
           variant: 'error',
         });
       });
+
+      // After connection is established, validate action node execution mode restrictions
+      // Use setTimeout to ensure the edge is added before validation
+      setTimeout(() => {
+        const targetNode = store.getNodes().find(n => n.id === connection.target);
+        if (targetNode) {
+          const actionNodeTypes = ['text-to-image-node', 'image-to-image-node', 'image-to-text-node', 'edit-image-node'];
+          if (actionNodeTypes.includes(targetNode.type)) {
+            // Validate the target action node
+            const edges = store.getEdges();
+            const upstreamEdges = edges.filter(e => e.target === targetNode.id);
+
+            let actionNodeCount = 0;
+            let otherNodeCount = 0;
+
+            for (const edge of upstreamEdges) {
+              const upstreamNode = store.getNodes().find(n => n.id === edge.source);
+              if (!upstreamNode) continue;
+
+              if (actionNodeTypes.includes(upstreamNode.type)) {
+                actionNodeCount++;
+              } else {
+                otherNodeCount++;
+              }
+            }
+
+            // Check if restriction applies
+            const mustBeConcurrent =
+              (actionNodeCount > 1) ||
+              (actionNodeCount >= 1 && otherNodeCount >= 1);
+
+            if (mustBeConcurrent) {
+              const currentMode = (targetNode.data as any)?.executionMode;
+              if (currentMode !== 'concurrent') {
+                console.log(`⚠️ RESTRICTION: Action node ${targetNode.id} is being forced to concurrent mode`);
+                console.log(`   Upstream: ${actionNodeCount} action node(s) + ${otherNodeCount} other node(s)`);
+
+                // Force the node to concurrent mode
+                const updatedNodes = store.getNodes().map(n =>
+                  n.id === targetNode.id
+                    ? { ...n, data: { ...n.data, executionMode: 'concurrent' } }
+                    : n
+                );
+                store.setNodes(updatedNodes);
+
+                showToast({
+                  title: "Execution Mode Restriction",
+                  description: `${targetNode.data.title} has been locked to Concurrent mode due to multiple upstream action nodes or mixed upstream node types.`,
+                  variant: "default"
+                });
+              }
+            }
+          }
+        }
+      }, 50);
     },
-    [takeSnapshot, store.onConnect, showToast],
+    [takeSnapshot, store, showToast],
   );
 
   const handleNodeDrag = useCallback<OnNodeDrag>(
@@ -366,9 +421,54 @@ export default function Workflow() {
     takeSnapshot();
   }, [takeSnapshot]);
 
-  const handleEdgesDelete: OnEdgesDelete = useCallback(() => {
+  const handleEdgesDelete: OnEdgesDelete = useCallback((deletedEdges) => {
     takeSnapshot();
-  }, [takeSnapshot]);
+
+    // After edge deletion, re-validate action nodes that might have been affected
+    // Use setTimeout to ensure the edge is removed before validation
+    setTimeout(() => {
+      const actionNodeTypes = ['text-to-image-node', 'image-to-image-node', 'image-to-text-node', 'edit-image-node'];
+      const affectedNodeIds = new Set<string>();
+
+      // Collect all target nodes from deleted edges
+      deletedEdges.forEach(edge => {
+        affectedNodeIds.add(edge.target);
+      });
+
+      // Re-validate each affected action node
+      affectedNodeIds.forEach(nodeId => {
+        const targetNode = store.getNodes().find(n => n.id === nodeId);
+        if (targetNode && actionNodeTypes.includes(targetNode.type)) {
+          const edges = store.getEdges();
+          const upstreamEdges = edges.filter(e => e.target === targetNode.id);
+
+          let actionNodeCount = 0;
+          let otherNodeCount = 0;
+
+          for (const edge of upstreamEdges) {
+            const upstreamNode = store.getNodes().find(n => n.id === edge.source);
+            if (!upstreamNode) continue;
+
+            if (actionNodeTypes.includes(upstreamNode.type)) {
+              actionNodeCount++;
+            } else {
+              otherNodeCount++;
+            }
+          }
+
+          // Check if restriction no longer applies
+          const mustBeConcurrent =
+            (actionNodeCount > 1) ||
+            (actionNodeCount >= 1 && otherNodeCount >= 1);
+
+          if (!mustBeConcurrent) {
+            console.log(`✅ Action node ${targetNode.id} can now be switched to any execution mode`);
+            console.log(`   Upstream: ${actionNodeCount} action node(s) + ${otherNodeCount} other node(s)`);
+          }
+        }
+      });
+    }, 50);
+  }, [takeSnapshot, store]);
 
   const handleNodeDragStop = useCallback<OnNodeDrag>(
     (event, node, nodes) => {
