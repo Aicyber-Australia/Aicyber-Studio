@@ -19,7 +19,7 @@ import {
 } from '@xyflow/react';
 import { useShallow } from 'zustand/react/shallow';
 import { useTheme } from 'next-themes';
-import { MousePointer2, Hand, Play, Pause, Trash2, Divide } from 'lucide-react';
+import { MousePointer2, Hand, Play, Pause, Trash2, Divide, PlayCircle } from 'lucide-react';
 import { useCopilotReadable } from '@copilotkit/react-core';
 
 import { nodeTypes } from '@/app/workflow/components/nodes';
@@ -71,7 +71,7 @@ export default function Workflow() {
   const reactFlowStore = useStoreApi();
   const { getInternalNode, fitView } = useReactFlow();
   const [isSelectMode, setIsSelectMode] = useState(true);
-  const { runWorkflow, stopWorkflow, isRunning } = useWorkflowRunner();
+  const { runWorkflow, stopWorkflow, resumeWorkflow, isRunning, isStopping, hasBreakpoint } = useWorkflowRunner();
   const [selectedNodes, setSelectedNodes] = useState<any[]>([]);
   const runLayout = useLayout();
   const { showToast } = useToast();
@@ -325,8 +325,63 @@ export default function Workflow() {
           variant: 'error',
         });
       });
+
+      // After connection is established, validate action node execution mode restrictions
+      // Use setTimeout to ensure the edge is added before validation
+      setTimeout(() => {
+        const targetNode = store.getNodes().find(n => n.id === connection.target);
+        if (targetNode) {
+          const actionNodeTypes = ['text-to-image-node', 'image-to-image-node', 'image-to-text-node', 'edit-image-node'];
+          if (actionNodeTypes.includes(targetNode.type)) {
+            // Validate the target action node
+            const edges = store.getEdges();
+            const upstreamEdges = edges.filter(e => e.target === targetNode.id);
+
+            let actionNodeCount = 0;
+            let otherNodeCount = 0;
+
+            for (const edge of upstreamEdges) {
+              const upstreamNode = store.getNodes().find(n => n.id === edge.source);
+              if (!upstreamNode) continue;
+
+              if (actionNodeTypes.includes(upstreamNode.type)) {
+                actionNodeCount++;
+              } else {
+                otherNodeCount++;
+              }
+            }
+
+            // Check if restriction applies
+            const mustBeConcurrent =
+              (actionNodeCount > 1) ||
+              (actionNodeCount >= 1 && otherNodeCount >= 1);
+
+            if (mustBeConcurrent) {
+              const currentMode = (targetNode.data as any)?.executionMode;
+              if (currentMode !== 'concurrent') {
+                console.log(`⚠️ RESTRICTION: Action node ${targetNode.id} is being forced to concurrent mode`);
+                console.log(`   Upstream: ${actionNodeCount} action node(s) + ${otherNodeCount} other node(s)`);
+
+                // Force the node to concurrent mode
+                const updatedNodes = store.getNodes().map(n =>
+                  n.id === targetNode.id
+                    ? { ...n, data: { ...n.data, executionMode: 'concurrent' as const } }
+                    : n
+                );
+                store.setNodes(updatedNodes as any);
+
+                showToast({
+                  title: "Execution Mode Restriction",
+                  description: `${targetNode.data.title} has been locked to Concurrent mode due to multiple upstream action nodes or mixed upstream node types.`,
+                  variant: "default"
+                });
+              }
+            }
+          }
+        }
+      }, 50);
     },
-    [takeSnapshot, store.onConnect, showToast],
+    [takeSnapshot, store, showToast],
   );
 
   const handleNodeDrag = useCallback<OnNodeDrag>(
@@ -366,9 +421,54 @@ export default function Workflow() {
     takeSnapshot();
   }, [takeSnapshot]);
 
-  const handleEdgesDelete: OnEdgesDelete = useCallback(() => {
+  const handleEdgesDelete: OnEdgesDelete = useCallback((deletedEdges) => {
     takeSnapshot();
-  }, [takeSnapshot]);
+
+    // After edge deletion, re-validate action nodes that might have been affected
+    // Use setTimeout to ensure the edge is removed before validation
+    setTimeout(() => {
+      const actionNodeTypes = ['text-to-image-node', 'image-to-image-node', 'image-to-text-node', 'edit-image-node'];
+      const affectedNodeIds = new Set<string>();
+
+      // Collect all target nodes from deleted edges
+      deletedEdges.forEach(edge => {
+        affectedNodeIds.add(edge.target);
+      });
+
+      // Re-validate each affected action node
+      affectedNodeIds.forEach(nodeId => {
+        const targetNode = store.getNodes().find(n => n.id === nodeId);
+        if (targetNode && actionNodeTypes.includes(targetNode.type)) {
+          const edges = store.getEdges();
+          const upstreamEdges = edges.filter(e => e.target === targetNode.id);
+
+          let actionNodeCount = 0;
+          let otherNodeCount = 0;
+
+          for (const edge of upstreamEdges) {
+            const upstreamNode = store.getNodes().find(n => n.id === edge.source);
+            if (!upstreamNode) continue;
+
+            if (actionNodeTypes.includes(upstreamNode.type)) {
+              actionNodeCount++;
+            } else {
+              otherNodeCount++;
+            }
+          }
+
+          // Check if restriction no longer applies
+          const mustBeConcurrent =
+            (actionNodeCount > 1) ||
+            (actionNodeCount >= 1 && otherNodeCount >= 1);
+
+          if (!mustBeConcurrent) {
+            console.log(`✅ Action node ${targetNode.id} can now be switched to any execution mode`);
+            console.log(`   Upstream: ${actionNodeCount} action node(s) + ${otherNodeCount} other node(s)`);
+          }
+        }
+      });
+    }, 50);
+  }, [takeSnapshot, store]);
 
   const handleNodeDragStop = useCallback<OnNodeDrag>(
     (event, node, nodes) => {
@@ -495,9 +595,23 @@ export default function Workflow() {
           variant="ghost"
           size="icon"
           title={isRunning ? 'Stop Workflow' : 'Run Workflow'}
+          disabled={isStopping}
+          className={isStopping ? 'opacity-50 cursor-not-allowed' : ''}
         >
           {isRunning ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
         </Button>
+
+        {hasBreakpoint && !isRunning && (
+          <Button
+            onClick={() => resumeWorkflow()}
+            variant="ghost"
+            size="icon"
+            title="Resume Workflow (from breakpoint)"
+            className="text-orange-500 hover:text-orange-600"
+          >
+            <PlayCircle className="h-5 w-5" />
+          </Button>
+        )}
 
         <Button
           onClick={handleClearCanvas}

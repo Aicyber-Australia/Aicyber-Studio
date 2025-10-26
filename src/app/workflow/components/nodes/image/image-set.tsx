@@ -19,7 +19,11 @@ function ImageSet({ id, data, selected }: WorkflowNodeProps) {
   const { setNodes } = useReactFlow();
 
   // 从 media.imageList 获取所有图片
-  const imageList = data?.media?.imageList || [];
+  // Deduplicate imageList by URL for display (progressive mode can cause duplicates)
+  const rawImageList = data?.media?.imageList || [];
+  const imageList = Array.from(
+    new Map(rawImageList.map((img: any) => [img.url || img.fileName || JSON.stringify(img), img])).values()
+  );
   
   // 检查节点是否正在处理
   const isProcessing = data?.status === 'loading';

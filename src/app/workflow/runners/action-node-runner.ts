@@ -1,7 +1,67 @@
 import { NodeRunner } from './types';
-import { AppNode } from '../components/nodes';
+import { AppNode, ApiExecutionResponse, ApiExecutionError } from '../components/nodes';
 import { getApiCallFunction, getRegisteredNodeTypes } from '../../api/services/service-registrar';
-import { normalizeInputsToMediaSets } from './media-set-utils';
+import { normalizeInputsToMediaSets, MediaSet } from './media-set-utils';
+
+/**
+ * Deduplicates MediaSets to prevent duplicate API requests.
+ * Two MediaSets are considered duplicates if they contain the same media items (by URL/content).
+ */
+function deduplicateMediaSets(mediaSets: MediaSet[]): MediaSet[] {
+  const seen = new Set<string>();
+  const deduplicated: MediaSet[] = [];
+
+  for (const mediaSet of mediaSets) {
+    // Create a unique key for this mediaSet based on its media items
+    const mediaKeys = mediaSet.mediaList
+      .map(item => {
+        // Use URL for images/videos, content for text
+        if (item.type === 'text') {
+          return `text:${item.content}`;
+        }
+        return `${item.type}:${item.url}`;
+      })
+      .sort() // Sort to ensure consistent ordering
+      .join('|');
+
+    const mediaSetKey = `mediaSet:${mediaKeys}`;
+
+    if (!seen.has(mediaSetKey)) {
+      seen.add(mediaSetKey);
+      deduplicated.push(mediaSet);
+    } else {
+      console.log(`ActionNodeRunner - Skipping duplicate mediaSet: ${mediaSetKey}`);
+    }
+  }
+
+  return deduplicated;
+}
+
+/**
+ * Deduplicates media items based on their content.
+ * Two media items are considered duplicates if they have the same type and URL/content.
+ */
+function deduplicateMediaItems(existingMedia: any[], newMedia: any): boolean {
+  // Check if this media item already exists
+  for (const existing of existingMedia) {
+    // Compare based on type
+    if (existing.type !== newMedia.type) {
+      continue;
+    }
+
+    // For images and videos, compare by URL
+    if ((newMedia.type === 'image' || newMedia.type === 'video') && existing.url === newMedia.url) {
+      return true; // Duplicate found
+    }
+
+    // For text, compare by content
+    if (newMedia.type === 'text' && existing.content === newMedia.content) {
+      return true; // Duplicate found
+    }
+  }
+
+  return false; // Not a duplicate
+}
 
 export const ActionNodeRunner: NodeRunner<AppNode> = {
   nodeType: 'action-node', // 通用类型
@@ -53,14 +113,18 @@ export const ActionNodeRunner: NodeRunner<AppNode> = {
     return { isValid: true };
   },
 
-  async run(node: AppNode, inputDataList: any[]): Promise<any> {
+  async run(node: AppNode, inputDataList: any[], updateNodeData?: (data: any) => void, progressiveCallback?: (mediaSetIndex: number, mediaSet: any, continueDownstream: () => Promise<void>) => Promise<void>): Promise<any> {
     try {
       console.log(`ActionNodeRunner - Running ${node.type} with data:`, node.data);
       console.log(`ActionNodeRunner - Input data list:`, inputDataList);
 
       // Normalize all inputs to unified MediaSet format
-      const mediaSets = normalizeInputsToMediaSets(inputDataList);
-      console.log(`ActionNodeRunner - Normalized to ${mediaSets.length} mediaSets:`, mediaSets);
+      const normalizedMediaSets = normalizeInputsToMediaSets(inputDataList);
+      console.log(`ActionNodeRunner - Normalized to ${normalizedMediaSets.length} mediaSets:`, normalizedMediaSets);
+
+      // Deduplicate mediaSets based on media URLs/content to avoid duplicate API requests
+      const mediaSets = deduplicateMediaSets(normalizedMediaSets);
+      console.log(`ActionNodeRunner - After deduplication: ${mediaSets.length} mediaSets`);
 
       // Store execution count in node data for UI display
       const executionCount = mediaSets.length;
@@ -70,23 +134,238 @@ export const ActionNodeRunner: NodeRunner<AppNode> = {
       const apiService = getApiCallFunction(node.type);
       console.log(`ActionNodeRunner - Got API service function for ${node.type}`);
 
-      // 传递整个node和normalized mediaSets给服务
-      // The service will receive mediaSets instead of raw inputDataList
-      const result = await apiService(node, mediaSets);
+      // Initialize shared state
+      const apiResponses: Array<ApiExecutionResponse | ApiExecutionError> = [];
+      const resultMediaList: any[] = [];
+      let successCount = 0;
+      let errorCount = 0;
 
-      console.log(`ActionNodeRunner - Service result:`, result);
-      console.log(`ActionNodeRunner - Service result stringified:`, JSON.stringify(result, null, 2));
+      // Helper function to update node with current state
+      const pushUpdate = () => {
+        if (updateNodeData) {
+          updateNodeData({
+            media: {
+              mediaList: [...resultMediaList]
+            },
+            apiResponses: [...apiResponses],
+            executionMetadata: {
+              totalExecutions: executionCount,
+              successCount,
+              errorCount,
+              lastExecutionTime: Date.now()
+            }
+          });
+        }
+      };
 
-      // Include execution metadata in result
-      if (result && typeof result === 'object') {
-        return {
-          ...result,
-          executionCount,
-          mediaSetsProcessed: mediaSets.length
-        };
+      // Check execution mode
+      const executionMode = node.data.executionMode || 'concurrent';
+      console.log(`ActionNodeRunner - Execution mode: ${executionMode}`);
+
+      // Helper function to process a single mediaSet
+      const processSingleMediaSet = async (mediaSet: any, i: number) => {
+        console.log(`ActionNodeRunner - Starting mediaSet ${i + 1}/${mediaSets.length}`);
+
+        try {
+          // Call API service with single mediaSet
+          const singleResult = await apiService(node, [mediaSet]);
+
+          console.log(`ActionNodeRunner - MediaSet ${i + 1} result:`, singleResult);
+
+          // Extract response data
+          if (singleResult && typeof singleResult === 'object') {
+            const resultData = singleResult as any;
+
+            // Check if it's an error response
+            if ('error' in resultData) {
+              const errorResponse: ApiExecutionError = {
+                error: resultData.error,
+                errorCode: resultData.errorCode,
+                metadata: resultData.metadata
+              };
+              apiResponses.push(errorResponse);
+              errorCount++;
+              console.log(`ActionNodeRunner - MediaSet ${i + 1} returned error:`, errorResponse.error);
+
+              // Push real-time update
+              pushUpdate();
+
+              // In progressive mode, return null to indicate skip
+              return null;
+            } else {
+              // Extract media from successful response
+              if (resultData.media) {
+                let hasMedia = false;
+                const currentBatchMedia: any[] = [];
+
+                // Process imageList
+                if (resultData.media.imageList && Array.isArray(resultData.media.imageList)) {
+                  resultData.media.imageList.forEach((img: any) => {
+                    const response: ApiExecutionResponse = {
+                      url: img.url,
+                      type: 'image',
+                      metadata: resultData.metadata
+                    };
+                    apiResponses.push(response);
+                    const mediaItem = {
+                      id: `media-${Date.now()}-${Math.random()}`,
+                      type: 'image',
+                      url: img.url,
+                      fileName: img.fileName || `result-${i + 1}.jpg`,
+                      timestamp: Date.now()
+                    };
+
+                    // Only add if not a duplicate
+                    if (!deduplicateMediaItems(resultMediaList, mediaItem)) {
+                      resultMediaList.push(mediaItem);
+                      currentBatchMedia.push(mediaItem);
+                      hasMedia = true;
+                    } else {
+                      console.log(`ActionNodeRunner - Skipping duplicate image: ${img.url}`);
+                    }
+                  });
+                }
+
+                // Process videoList
+                if (resultData.media.videoList && Array.isArray(resultData.media.videoList)) {
+                  resultData.media.videoList.forEach((vid: any) => {
+                    const response: ApiExecutionResponse = {
+                      url: vid.url,
+                      type: 'video',
+                      metadata: resultData.metadata
+                    };
+                    apiResponses.push(response);
+                    const mediaItem = {
+                      id: `media-${Date.now()}-${Math.random()}`,
+                      type: 'video',
+                      url: vid.url,
+                      fileName: vid.fileName || `result-${i + 1}.mp4`,
+                      timestamp: Date.now()
+                    };
+
+                    // Only add if not a duplicate
+                    if (!deduplicateMediaItems(resultMediaList, mediaItem)) {
+                      resultMediaList.push(mediaItem);
+                      currentBatchMedia.push(mediaItem);
+                      hasMedia = true;
+                    } else {
+                      console.log(`ActionNodeRunner - Skipping duplicate video: ${vid.url}`);
+                    }
+                  });
+                }
+
+                // Process textList
+                if (resultData.media.textList && Array.isArray(resultData.media.textList)) {
+                  resultData.media.textList.forEach((text: string) => {
+                    const response: ApiExecutionResponse = {
+                      url: '', // Text doesn't have URL
+                      type: 'text',
+                      metadata: { ...resultData.metadata, content: text }
+                    };
+                    apiResponses.push(response);
+                    const mediaItem = {
+                      id: `media-${Date.now()}-${Math.random()}`,
+                      type: 'text',
+                      content: text,
+                      fileName: `result-${i + 1}.txt`,
+                      timestamp: Date.now()
+                    };
+
+                    // Only add if not a duplicate
+                    if (!deduplicateMediaItems(resultMediaList, mediaItem)) {
+                      resultMediaList.push(mediaItem);
+                      currentBatchMedia.push(mediaItem);
+                      hasMedia = true;
+                    } else {
+                      console.log(`ActionNodeRunner - Skipping duplicate text content`);
+                    }
+                  });
+                }
+
+                if (hasMedia) {
+                  successCount++;
+                }
+
+                // Push real-time update
+                pushUpdate();
+
+                return currentBatchMedia;
+              }
+            }
+          }
+        } catch (error) {
+          // Handle execution error
+          const errorResponse: ApiExecutionError = {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            metadata: { mediaSetIndex: i }
+          };
+          apiResponses.push(errorResponse);
+          errorCount++;
+          console.error(`ActionNodeRunner - MediaSet ${i + 1} execution failed:`, error);
+
+          // Push real-time update
+          pushUpdate();
+
+          // In progressive mode, return null to indicate skip
+          return null;
+        }
+
+        return null;
+      };
+
+      if (executionMode === 'progressive' && progressiveCallback) {
+        // Progressive mode: execute one by one with downstream execution
+        console.log('ActionNodeRunner - Using progressive execution mode');
+
+        for (let i = 0; i < mediaSets.length; i++) {
+          const mediaSet = mediaSets[i];
+
+          // Process single mediaSet and get result
+          const batchMedia = await processSingleMediaSet(mediaSet, i);
+
+          // If error occurred, skip to next (batchMedia will be null)
+          if (batchMedia === null) {
+            console.log(`ActionNodeRunner - Skipping mediaSet ${i + 1} due to error`);
+            continue;
+          }
+
+          // Execute downstream workflow with this result
+          await progressiveCallback(i, mediaSet, async () => {
+            console.log(`ActionNodeRunner - Progressive: executing downstream for mediaSet ${i + 1}`);
+            // Downstream execution happens in the callback
+          });
+        }
+      } else {
+        // Concurrent mode: execute all API calls concurrently
+        console.log('ActionNodeRunner - Using concurrent execution mode');
+
+        const promises = mediaSets.map(async (mediaSet, i) => {
+          await processSingleMediaSet(mediaSet, i);
+        });
+
+        // Wait for all API calls to complete
+        await Promise.all(promises);
       }
 
-      return result;
+      console.log(`ActionNodeRunner - All executions complete. Success: ${successCount}, Errors: ${errorCount}`);
+      console.log(`ActionNodeRunner - API Responses:`, apiResponses);
+      console.log(`ActionNodeRunner - Result media list:`, resultMediaList);
+
+      // Return final result with media list and execution metadata
+      return {
+        media: {
+          mediaList: resultMediaList
+        },
+        apiResponses,
+        executionMetadata: {
+          totalExecutions: executionCount,
+          successCount,
+          errorCount,
+          lastExecutionTime: Date.now()
+        },
+        executionCount,
+        mediaSetsProcessed: mediaSets.length
+      };
     } catch (error) {
       console.error(`ActionNodeRunner error for ${node.type}:`, error);
       throw new Error(`${node.type} execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`);

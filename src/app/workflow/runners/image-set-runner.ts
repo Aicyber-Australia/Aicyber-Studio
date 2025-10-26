@@ -19,7 +19,7 @@ export const ImageSetNodeRunner: NodeRunner = {
     return { isValid: true };
   },
 
-  run: async (node: any, inputDataList: any[]) => {
+  run: async (node: any, inputDataList: any[], updateNodeData?: (data: any) => void) => {
     console.log('🔄 ImageSet Runner - Starting run for node:', node.id);
     console.log('🔄 ImageSet Runner - Node type:', node.type);
     console.log('🔄 ImageSet Runner - Input data list length:', inputDataList.length);

@@ -32,6 +32,26 @@ export interface InputData {
   [key: string]: unknown;
 }
 
+// API Response types
+export interface ApiSuccessResponse {
+  url: string;
+  type: 'text' | 'image' | 'video';
+  metadata?: Record<string, unknown>;
+}
+
+export interface ApiErrorResponse {
+  error: string;
+  errorCode?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export type ApiResponse = ApiSuccessResponse | ApiErrorResponse;
+
+// Helper to check if response is an error
+export function isApiError(response: ApiResponse): response is ApiErrorResponse {
+  return 'error' in response;
+}
+
 // API call function type
 export type ApiCallFunction = (
   node: ServiceNode,
