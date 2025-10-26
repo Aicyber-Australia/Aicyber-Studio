@@ -81,6 +81,8 @@ function deduplicateMediaItems(mediaItems: any[]): any[] {
 export function useWorkflowRunner() {
   const [logMessages, setLogMessages] = useState<string[]>([]);
   const isRunning = useRef(false);
+  const [isRunningState, setIsRunningState] = useState(false); // State for UI
+  const [isStoppingState, setIsStoppingState] = useState(false); // State for UI
   const breakpointNodeId = useRef<string | null>(null); // Track which node hit a breakpoint
   const { getNodes, setNodes, getEdges } = useAppStore(useShallow(selector));
   const { getNode, setNodes: setReactFlowNodes, getEdges: getReactFlowEdges } = useReactFlow();
@@ -142,8 +144,14 @@ export function useWorkflowRunner() {
   }, [getNode, getReactFlowEdges]);
 
   const stopWorkflow = useCallback(() => {
+    setIsStoppingState(true);
     isRunning.current = false;
+    setIsRunningState(false);
     setLogMessages((prev) => [...prev, 'Workflow stopped.']);
+    // Reset stopping state after a brief delay to allow UI to update
+    setTimeout(() => {
+      setIsStoppingState(false);
+    }, 100);
   }, []);
 
   const resetNodeStatus = useCallback(() => {
@@ -963,6 +971,7 @@ export function useWorkflowRunner() {
           });
           breakpointNodeId.current = node.id;
           isRunning.current = false;
+          setIsRunningState(false);
           throw new Error('BREAKPOINT'); // Special error to stop workflow execution
         }
       } else {
@@ -1544,6 +1553,7 @@ export function useWorkflowRunner() {
       const nodes = getNodes();
       const edges = getEdges();
       isRunning.current = true;
+      setIsRunningState(true);
 
       // Validate and enforce execution mode restrictions for all action nodes
       console.log('🔍 Validating action node execution mode restrictions...');
@@ -1873,6 +1883,7 @@ export function useWorkflowRunner() {
           variant: "error"
         });
         isRunning.current = false;
+        setIsRunningState(false);
         return;
       }
 
@@ -1901,6 +1912,7 @@ export function useWorkflowRunner() {
       }
 
       isRunning.current = false;
+      setIsRunningState(false);
     },
     [getNodes, getEdges, processNode, collectInputData, selfCheckNode, updateNodeStatus, showToast, clearDownstreamNodes, clearAllDownstreamNodes, areAllUpstreamNodesCompleted, executeUpstreamNodesIfNeeded],
   );
@@ -1925,6 +1937,14 @@ export function useWorkflowRunner() {
     console.log(`▶️ Resuming workflow from breakpoint at node ${breakpointNode}`);
     setLogMessages((prev) => [...prev, `▶️ Resuming workflow from ${getNode(breakpointNode)?.data.title || breakpointNode}...`]);
 
+    // Ensure the breakpoint node shows as completed
+    const breakpointNodeData = getNode(breakpointNode);
+    if (breakpointNodeData) {
+      // Force update the node to ensure UI reflects completion
+      updateNodeStatus(breakpointNode, 'success');
+      console.log(`✅ Breakpoint node ${breakpointNode} marked as completed`);
+    }
+
     // Clear the breakpoint reference
     breakpointNodeId.current = null;
 
@@ -1945,6 +1965,7 @@ export function useWorkflowRunner() {
 
     // Start execution from downstream nodes
     isRunning.current = true;
+    setIsRunningState(true);
 
     const nodes = getNodes();
     const allEdges = getEdges();
@@ -1966,15 +1987,33 @@ export function useWorkflowRunner() {
 
       console.log(`▶️ Resuming with ${nodesToProcess.length} nodes to process`);
 
+      // Track nodes that have been executed through concurrent downstream mechanism
+      const executedThroughConcurrent = new Set<string>();
+
       // Process each node sequentially (similar to runWorkflow logic)
       for (const node of nodesToProcess) {
         if (!isRunning.current) break;
 
+        // Skip if node was already executed through concurrent downstream mechanism
+        if (executedThroughConcurrent.has(node.id)) {
+          console.log(`⏭️ Skipping node ${node.id} - already executed through concurrent downstream mechanism`);
+          continue;
+        }
+
         try {
-          // Check if node is in concurrent mode and verify all upstream nodes are completed
-          const nodeData = node.data as any;
+          // Get the latest node data to check if it was already executed
+          const latestNode = getNode(node.id);
+          const nodeData = (latestNode?.data || node.data) as any;
           const isConcurrentMode = nodeData?.executionMode === 'concurrent';
           const isProgressiveMode = nodeData?.executionMode === 'progressive';
+
+          // Skip concurrent nodes that have already been executed through the downstream mechanism
+          if (isConcurrentMode && (nodeData?.status === 'success' || nodeData?.status === 'loading')) {
+            console.log(`⏭️ Skipping concurrent node ${node.id} - already executed (status: ${nodeData?.status})`);
+            // Mark as executed to skip any duplicates
+            executedThroughConcurrent.add(node.id);
+            continue;
+          }
 
           if (isConcurrentMode) {
             const allUpstreamComplete = areAllUpstreamNodesCompleted(node.id);
@@ -2071,6 +2110,7 @@ export function useWorkflowRunner() {
             variant: "error"
           });
           isRunning.current = false;
+          setIsRunningState(false);
           return;
         }
       }
@@ -2095,16 +2135,24 @@ export function useWorkflowRunner() {
       });
     } finally {
       isRunning.current = false;
+      setIsRunningState(false);
     }
   }, [breakpointNodeId, getNode, getNodes, getEdges, getReactFlowEdges, showToast, areAllUpstreamNodesCompleted, executeUpstreamNodesIfNeeded, collectInputData, selfCheckNode, processNode, updateNodeStatus]);
+
+  // Check if there are any nodes with breakpoints enabled
+  const hasAnyBreakpoints = useCallback(() => {
+    const nodes = getNodes();
+    return nodes.some(node => (node.data as any)?.hasBreakpoint === true);
+  }, [getNodes]);
 
   return {
     logMessages,
     runWorkflow,
     stopWorkflow,
     resumeWorkflow,
-    isRunning: isRunning.current,
-    hasBreakpoint: breakpointNodeId.current !== null,
+    isRunning: isRunningState,
+    isStopping: isStoppingState,
+    hasBreakpoint: breakpointNodeId.current !== null && hasAnyBreakpoints(),
     clearDownstreamNodes,
     clearAllDownstreamNodes,
   };

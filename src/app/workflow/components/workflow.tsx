@@ -71,7 +71,7 @@ export default function Workflow() {
   const reactFlowStore = useStoreApi();
   const { getInternalNode, fitView } = useReactFlow();
   const [isSelectMode, setIsSelectMode] = useState(true);
-  const { runWorkflow, stopWorkflow, resumeWorkflow, isRunning, hasBreakpoint } = useWorkflowRunner();
+  const { runWorkflow, stopWorkflow, resumeWorkflow, isRunning, isStopping, hasBreakpoint } = useWorkflowRunner();
   const [selectedNodes, setSelectedNodes] = useState<any[]>([]);
   const runLayout = useLayout();
   const { showToast } = useToast();
@@ -365,10 +365,10 @@ export default function Workflow() {
                 // Force the node to concurrent mode
                 const updatedNodes = store.getNodes().map(n =>
                   n.id === targetNode.id
-                    ? { ...n, data: { ...n.data, executionMode: 'concurrent' } }
+                    ? { ...n, data: { ...n.data, executionMode: 'concurrent' as const } }
                     : n
                 );
-                store.setNodes(updatedNodes);
+                store.setNodes(updatedNodes as any);
 
                 showToast({
                   title: "Execution Mode Restriction",
@@ -595,6 +595,8 @@ export default function Workflow() {
           variant="ghost"
           size="icon"
           title={isRunning ? 'Stop Workflow' : 'Run Workflow'}
+          disabled={isStopping}
+          className={isStopping ? 'opacity-50 cursor-not-allowed' : ''}
         >
           {isRunning ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
         </Button>
