@@ -22,10 +22,10 @@ export async function studioUploadImage(
   // Convert the image data to the format expected by the edge function
   let bodyData: ArrayBuffer;
 
-  if (request.imageData instanceof ArrayBuffer) {
-    bodyData = request.imageData;
-  } else if (request.imageData instanceof Blob || request.imageData instanceof File) {
+  if (request.imageData instanceof Blob || request.imageData instanceof File) {
     bodyData = await request.imageData.arrayBuffer();
+  } else if (request.imageData instanceof ArrayBuffer) {
+    bodyData = request.imageData;
   } else {
     throw new Error('Invalid image data type');
   }
