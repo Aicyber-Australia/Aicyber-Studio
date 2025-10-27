@@ -1,6 +1,6 @@
 import { ImageCreateRequest } from '@/types/request/image-create-request';
 import { SupabaseImageResponse, SupabaseImageErrorResponse } from '@/types/response/image-response';
-import { callEdgeFunction } from './edge-function-client';
+import { callEdgeFunction } from '../edge-function-client';
 
 const EDGE_FUNCTION_NAME = 'wan-image-edit';
 

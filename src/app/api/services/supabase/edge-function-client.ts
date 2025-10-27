@@ -3,8 +3,15 @@ import { SupabaseImageResponse } from '@/types/response/image-response';
 
 export interface EdgeFunctionOptions {
   functionName: string;
-  body: any;
+  body?: any;
   headers?: Record<string, string>;
+  method?: 'GET' | 'POST';
+  queryParams?: Record<string, string>;
+  /**
+   * Whether to include the user's auth token in the Authorization header
+   * Default: true
+   */
+  includeAuth?: boolean;
 }
 
 /**
@@ -14,12 +21,30 @@ export async function callEdgeFunction<T = SupabaseImageResponse>(
   options: EdgeFunctionOptions
 ): Promise<T> {
   try {
-    const { data, error } = await supabase.functions.invoke(options.functionName, {
-      body: options.body,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+    // Build the function path with query parameters if provided
+    let functionPath = options.functionName;
+    if (options.queryParams) {
+      const params = new URLSearchParams(options.queryParams);
+      functionPath = `${options.functionName}?${params.toString()}`;
+    }
+
+    // Get auth token (default: true)
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+
+    if (options.includeAuth !== false) {
+      const token = await getAuthToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    }
+
+    const { data, error } = await supabase.functions.invoke(functionPath, {
+      body: options.method === 'GET' ? undefined : options.body,
+      headers,
+      method: options.method || 'POST',
     });
 
     if (error) {
