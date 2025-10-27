@@ -1,6 +1,6 @@
 interface ImageCreateInput {
     prompt: string;
-    images: [string];
+    images: string[]; // Array of image URLs
 }
 
 interface ImageCreateParameters {
