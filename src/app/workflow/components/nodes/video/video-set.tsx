@@ -9,6 +9,7 @@ import WorkflowNode from '@/app/workflow/components/nodes/workflow-node';
 import { Eye, Trash2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { uploadFileToStorage } from '@/app/workflow/utils/upload-to-storage';
 
 function VideoSet({ id, data, selected }: WorkflowNodeProps) {
   const [videoError, setVideoError] = useState<boolean>(false);
@@ -50,23 +51,24 @@ function VideoSet({ id, data, selected }: WorkflowNodeProps) {
     ));
   };
 
-  const handleVideoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleVideoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
 
-    const newVideos = Array.from(files)
-      .filter(file => file.type.startsWith('video/'))
-      .map(file => ({
-        url: URL.createObjectURL(file),
-        fileName: file.name,
-        timestamp: Date.now()
-      }));
+    const videoFiles = Array.from(files).filter(file => file.type.startsWith('video/'));
+    if (videoFiles.length === 0) return;
 
     setVideoError(false);
 
-    // 更新节点数据，支持多视频
+    // Show loading state immediately with blob URLs
+    const blobVideos = videoFiles.map(file => ({
+      url: URL.createObjectURL(file),
+      fileName: file.name,
+      timestamp: Date.now()
+    }));
+
     const mediaData = {
-      videoList: [...videoList, ...newVideos]
+      videoList: [...videoList, ...blobVideos]
     };
 
     setNodes(nodes => nodes.map(node =>
@@ -76,13 +78,70 @@ function VideoSet({ id, data, selected }: WorkflowNodeProps) {
             data: {
               ...node.data,
               media: mediaData,
-              title: `Video Set (${mediaData.videoList.length})`
+              title: `Video Set (${mediaData.videoList.length})`,
+              status: 'loading'
             }
           }
         : node
     ));
 
-    console.log(`Node ${id} uploaded ${newVideos.length} videos:`, newVideos);
+    // Upload all videos to Supabase storage
+    try {
+      const uploadedVideos = await Promise.all(
+        videoFiles.map(async (file, index) => {
+          try {
+            const uploadedUrl = await uploadFileToStorage(file);
+            return {
+              url: uploadedUrl,
+              fileName: file.name,
+              timestamp: Date.now()
+            };
+          } catch (error) {
+            console.error(`Failed to upload video ${file.name}:`, error);
+            // Keep the blob URL if upload fails
+            return blobVideos[index];
+          }
+        })
+      );
+
+      // Update with the Supabase URLs
+      const updatedMediaData = {
+        videoList: [...videoList, ...uploadedVideos]
+      };
+
+      setNodes(nodes => nodes.map(node =>
+        node.id === id
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                media: updatedMediaData,
+                title: `Video Set (${updatedMediaData.videoList.length})`,
+                status: 'success'
+              }
+            }
+          : node
+      ));
+
+      // Revoke the blob URLs to free memory
+      blobVideos.forEach(vid => URL.revokeObjectURL(vid.url));
+
+      console.log(`Node ${id} uploaded ${uploadedVideos.length} videos to Supabase`);
+    } catch (error) {
+      console.error(`Failed to upload videos for node ${id}:`, error);
+      setVideoError(true);
+      setNodes(nodes => nodes.map(node =>
+        node.id === id
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                status: 'error'
+              }
+            }
+          : node
+      ));
+    }
   };
 
   const handleVideoError = () => {

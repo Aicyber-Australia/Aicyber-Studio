@@ -10,6 +10,7 @@ import { Eye, Trash2 } from 'lucide-react';
 import { ImagePreviewDialog } from './image-preview-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { uploadFileToStorage } from '@/app/workflow/utils/upload-to-storage';
 
 function ImageSet({ id, data, selected }: WorkflowNodeProps) {
   const [imageError, setImageError] = useState<boolean>(false);
@@ -57,39 +58,97 @@ function ImageSet({ id, data, selected }: WorkflowNodeProps) {
     ));
   };
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
-    
-    const newImages = Array.from(files)
-      .filter(file => file.type.startsWith('image/'))
-      .map(file => ({
-        url: URL.createObjectURL(file),
-        fileName: file.name,
-        timestamp: Date.now()
-      }));
-    
+
+    const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+    if (imageFiles.length === 0) return;
+
     setImageError(false);
-    
-    // 更新节点数据，支持多图
+
+    // Show loading state immediately with blob URLs
+    const blobImages = imageFiles.map(file => ({
+      url: URL.createObjectURL(file),
+      fileName: file.name,
+      timestamp: Date.now()
+    }));
+
     const mediaData = {
-      imageList: [...imageList, ...newImages]
+      imageList: [...imageList, ...blobImages]
     };
-    
-    setNodes(nodes => nodes.map(node => 
-      node.id === id 
-        ? { 
-            ...node, 
-            data: { 
-              ...node.data, 
+
+    setNodes(nodes => nodes.map(node =>
+      node.id === id
+        ? {
+            ...node,
+            data: {
+              ...node.data,
               media: mediaData,
-              title: `Image Set (${mediaData.imageList.length})`
-            } 
+              title: `Image Set (${mediaData.imageList.length})`,
+              status: 'loading'
+            }
           }
         : node
     ));
-    
-    console.log(`Node ${id} uploaded ${newImages.length} images:`, newImages);
+
+    // Upload all images to Supabase storage
+    try {
+      const uploadedImages = await Promise.all(
+        imageFiles.map(async (file, index) => {
+          try {
+            const uploadedUrl = await uploadFileToStorage(file);
+            return {
+              url: uploadedUrl,
+              fileName: file.name,
+              timestamp: Date.now()
+            };
+          } catch (error) {
+            console.error(`Failed to upload image ${file.name}:`, error);
+            // Keep the blob URL if upload fails
+            return blobImages[index];
+          }
+        })
+      );
+
+      // Update with the Supabase URLs
+      const updatedMediaData = {
+        imageList: [...imageList, ...uploadedImages]
+      };
+
+      setNodes(nodes => nodes.map(node =>
+        node.id === id
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                media: updatedMediaData,
+                title: `Image Set (${updatedMediaData.imageList.length})`,
+                status: 'success'
+              }
+            }
+          : node
+      ));
+
+      // Revoke the blob URLs to free memory
+      blobImages.forEach(img => URL.revokeObjectURL(img.url));
+
+      console.log(`Node ${id} uploaded ${uploadedImages.length} images to Supabase`);
+    } catch (error) {
+      console.error(`Failed to upload images for node ${id}:`, error);
+      setImageError(true);
+      setNodes(nodes => nodes.map(node =>
+        node.id === id
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                status: 'error'
+              }
+            }
+          : node
+      ));
+    }
   };
 
   const handleImageError = () => {
