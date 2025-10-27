@@ -2,29 +2,38 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { signIn } from "@/app/api/services/supabase/auth";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError("");
 
     try {
-      // TODO: Implement authentication logic
-      console.log("Login attempt:", { email, password });
+      const { user, session, error: authError } = await signIn({ email, password });
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (authError) {
+        setError(authError.message);
+        return;
+      }
 
-      // TODO: Handle successful login (redirect, store token, etc.)
+      if (user && session) {
+        // Redirect to workflow page on successful login
+        router.push("/workflow");
+      }
     } catch (error) {
       console.error("Login error:", error);
-      // TODO: Handle error (show toast, error message, etc.)
+      setError("An unexpected error occurred. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -42,6 +51,12 @@ export default function LoginPage() {
 
         <div className="rounded-lg border bg-card p-8 shadow-sm">
           <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                {error}
+              </div>
+            )}
+
             <div className="space-y-2">
               <label
                 htmlFor="email"

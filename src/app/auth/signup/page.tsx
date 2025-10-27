@@ -2,10 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { signUp } from "@/app/api/services/supabase/auth";
 
 export default function SignupPage() {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -67,19 +70,35 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-      // TODO: Implement signup logic
-      console.log("Signup attempt:", {
-        name: formData.name,
+      const { user, session, error: authError } = await signUp({
         email: formData.email,
+        password: formData.password,
+        name: formData.name,
       });
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (authError) {
+        setErrors({ general: authError.message });
+        return;
+      }
 
-      // TODO: Handle successful signup (redirect to login, auto-login, etc.)
+      if (user) {
+        // Check if email confirmation is required
+        if (!session) {
+          setErrors({
+            general: "Please check your email to confirm your account before signing in.",
+          });
+          // Optionally redirect to login after a delay
+          setTimeout(() => {
+            router.push("/auth/login");
+          }, 3000);
+        } else {
+          // Auto-login successful, redirect to workflow
+          router.push("/workflow");
+        }
+      }
     } catch (error) {
       console.error("Signup error:", error);
-      // TODO: Handle error (show toast, error message, etc.)
+      setErrors({ general: "An unexpected error occurred. Please try again." });
     } finally {
       setIsLoading(false);
     }
@@ -97,6 +116,12 @@ export default function SignupPage() {
 
         <div className="rounded-lg border bg-card p-8 shadow-sm">
           <form onSubmit={handleSubmit} className="space-y-6">
+            {errors.general && (
+              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                {errors.general}
+              </div>
+            )}
+
             <div className="space-y-2">
               <label
                 htmlFor="name"
