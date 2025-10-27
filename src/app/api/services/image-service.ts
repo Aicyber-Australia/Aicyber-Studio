@@ -176,10 +176,6 @@ async function callImageToImageEndpoint(node: ServiceNode, inputDataList: InputD
       prompt: prompt || '',
       images: imageUrls // Pass all image URLs
     },
-    parameters: {
-      n: 1,
-      size: '1024x1024'
-    }
   };
 
   // Call the appropriate model's edge function
