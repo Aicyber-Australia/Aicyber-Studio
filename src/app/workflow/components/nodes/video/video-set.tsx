@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useReactFlow } from '@xyflow/react';
 import { WorkflowNodeProps } from '@/app/workflow/components/nodes';
 import { nodesConfig } from '@/app/workflow/config';
@@ -8,13 +8,20 @@ import { NodeHandle } from '@/app/workflow/components/nodes/workflow-node/node-h
 import WorkflowNode from '@/app/workflow/components/nodes/workflow-node';
 import { Eye, Trash2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 
 function VideoSet({ id, data, selected }: WorkflowNodeProps) {
   const [videoError, setVideoError] = useState<boolean>(false);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   // 使用 ReactFlow 官方 API
-  const { setNodes } = useReactFlow();
+  const { setNodes, getEdges } = useReactFlow();
+
+  // Check if node has input edges
+  const hasInputEdges = useMemo(() => {
+    const edges = getEdges();
+    return edges.some(edge => edge.target === id);
+  }, [getEdges, id]);
 
   // 从 media.videoList 获取所有视频
   const videoList = data?.media?.videoList || [];
@@ -125,6 +132,42 @@ function VideoSet({ id, data, selected }: WorkflowNodeProps) {
 
   const setOutputMode = data?.setOutputMode || 'individual';
 
+  // Process limit handlers (only for nodes without input edges)
+  const handleProcessLimitModeChange = useCallback((value: string) => {
+    setNodes(nodes => nodes.map(node =>
+      node.id === id
+        ? {
+            ...node,
+            data: {
+              ...node.data,
+              processLimitMode: value as 'all' | 'limited',
+              processLimit: value === 'all' ? undefined : (node.data.processLimit || 10),
+            },
+          }
+        : node
+    ));
+  }, [id, setNodes]);
+
+  const handleProcessLimitChange = useCallback((value: number) => {
+    setNodes(nodes => nodes.map(node => {
+      if (node.id === id) {
+        const maxLimit = (node.data as any)?.media?.videoList?.length || 1;
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            processLimit: Math.max(1, Math.min(value, maxLimit)),
+          },
+        };
+      }
+      return node;
+    }));
+  }, [id, setNodes]);
+
+  const processLimitMode = data?.processLimitMode || 'all';
+  const maxLimit = videoList.length || 1;
+  const processLimit = Math.min(data?.processLimit || 10, maxLimit);
+
   return (
     <>
       <WorkflowNode id={id} data={data} type="video-set" onRefresh={handleRefresh} selected={selected}>
@@ -143,6 +186,39 @@ function VideoSet({ id, data, selected }: WorkflowNodeProps) {
             </Select>
           </div>
 
+          {/* Process Limit Selection - Only shown when no input edges */}
+          {!hasInputEdges && (
+            <div className="nodrag flex-shrink-0 space-y-1.5">
+              <div className="text-[10px] text-muted-foreground">Process Items</div>
+              <Select value={processLimitMode} onValueChange={handleProcessLimitModeChange}>
+                <SelectTrigger className="h-7 text-xs nodrag">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="nodrag">
+                  <SelectItem value="all" className="text-xs">Process All</SelectItem>
+                  <SelectItem value="limited" className="text-xs">Process First N</SelectItem>
+                </SelectContent>
+              </Select>
+              {processLimitMode === 'limited' && (
+                <div className="flex items-center gap-2">
+                  <label htmlFor={`process-limit-${id}`} className="text-[10px] text-muted-foreground whitespace-nowrap">
+                    Limit:
+                  </label>
+                  <Input
+                    id={`process-limit-${id}`}
+                    type="number"
+                    min="1"
+                    max={maxLimit}
+                    value={processLimit}
+                    onChange={(e) => handleProcessLimitChange(parseInt(e.target.value) || 1)}
+                    className="h-7 text-xs nodrag"
+                  />
+                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">/ {maxLimit}</span>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* 多视频网格显示区域 - 自适应节点尺寸 */}
           <div
             className="nodrag nopan nowheel w-full h-full border-2 border-dashed border-gray-300 rounded-lg overflow-auto cursor-pointer hover:border-gray-400 transition-colors relative"
@@ -160,7 +236,13 @@ function VideoSet({ id, data, selected }: WorkflowNodeProps) {
                     gridAutoRows: 'minmax(0, 1fr)'
                   }}
                 >
-                  {videoList.map((video, index) => (
+                  {videoList.map((video, index) => {
+                    // Determine if this item will be processed based on limit settings
+                    const willBeProcessed = !hasInputEdges && processLimitMode === 'limited'
+                      ? index < processLimit
+                      : true;
+
+                    return (
                     <div
                       key={index}
                       className="nodrag relative overflow-hidden group rounded"
@@ -175,12 +257,16 @@ function VideoSet({ id, data, selected }: WorkflowNodeProps) {
                     >
                       <video
                         src={video.url}
-                        className="w-full h-full object-cover"
+                        className={`w-full h-full object-cover ${!willBeProcessed ? 'opacity-40' : ''}`}
                         onError={handleVideoError}
                         draggable={false}
                       />
+                      {/* Overlay for items that won't be processed */}
+                      {!willBeProcessed && (
+                        <div className="absolute inset-0 bg-gray-900/30 pointer-events-none" />
+                      )}
                       {/* 视频序号 */}
-                      <div className="absolute top-1 left-1 bg-black/50 text-white text-xs px-1 rounded">
+                      <div className={`absolute top-1 left-1 text-white text-xs px-1 rounded ${willBeProcessed ? 'bg-black/50' : 'bg-gray-500/70'}`}>
                         {index + 1}
                       </div>
 
@@ -202,7 +288,8 @@ function VideoSet({ id, data, selected }: WorkflowNodeProps) {
                         </div>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* 节点处理时的加载动画 */}

@@ -862,46 +862,44 @@ export function useWorkflowRunner() {
       // Otherwise, just replace because real-time updates are already cumulative
       if (isProgressiveIteration) {
         console.log(`🔄 Process - Accumulating results for progressive iteration`);
+
+        // Check if this is a set node with process limit
+        const isSetNodeWithLimit = (n: any) => {
+          const nodeType = n.type;
+          const isSetNode = nodeType === 'image-set' || nodeType === 'video-set' || nodeType === 'text-set';
+          const hasInputEdges = getReactFlowEdges().some(e => e.target === n.id);
+          const hasProcessLimit = n.data?.processLimitMode === 'limited' && n.data?.processLimit;
+          return isSetNode && !hasInputEdges && hasProcessLimit;
+        };
+
         setReactFlowNodes(nodes => nodes.map(n => {
           if (n.id === node.id) {
             const currentData = n.data as any;
-            const newData = { ...n.data, ...processedData };
 
-            // Merge media lists if they exist (with deduplication)
-            if (processedData.media?.mediaList && currentData.media?.mediaList) {
-              const mergedMediaList = [...currentData.media.mediaList, ...processedData.media.mediaList];
-              newData.media = {
-                ...processedData.media,
-                mediaList: deduplicateMediaItems(mergedMediaList)
-              };
-            }
+            // For set nodes with process limit, don't merge media data
+            if (isSetNodeWithLimit(n)) {
+              const { media, ...otherProcessedData } = processedData as any;
+              const newData = { ...n.data, ...otherProcessedData };
 
-            // Merge apiResponses if they exist (with deduplication)
-            if (processedData.apiResponses && currentData.apiResponses) {
-              const mergedResponses = [...currentData.apiResponses, ...processedData.apiResponses];
-              newData.apiResponses = deduplicateApiResponses(mergedResponses);
-            }
+              // Merge apiResponses if they exist (with deduplication)
+              if (processedData.apiResponses && currentData.apiResponses) {
+                const mergedResponses = [...currentData.apiResponses, ...processedData.apiResponses];
+                newData.apiResponses = deduplicateApiResponses(mergedResponses);
+              }
 
-            // Update execution metadata
-            if (processedData.executionMetadata && currentData.executionMetadata) {
-              newData.executionMetadata = {
-                totalExecutions: (currentData.executionMetadata.totalExecutions || 0) + (processedData.executionMetadata.totalExecutions || 0),
-                successCount: (currentData.executionMetadata.successCount || 0) + (processedData.executionMetadata.successCount || 0),
-                errorCount: (currentData.executionMetadata.errorCount || 0) + (processedData.executionMetadata.errorCount || 0),
-                lastExecutionTime: processedData.executionMetadata.lastExecutionTime
-              };
-            }
+              // Update execution metadata
+              if (processedData.executionMetadata && currentData.executionMetadata) {
+                newData.executionMetadata = {
+                  totalExecutions: (currentData.executionMetadata.totalExecutions || 0) + (processedData.executionMetadata.totalExecutions || 0),
+                  successCount: (currentData.executionMetadata.successCount || 0) + (processedData.executionMetadata.successCount || 0),
+                  errorCount: (currentData.executionMetadata.errorCount || 0) + (processedData.executionMetadata.errorCount || 0),
+                  lastExecutionTime: processedData.executionMetadata.lastExecutionTime
+                };
+              }
 
-            return { ...n, data: newData };
-          }
-          return n;
-        }));
-
-        // 同步更新 Zustand store
-        setNodes(
-          getNodes().map((n) => {
-            if (n.id === node.id) {
-              const currentData = n.data as any;
+              return { ...n, data: newData };
+            } else {
+              // Normal merging for other nodes
               const newData = { ...n.data, ...processedData };
 
               // Merge media lists if they exist (with deduplication)
@@ -929,26 +927,114 @@ export function useWorkflowRunner() {
                 };
               }
 
-              return { ...n, data: newData } as AppNode;
+              return { ...n, data: newData };
+            }
+          }
+          return n;
+        }));
+
+        // 同步更新 Zustand store
+        setNodes(
+          getNodes().map((n) => {
+            if (n.id === node.id) {
+              const currentData = n.data as any;
+
+              // For set nodes with process limit, don't merge media data
+              if (isSetNodeWithLimit(n)) {
+                const { media, ...otherProcessedData } = processedData as any;
+                const newData = { ...n.data, ...otherProcessedData };
+
+                // Merge apiResponses if they exist (with deduplication)
+                if (processedData.apiResponses && currentData.apiResponses) {
+                  const mergedResponses = [...currentData.apiResponses, ...processedData.apiResponses];
+                  newData.apiResponses = deduplicateApiResponses(mergedResponses);
+                }
+
+                // Update execution metadata
+                if (processedData.executionMetadata && currentData.executionMetadata) {
+                  newData.executionMetadata = {
+                    totalExecutions: (currentData.executionMetadata.totalExecutions || 0) + (processedData.executionMetadata.totalExecutions || 0),
+                    successCount: (currentData.executionMetadata.successCount || 0) + (processedData.executionMetadata.successCount || 0),
+                    errorCount: (currentData.executionMetadata.errorCount || 0) + (processedData.executionMetadata.errorCount || 0),
+                    lastExecutionTime: processedData.executionMetadata.lastExecutionTime
+                  };
+                }
+
+                return { ...n, data: newData } as AppNode;
+              } else {
+                // Normal merging for other nodes
+                const newData = { ...n.data, ...processedData };
+
+                // Merge media lists if they exist (with deduplication)
+                if (processedData.media?.mediaList && currentData.media?.mediaList) {
+                  const mergedMediaList = [...currentData.media.mediaList, ...processedData.media.mediaList];
+                  newData.media = {
+                    ...processedData.media,
+                    mediaList: deduplicateMediaItems(mergedMediaList)
+                  };
+                }
+
+                // Merge apiResponses if they exist (with deduplication)
+                if (processedData.apiResponses && currentData.apiResponses) {
+                  const mergedResponses = [...currentData.apiResponses, ...processedData.apiResponses];
+                  newData.apiResponses = deduplicateApiResponses(mergedResponses);
+                }
+
+                // Update execution metadata
+                if (processedData.executionMetadata && currentData.executionMetadata) {
+                  newData.executionMetadata = {
+                    totalExecutions: (currentData.executionMetadata.totalExecutions || 0) + (processedData.executionMetadata.totalExecutions || 0),
+                    successCount: (currentData.executionMetadata.successCount || 0) + (processedData.executionMetadata.successCount || 0),
+                    errorCount: (currentData.executionMetadata.errorCount || 0) + (processedData.executionMetadata.errorCount || 0),
+                    lastExecutionTime: processedData.executionMetadata.lastExecutionTime
+                  };
+                }
+
+                return { ...n, data: newData } as AppNode;
+              }
             }
             return n;
           }),
         );
       } else {
         // Normal mode: real-time updates are cumulative, just replace
-        setReactFlowNodes(nodes => nodes.map(n =>
-          n.id === node.id
-            ? { ...n, data: { ...n.data, ...processedData } }
-            : n
-        ));
+        // Special handling for set nodes without input edges and with process limit:
+        // Don't overwrite their media data to preserve all items in UI
+        const isSetNodeWithLimit = (n: any) => {
+          const nodeType = n.type;
+          const isSetNode = nodeType === 'image-set' || nodeType === 'video-set' || nodeType === 'text-set';
+          const hasInputEdges = getReactFlowEdges().some(e => e.target === n.id);
+          const hasProcessLimit = n.data?.processLimitMode === 'limited' && n.data?.processLimit;
+          return isSetNode && !hasInputEdges && hasProcessLimit;
+        };
+
+        setReactFlowNodes(nodes => nodes.map(n => {
+          if (n.id === node.id) {
+            if (isSetNodeWithLimit(n)) {
+              // For set nodes with process limit, don't overwrite media data
+              const { media, ...otherProcessedData } = processedData as any;
+              return { ...n, data: { ...n.data, ...otherProcessedData } };
+            } else {
+              return { ...n, data: { ...n.data, ...processedData } };
+            }
+          }
+          return n;
+        }));
 
         // 同步更新 Zustand store
         setNodes(
-          getNodes().map((n) =>
-            n.id === node.id
-              ? ({ ...n, data: { ...n.data, ...processedData } } as AppNode)
-              : n,
-          ),
+          getNodes().map((n) => {
+            if (n.id === node.id) {
+              if (isSetNodeWithLimit(n)) {
+                // For set nodes with process limit, don't overwrite media data
+                const { media, ...otherProcessedData } = processedData as any;
+                return { ...n, data: { ...n.data, ...otherProcessedData } } as AppNode;
+              } else {
+                return { ...n, data: { ...n.data, ...processedData } } as AppNode;
+              }
+            }
+            return n;
+          }),
         );
       }
 

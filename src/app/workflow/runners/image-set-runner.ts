@@ -23,7 +23,7 @@ export const ImageSetNodeRunner: NodeRunner = {
     console.log('🔄 ImageSet Runner - Starting run for node:', node.id);
     console.log('🔄 ImageSet Runner - Node type:', node.type);
     console.log('🔄 ImageSet Runner - Input data list length:', inputDataList.length);
-    
+
     await new Promise((resolve) => setTimeout(resolve, 300));
 
     console.log('🔄 ImageSet Runner - inputDataList:', inputDataList);
@@ -37,7 +37,7 @@ export const ImageSetNodeRunner: NodeRunner = {
       fileName: string;
       timestamp?: number;
     }> = [];
-    
+
     // 从inputDataList中提取所有图片
     inputDataList.forEach((inputData, index) => {
       console.log(`🔄 ImageSet Runner - inputData[${index}]:`, inputData);
@@ -45,14 +45,15 @@ export const ImageSetNodeRunner: NodeRunner = {
         console.log(`🔄 ImageSet Runner - found media.imageList in input[${index}]:`, inputData.media.imageList);
         allImages.push(...inputData.media.imageList);
       }
-      
-     
+
+
     });
 
     console.log('🔄 ImageSet Runner - allImages from input:', allImages);
     console.log('🔄 ImageSet Runner - allImages.length from input:', allImages.length);
 
     // 如果没有输入数据，从节点自身获取
+    const hasInputData = inputDataList.length > 0;
     if (allImages.length === 0 && node?.data?.media?.imageList) {
       console.log('🔄 ImageSet Runner - using node data:', node.data.media.imageList);
       allImages.push(...node.data.media.imageList);
@@ -61,16 +62,28 @@ export const ImageSetNodeRunner: NodeRunner = {
     console.log('🔄 ImageSet Runner - final allImages:', allImages);
     console.log('🔄 ImageSet Runner - final allImages.length:', allImages.length);
 
-    // 返回合并后的图片列表
+    // Determine which images to pass downstream
+    // Apply process limit only if there's no input data (no incoming edges during execution)
+    // and processLimitMode is set to 'limited'
+    let downstreamImages = allImages;
+    if (!hasInputData && node?.data?.processLimitMode === 'limited' && node?.data?.processLimit) {
+      const limit = node.data.processLimit;
+      downstreamImages = allImages.slice(0, limit);
+      console.log(`🔄 ImageSet Runner - applying process limit for downstream: ${limit}, passing ${downstreamImages.length} of ${allImages.length} items`);
+    }
+
+    // 返回结果：downstreamImages传递给下游节点
+    // DO NOT update node data - keep the original items displayed in the UI
     const result = {
       media: {
-        imageList: allImages
+        imageList: downstreamImages  // Only pass limited items downstream
       },
-      fileName: `image-set-${allImages.length}`,
+      fileName: `image-set-${downstreamImages.length}`,
       timestamp: Date.now(),
     };
-    
-    console.log('🔄 ImageSet Runner - returning result:', result);
+
+    console.log('🔄 ImageSet Runner - returning result (downstream):', result);
+    console.log('🔄 ImageSet Runner - passing downstream:', downstreamImages.length, 'of', allImages.length, 'total images');
     return result;
   },
 };
