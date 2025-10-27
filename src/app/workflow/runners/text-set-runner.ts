@@ -46,6 +46,7 @@ export const TextSetNodeRunner: NodeRunner = {
     console.log('🔄 TextSet Runner - allTexts.length from input:', allTexts.length);
 
     // 如果没有输入数据，从节点自身获取
+    const hasInputData = inputDataList.length > 0;
     if (allTexts.length === 0 && node?.data?.media?.textList) {
       console.log('🔄 TextSet Runner - using node data:', node.data.media.textList);
       allTexts.push(...node.data.media.textList);
@@ -54,15 +55,27 @@ export const TextSetNodeRunner: NodeRunner = {
     console.log('🔄 TextSet Runner - final allTexts:', allTexts);
     console.log('🔄 TextSet Runner - final allTexts.length:', allTexts.length);
 
-    // 返回合并后的文本列表
+    // Determine which texts to pass downstream
+    // Apply process limit only if there's no input data (no incoming edges during execution)
+    // and processLimitMode is set to 'limited'
+    let downstreamTexts = allTexts;
+    if (!hasInputData && node?.data?.processLimitMode === 'limited' && node?.data?.processLimit) {
+      const limit = node.data.processLimit;
+      downstreamTexts = allTexts.slice(0, limit);
+      console.log(`🔄 TextSet Runner - applying process limit for downstream: ${limit}, passing ${downstreamTexts.length} of ${allTexts.length} items`);
+    }
+
+    // 返回结果：downstreamTexts传递给下游节点
+    // DO NOT update node data - keep the original items displayed in the UI
     const result = {
       media: {
-        textList: allTexts
+        textList: downstreamTexts  // Only pass limited items downstream
       },
       timestamp: Date.now(),
     };
 
-    console.log('🔄 TextSet Runner - returning result:', result);
+    console.log('🔄 TextSet Runner - returning result (downstream):', result);
+    console.log('🔄 TextSet Runner - passing downstream:', downstreamTexts.length, 'of', allTexts.length, 'total texts');
     return result;
   },
 };

@@ -57,6 +57,8 @@ export type WorkflowNodeData = {
   status?: 'loading' | 'success' | 'error' | 'initial';
   setOutputMode?: 'individual' | 'integrated'; // How set nodes (image-set, text-set, media-set) output: individual items or as one unit
   executionMode?: 'concurrent' | 'progressive'; // How nodes process multiple inputs: 'concurrent' (all at once) or 'progressive' (one-by-one with downstream execution)
+  processLimitMode?: 'all' | 'limited'; // For set nodes without input: process all items or limit to first N
+  processLimit?: number; // Number of items to process when processLimitMode is 'limited'
   fileName?: string;
   timestamp?: number;
   selectedModel?: string;

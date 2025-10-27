@@ -240,18 +240,18 @@ export const NodeSetNodeRunner: NodeRunner = {
   },
 
   run: async (node: AppNode, inputDataList: any[], updateNodeData?: (data: any) => void) => {
+    try {
+      console.log('🔄 NodeSet Runner - Starting run for node:', node.id);
+      console.log('🔄 NodeSet Runner - Input data list length:', inputDataList.length);
 
-    console.log('🔄 NodeSet Runner - Starting run for node:', node.id);
-    console.log('🔄 NodeSet Runner - Input data list length:', inputDataList.length);
+      await new Promise((resolve) => setTimeout(resolve, 300));
 
-    await new Promise((resolve) => setTimeout(resolve, 300));
+      const nodeData = node?.data as NodeSetData;
+      const collectorMode = nodeData?.collectorMode;
+      const inputMode = nodeData?.inputMode || 'sequence'; // How this nodeset processes inputs
 
-    const nodeData = node?.data as NodeSetData;
-    const collectorMode = nodeData?.collectorMode;
-    const inputMode = nodeData?.inputMode || 'sequence'; // How this nodeset processes inputs
-
-    console.log('🔄 NodeSet Runner - Input Mode:', inputMode);
-    console.log('🔄 NodeSet Runner - Collector Mode:', collectorMode);
+      console.log('🔄 NodeSet Runner - Input Mode:', inputMode);
+      console.log('🔄 NodeSet Runner - Collector Mode:', collectorMode);
 
     let currentNodeList : AppNode[] = [];
     let updatedNodeList : AppNode[] = [];
@@ -713,54 +713,49 @@ export const NodeSetNodeRunner: NodeRunner = {
 
           // Collect all media items
           if (media.mediaList) {
-            allMediaItems.push(...media.mediaList.map((item: any) => ({ type: item.type, data: item })));
+            // mediaList already contains properly structured items {id, type, url/content, fileName, timestamp}
+            allMediaItems.push(...media.mediaList);
           } else {
+            // Fall back to individual lists for backward compatibility
             if (media.imageList) {
-              allMediaItems.push(...media.imageList.map((img: any) => ({ type: 'image', data: img })));
+              allMediaItems.push(...media.imageList.map((img: any) => ({
+                id: img.id || `media-${Date.now()}-${Math.random()}`,
+                type: 'image',
+                url: img.url,
+                fileName: img.fileName,
+                timestamp: img.timestamp || Date.now()
+              })));
             }
             if (media.videoList) {
-              allMediaItems.push(...media.videoList.map((vid: any) => ({ type: 'video', data: vid })));
+              allMediaItems.push(...media.videoList.map((vid: any) => ({
+                id: vid.id || `media-${Date.now()}-${Math.random()}`,
+                type: 'video',
+                url: vid.url,
+                fileName: vid.fileName,
+                timestamp: vid.timestamp || Date.now()
+              })));
             }
             if (media.textList) {
-              allMediaItems.push(...media.textList.map((txt: any) => ({ type: 'text', data: txt })));
+              allMediaItems.push(...media.textList.map((txt: any, idx: number) => ({
+                id: `media-${Date.now()}-${Math.random()}`,
+                type: 'text',
+                content: typeof txt === 'string' ? txt : txt.content,
+                fileName: `text-${idx + 1}.txt`,
+                timestamp: Date.now()
+              })));
             }
           }
 
           // Create a separate media-set for each individual item
           allMediaItems.forEach((item, itemIdx) => {
-            const singleItemMedia: any = {};
-
-            if (item.type === 'image') {
-              singleItemMedia.mediaList = [{
-                id: item.data.id || `media-${Date.now()}-${Math.random()}`,
-                type: 'image',
-                url: item.data.url,
-                fileName: item.data.fileName,
-                timestamp: item.data.timestamp || Date.now()
-              }];
-            } else if (item.type === 'video') {
-              singleItemMedia.mediaList = [{
-                id: item.data.id || `media-${Date.now()}-${Math.random()}`,
-                type: 'video',
-                url: item.data.url,
-                fileName: item.data.fileName,
-                timestamp: item.data.timestamp || Date.now()
-              }];
-            } else if (item.type === 'text') {
-              singleItemMedia.mediaList = [{
-                id: `media-${Date.now()}-${Math.random()}`,
-                type: 'text',
-                content: typeof item.data === 'string' ? item.data : item.data.content,
-                fileName: `text-${itemIdx + 1}.txt`,
-                timestamp: Date.now()
-              }];
-            }
-
+            // Each item is already a properly structured MediaItem with {id, type, url/content, fileName, timestamp}
             appendProcessedNodes.push({
               id: `append-node-${Date.now()}-${inputIndex}-${itemIdx}-${Math.random().toString(36).substr(2, 9)}`,
               type: "media-set" as const,
               data: {
-                media: singleItemMedia,
+                media: {
+                  mediaList: [item] // Wrap the already-structured item in mediaList
+                },
                 title: `Media-Set ${itemIdx + 1}`,
                 status: 'initial' as const,
                 timestamp: Date.now()
@@ -787,12 +782,27 @@ export const NodeSetNodeRunner: NodeRunner = {
       throw new Error(typeValidation.error);
     }
 
-    console.log('🔄 NodeSet Runner - Media type consistency validated successfully');
+      console.log('🔄 NodeSet Runner - Media type consistency validated successfully');
 
-    // 返回包含 nodeList 的数据，让下游节点自己判断如何提取
-    return {
-        nodeList: updatedNodeList,
-        timestamp: Date.now(),
-    };
+      // 返回包含 nodeList 的数据，让下游节点自己判断如何提取
+      return {
+          nodeList: updatedNodeList,
+          timestamp: Date.now(),
+      };
+    } catch (error) {
+      // If validation or processing fails, update node status immediately
+      console.error('🔄 NodeSet Runner - Error during run:', error);
+
+      // Update node data to show error state
+      if (updateNodeData) {
+        updateNodeData({
+          status: 'error',
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+
+      // Re-throw the error so it can be handled by the workflow runner
+      throw error;
+    }
   },
 };
