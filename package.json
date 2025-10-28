@@ -16,6 +16,8 @@
     "@copilotkit/react-ui": "^1.10.6",
     "@copilotkit/runtime": "^1.10.6",
     "@dagrejs/dagre": "^1.1.4",
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.76.1",
     "@vitejs/plugin-react": "^4.5.2",
     "@xyflow/react": "^12.8.6",
     "class-variance-authority": "^0.7.1",
