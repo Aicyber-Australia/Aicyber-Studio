@@ -9,6 +9,7 @@ import WorkflowNode from '@/app/workflow/components/nodes/workflow-node';
 import { Eye, Trash2, FileText, Image as ImageIcon, Video as VideoIcon, Plus } from 'lucide-react';
 import { ImagePreviewDialog } from '@/app/workflow/components/nodes/image/image-preview-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { uploadFileToStorage } from '@/app/workflow/utils/upload-to-storage';
 
 type MediaItem = {
   id: string;
@@ -118,23 +119,24 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
     ));
   };
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
 
-    const newImages: MediaItem[] = Array.from(files)
-      .filter(file => file.type.startsWith('image/'))
-      .map(file => ({
-        id: `media-${Date.now()}-${Math.random()}`,
-        type: 'image' as const,
-        url: URL.createObjectURL(file),
-        fileName: file.name,
-        timestamp: Date.now()
-      }));
+    const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+    if (imageFiles.length === 0) return;
 
-    // 更新节点数据，支持多媒体
+    // Show loading state immediately with blob URLs
+    const blobImages: MediaItem[] = imageFiles.map(file => ({
+      id: `media-${Date.now()}-${Math.random()}`,
+      type: 'image' as const,
+      url: URL.createObjectURL(file),
+      fileName: file.name,
+      timestamp: Date.now()
+    }));
+
     const mediaData = {
-      mediaList: [...mediaList, ...newImages]
+      mediaList: [...mediaList, ...blobImages]
     };
 
     setNodes(nodes => nodes.map(node =>
@@ -144,32 +146,91 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
             data: {
               ...node.data,
               media: mediaData,
-              title: `Media Set (${mediaData.mediaList.length})`
+              title: `Media Set (${mediaData.mediaList.length})`,
+              status: 'loading'
             }
           }
         : node
     ));
 
-    console.log(`Node ${id} uploaded ${newImages.length} images:`, newImages);
+    // Upload all images to Supabase storage
+    try {
+      const uploadedImages = await Promise.all(
+        imageFiles.map(async (file, index) => {
+          try {
+            const uploadedUrl = await uploadFileToStorage(file);
+            return {
+              id: blobImages[index].id,
+              type: 'image' as const,
+              url: uploadedUrl,
+              fileName: file.name,
+              timestamp: Date.now()
+            };
+          } catch (error) {
+            console.error(`Failed to upload image ${file.name}:`, error);
+            // Keep the blob URL if upload fails
+            return blobImages[index];
+          }
+        })
+      );
+
+      // Update with the Supabase URLs
+      const updatedMediaData = {
+        mediaList: [...mediaList, ...uploadedImages]
+      };
+
+      setNodes(nodes => nodes.map(node =>
+        node.id === id
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                media: updatedMediaData,
+                title: `Media Set (${updatedMediaData.mediaList.length})`,
+                status: 'success'
+              }
+            }
+          : node
+      ));
+
+      // Revoke the blob URLs to free memory
+      blobImages.forEach(img => URL.revokeObjectURL(img.url!));
+
+      console.log(`Node ${id} uploaded ${uploadedImages.length} images to Supabase`);
+    } catch (error) {
+      console.error(`Failed to upload images for node ${id}:`, error);
+      setNodes(nodes => nodes.map(node =>
+        node.id === id
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                status: 'error'
+              }
+            }
+          : node
+      ));
+    }
   };
 
-  const handleVideoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleVideoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
 
-    const newVideos: MediaItem[] = Array.from(files)
-      .filter(file => file.type.startsWith('video/'))
-      .map(file => ({
-        id: `media-${Date.now()}-${Math.random()}`,
-        type: 'video' as const,
-        url: URL.createObjectURL(file),
-        fileName: file.name,
-        timestamp: Date.now()
-      }));
+    const videoFiles = Array.from(files).filter(file => file.type.startsWith('video/'));
+    if (videoFiles.length === 0) return;
 
-    // 更新节点数据，支持多媒体
+    // Show loading state immediately with blob URLs
+    const blobVideos: MediaItem[] = videoFiles.map(file => ({
+      id: `media-${Date.now()}-${Math.random()}`,
+      type: 'video' as const,
+      url: URL.createObjectURL(file),
+      fileName: file.name,
+      timestamp: Date.now()
+    }));
+
     const mediaData = {
-      mediaList: [...mediaList, ...newVideos]
+      mediaList: [...mediaList, ...blobVideos]
     };
 
     setNodes(nodes => nodes.map(node =>
@@ -179,13 +240,71 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
             data: {
               ...node.data,
               media: mediaData,
-              title: `Media Set (${mediaData.mediaList.length})`
+              title: `Media Set (${mediaData.mediaList.length})`,
+              status: 'loading'
             }
           }
         : node
     ));
 
-    console.log(`Node ${id} uploaded ${newVideos.length} videos:`, newVideos);
+    // Upload all videos to Supabase storage
+    try {
+      const uploadedVideos = await Promise.all(
+        videoFiles.map(async (file, index) => {
+          try {
+            const uploadedUrl = await uploadFileToStorage(file);
+            return {
+              id: blobVideos[index].id,
+              type: 'video' as const,
+              url: uploadedUrl,
+              fileName: file.name,
+              timestamp: Date.now()
+            };
+          } catch (error) {
+            console.error(`Failed to upload video ${file.name}:`, error);
+            // Keep the blob URL if upload fails
+            return blobVideos[index];
+          }
+        })
+      );
+
+      // Update with the Supabase URLs
+      const updatedMediaData = {
+        mediaList: [...mediaList, ...uploadedVideos]
+      };
+
+      setNodes(nodes => nodes.map(node =>
+        node.id === id
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                media: updatedMediaData,
+                title: `Media Set (${updatedMediaData.mediaList.length})`,
+                status: 'success'
+              }
+            }
+          : node
+      ));
+
+      // Revoke the blob URLs to free memory
+      blobVideos.forEach(vid => URL.revokeObjectURL(vid.url!));
+
+      console.log(`Node ${id} uploaded ${uploadedVideos.length} videos to Supabase`);
+    } catch (error) {
+      console.error(`Failed to upload videos for node ${id}:`, error);
+      setNodes(nodes => nodes.map(node =>
+        node.id === id
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                status: 'error'
+              }
+            }
+          : node
+      ));
+    }
   };
 
   const handleAddText = () => {

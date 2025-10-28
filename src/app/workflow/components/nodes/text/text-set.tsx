@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useReactFlow } from '@xyflow/react';
 import { WorkflowNodeProps } from '@/app/workflow/components/nodes';
 import { nodesConfig } from '@/app/workflow/config';
@@ -8,13 +8,20 @@ import { NodeHandle } from '@/app/workflow/components/nodes/workflow-node/node-h
 import WorkflowNode from '@/app/workflow/components/nodes/workflow-node';
 import { Trash2, Plus } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 
 function TextSet({ id, data, selected }: WorkflowNodeProps) {
   const [textError, setTextError] = useState<boolean>(false);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  
+
   // 使用 ReactFlow 官方 API
-  const { setNodes } = useReactFlow();
+  const { setNodes, getEdges } = useReactFlow();
+
+  // Check if node has input edges
+  const hasInputEdges = useMemo(() => {
+    const edges = getEdges();
+    return edges.some(edge => edge.target === id);
+  }, [getEdges, id]);
 
   // 从 media.textList 获取所有文本 (字符串数组)
   const textList: string[] = data?.media?.textList || [];
@@ -129,6 +136,42 @@ function TextSet({ id, data, selected }: WorkflowNodeProps) {
 
   const setOutputMode = data?.setOutputMode || 'individual';
 
+  // Process limit handlers (only for nodes without input edges)
+  const handleProcessLimitModeChange = useCallback((value: string) => {
+    setNodes(nodes => nodes.map(node =>
+      node.id === id
+        ? {
+            ...node,
+            data: {
+              ...node.data,
+              processLimitMode: value as 'all' | 'limited',
+              processLimit: value === 'all' ? undefined : (node.data.processLimit || 10),
+            },
+          }
+        : node
+    ));
+  }, [id, setNodes]);
+
+  const handleProcessLimitChange = useCallback((value: number) => {
+    setNodes(nodes => nodes.map(node => {
+      if (node.id === id) {
+        const maxLimit = (node.data as any)?.media?.textList?.length || 1;
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            processLimit: Math.max(1, Math.min(value, maxLimit)),
+          },
+        };
+      }
+      return node;
+    }));
+  }, [id, setNodes]);
+
+  const processLimitMode = data?.processLimitMode || 'all';
+  const maxLimit = textList.length || 1;
+  const processLimit = Math.min(data?.processLimit || 10, maxLimit);
+
   return (
     <>
       <WorkflowNode id={id} data={data} type="text-set" onRefresh={handleRefresh} selected={selected}>
@@ -147,6 +190,39 @@ function TextSet({ id, data, selected }: WorkflowNodeProps) {
             </Select>
           </div>
 
+          {/* Process Limit Selection - Only shown when no input edges */}
+          {!hasInputEdges && (
+            <div className="nodrag flex-shrink-0 space-y-1.5">
+              <div className="text-[10px] text-muted-foreground">Process Items</div>
+              <Select value={processLimitMode} onValueChange={handleProcessLimitModeChange}>
+                <SelectTrigger className="h-7 text-xs nodrag">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="nodrag">
+                  <SelectItem value="all" className="text-xs">Process All</SelectItem>
+                  <SelectItem value="limited" className="text-xs">Process First N</SelectItem>
+                </SelectContent>
+              </Select>
+              {processLimitMode === 'limited' && (
+                <div className="flex items-center gap-2">
+                  <label htmlFor={`process-limit-${id}`} className="text-[10px] text-muted-foreground whitespace-nowrap">
+                    Limit:
+                  </label>
+                  <Input
+                    id={`process-limit-${id}`}
+                    type="number"
+                    min="1"
+                    max={maxLimit}
+                    value={processLimit}
+                    onChange={(e) => handleProcessLimitChange(parseInt(e.target.value) || 1)}
+                    className="h-7 text-xs nodrag"
+                  />
+                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">/ {maxLimit}</span>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* 多文本显示区域 - 简洁设计 */}
           <div
             className="nodrag nopan nowheel w-full h-full border-2 border-purple-200 bg-white rounded-lg overflow-auto hover:border-purple-300 transition-colors relative"
@@ -158,16 +234,25 @@ function TextSet({ id, data, selected }: WorkflowNodeProps) {
               <>
                 {/* 文本列表显示 */}
                 <div className="nodrag w-full h-full p-2 space-y-2">
-                  {textList.map((text, index) => (
+                  {textList.map((text, index) => {
+                    // Determine if this item will be processed based on limit settings
+                    const willBeProcessed = !hasInputEdges && processLimitMode === 'limited'
+                      ? index < processLimit
+                      : true;
+
+                    return (
                     <div
                       key={index}
-                      className="nodrag relative bg-gray-50 rounded p-2 border border-gray-200 hover:border-purple-300 transition-colors group"
+                      className={`nodrag relative bg-gray-50 rounded p-2 border border-gray-200 hover:border-purple-300 transition-colors group ${!willBeProcessed ? 'opacity-50 bg-gray-100' : ''}`}
                       onMouseEnter={() => setHoveredIndex(index)}
                       onMouseLeave={() => setHoveredIndex(null)}
                     >
                       {/* 文本序号和删除按钮 */}
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs text-gray-500">#{index + 1}</span>
+                        <span className={`text-xs ${willBeProcessed ? 'text-gray-500' : 'text-gray-400'}`}>
+                          #{index + 1}
+                          {!willBeProcessed && <span className="ml-1 text-[10px]">(skipped)</span>}
+                        </span>
                         {hoveredIndex === index && (
                           <button
                             onClick={(e) => handleDeleteText(index, e)}
@@ -191,7 +276,8 @@ function TextSet({ id, data, selected }: WorkflowNodeProps) {
                         style={{ minHeight: '50px' }}
                       />
                     </div>
-                  ))}
+                    );
+                  })}
 
                   {/* 添加按钮 */}
                   <button

@@ -51,6 +51,7 @@ export const VideoSetNodeRunner: NodeRunner = {
     console.log('🔄 VideoSet Runner - allVideos.length from input:', allVideos.length);
 
     // 如果没有输入数据，从节点自身获取
+    const hasInputData = inputDataList.length > 0;
     if (allVideos.length === 0 && node?.data?.media?.videoList) {
       console.log('🔄 VideoSet Runner - using node data:', node.data.media.videoList);
       allVideos.push(...node.data.media.videoList);
@@ -59,16 +60,28 @@ export const VideoSetNodeRunner: NodeRunner = {
     console.log('🔄 VideoSet Runner - final allVideos:', allVideos);
     console.log('🔄 VideoSet Runner - final allVideos.length:', allVideos.length);
 
-    // 返回合并后的视频列表
+    // Determine which videos to pass downstream
+    // Apply process limit only if there's no input data (no incoming edges during execution)
+    // and processLimitMode is set to 'limited'
+    let downstreamVideos = allVideos;
+    if (!hasInputData && node?.data?.processLimitMode === 'limited' && node?.data?.processLimit) {
+      const limit = node.data.processLimit;
+      downstreamVideos = allVideos.slice(0, limit);
+      console.log(`🔄 VideoSet Runner - applying process limit for downstream: ${limit}, passing ${downstreamVideos.length} of ${allVideos.length} items`);
+    }
+
+    // 返回结果：downstreamVideos传递给下游节点
+    // DO NOT update node data - keep the original items displayed in the UI
     const result = {
       media: {
-        videoList: allVideos
+        videoList: downstreamVideos  // Only pass limited items downstream
       },
-      fileName: `video-set-${allVideos.length}`,
+      fileName: `video-set-${downstreamVideos.length}`,
       timestamp: Date.now(),
     };
 
-    console.log('🔄 VideoSet Runner - returning result:', result);
+    console.log('🔄 VideoSet Runner - returning result (downstream):', result);
+    console.log('🔄 VideoSet Runner - passing downstream:', downstreamVideos.length, 'of', allVideos.length, 'total videos');
     return result;
   },
 };

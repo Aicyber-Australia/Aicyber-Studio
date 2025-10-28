@@ -26,9 +26,16 @@ import { NodeStatusIndicator } from '@/components/node-status-indicator';
 import { ACTION_NODE_SIZE } from '@/app/workflow/config';
 import { getExecutionCount } from '@/app/workflow/runners/media-set-utils';
 
-// Available models for selection
-const MODELS = [
-  { value: 'n8n', label: 'Default Model' }
+// Available models for selection - Image-to-Image models
+const IMAGE_TO_IMAGE_MODELS = [
+  { value: 'qwen', label: 'Qwen Image Edit' },
+  { value: 'gemini-2-5-flash', label: 'Gemini 2.5 Flash' },
+  { value: 'wan', label: 'Wan Image Edit' }
+];
+
+// Default model for other node types
+const DEFAULT_MODELS = [
+  { value: 'default', label: 'Default Model' }
 ];
 
 interface ActionNodeBaseProps {
@@ -45,7 +52,12 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
   const addNode = useAppStore((s) => s.addNode);
   const { setNodes, getNode } = useReactFlow();
 
-  const [selectedModel, setSelectedModel] = useState<string>(data?.selectedModel || 'default');
+  // Determine default model based on node type using getNode
+  const currentNode = getNode(id);
+  const nodeType = currentNode?.type;
+  const defaultModel = (nodeType === 'image-to-image-node' || nodeType === 'image-replicate-node') ? 'qwen' : 'default';
+
+  const [selectedModel, setSelectedModel] = useState<string>(data?.selectedModel || defaultModel);
   const [setOutputMode, setSetOutputMode] = useState<'individual' | 'integrated'>(data?.setOutputMode || 'individual');
   const [executionMode, setExecutionMode] = useState<'concurrent' | 'progressive'>(data?.executionMode || 'concurrent');
   const [prompt, setPrompt] = useState<string>(data?.prompt || '');
@@ -149,6 +161,22 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
     };
   }, [id, nodes, edges]);
 
+  // Determine available models based on node type
+  const availableModels = useMemo(() => {
+    const currentNode = nodes.find((n) => n.id === id);
+    if (!currentNode) return DEFAULT_MODELS;
+
+    const nodeType = currentNode.type;
+
+    // Image-to-image nodes and image-replicate nodes support model selection
+    if (nodeType === 'image-to-image-node' || nodeType === 'image-replicate-node') {
+      return IMAGE_TO_IMAGE_MODELS;
+    }
+
+    // Other node types use default model
+    return DEFAULT_MODELS;
+  }, [id, nodes]);
+
   const onPlay = useCallback(() => runWorkflow(id), [id, runWorkflow]);
   const onRemove = useCallback(() => removeNode(id), [id, removeNode]);
   const updateNodeData = useCallback((newData: Partial<WorkflowNodeData>) => {
@@ -158,6 +186,13 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
       )
     );
   }, [id, setNodes]);
+
+  // Ensure selectedModel is saved to node data on mount if not set
+  useEffect(() => {
+    if (!data?.selectedModel && selectedModel) {
+      updateNodeData({ selectedModel });
+    }
+  }, [data?.selectedModel, selectedModel, updateNodeData]);
 
   // Auto-enforce concurrent mode when restriction applies
   useEffect(() => {
@@ -359,7 +394,7 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
                 <SelectValue placeholder="Select model:" />
               </SelectTrigger>
               <SelectContent>
-                {MODELS.map((model) => (
+                {availableModels.map((model) => (
                   <SelectItem key={model.value} value={model.value}>
                     {model.label}
                   </SelectItem>

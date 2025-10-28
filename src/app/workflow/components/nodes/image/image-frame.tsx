@@ -6,6 +6,7 @@ import { WorkflowNodeProps } from '@/app/workflow/components/nodes';
 import { nodesConfig } from '@/app/workflow/config';
 import { NodeHandle } from '@/app/workflow/components/nodes/workflow-node/node-handle';
 import WorkflowNode from '@/app/workflow/components/nodes/workflow-node';
+import { uploadFileToStorage } from '@/app/workflow/utils/upload-to-storage';
 
 function ImageFrame({ id, data, selected }: WorkflowNodeProps) {
   const [imageError, setImageError] = useState<boolean>(false);
@@ -41,36 +42,83 @@ function ImageFrame({ id, data, selected }: WorkflowNodeProps) {
     ));
   };
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && file.type.startsWith('image/')) {
-      const url = URL.createObjectURL(file);
       setImageError(false);
-      
-      // 使用新的media格式更新节点数据
+
+      // Show loading state immediately with blob URL
+      const blobUrl = URL.createObjectURL(file);
       const mediaData = {
         imageList: [{
-          url: url,
+          url: blobUrl,
           fileName: file.name,
           timestamp: Date.now()
         }]
       };
-      
-      setNodes(nodes => nodes.map(node => 
-        node.id === id 
-          ? { 
-              ...node, 
-              data: { 
-                ...node.data, 
+
+      setNodes(nodes => nodes.map(node =>
+        node.id === id
+          ? {
+              ...node,
+              data: {
+                ...node.data,
                 media: mediaData,
                 fileName: file.name,
-                timestamp: Date.now()
-              } 
+                timestamp: Date.now(),
+                status: 'loading'
+              }
             }
           : node
       ));
-      
-      console.log(`Node ${id} uploaded image:`, { imageUrl: url, fileName: file.name });
+
+      try {
+        // Upload to Supabase storage
+        const uploadedUrl = await uploadFileToStorage(file);
+
+        // Update with the Supabase URL
+        const updatedMediaData = {
+          imageList: [{
+            url: uploadedUrl,
+            fileName: file.name,
+            timestamp: Date.now()
+          }]
+        };
+
+        setNodes(nodes => nodes.map(node =>
+          node.id === id
+            ? {
+                ...node,
+                data: {
+                  ...node.data,
+                  media: updatedMediaData,
+                  fileName: file.name,
+                  timestamp: Date.now(),
+                  status: 'success'
+                }
+              }
+            : node
+        ));
+
+        // Revoke the blob URL to free memory
+        URL.revokeObjectURL(blobUrl);
+
+        console.log(`Node ${id} uploaded image to Supabase:`, { imageUrl: uploadedUrl, fileName: file.name });
+      } catch (error) {
+        console.error(`Failed to upload image for node ${id}:`, error);
+        setImageError(true);
+        setNodes(nodes => nodes.map(node =>
+          node.id === id
+            ? {
+                ...node,
+                data: {
+                  ...node.data,
+                  status: 'error'
+                }
+              }
+            : node
+        ));
+      }
     }
   };
 

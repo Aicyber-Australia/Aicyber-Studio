@@ -1,7 +1,9 @@
 import { ApiCallFunction, ServiceNode, InputData, MediaItem } from './types';
-
-// 你的endpoint URL - 请替换为你的实际endpoint
-const YOUR_ENDPOINT = 'https://your-api-endpoint.com/api';
+import { gemini25FlashImage } from './supabase/image-to-image/gemini-2-5-flash-image';
+import { qwenImageEdit } from './supabase/image-to-image/qwen-image-edit';
+import { wanImageEdit } from './supabase/image-to-image/wan-image-edit';
+import { ImageCreateRequest } from '@/types/request/image-create-request';
+import { SupabaseImageResponse } from '@/types/response/image-response';
 
 // 根据node.type映射method
 const getMethodByNodeType = (nodeType: string): string => {
@@ -17,13 +19,28 @@ const getMethodByNodeType = (nodeType: string): string => {
   return methodMap[nodeType] || 'unknown';
 };
 
-// 提取图片列表 - 只支持新的media格式
+// 提取图片列表 - 支持新的media格式和MediaSet格式
 const extractImageList = (inputDataList: InputData[]): MediaItem[] => {
   const imageList: MediaItem[] = [];
 
   inputDataList.forEach(data => {
     if (!data) return;
 
+    // Handle MediaSet format (from action-node-runner)
+    if ('mediaList' in data && Array.isArray(data.mediaList)) {
+      data.mediaList.forEach((item: any) => {
+        if (item.type === 'image' && item.url) {
+          imageList.push({
+            url: item.url,
+            data: undefined,
+            fileName: item.fileName
+          });
+        }
+      });
+      return;
+    }
+
+    // Handle InputData format (legacy)
     if (data.media?.imageList) {
       data.media.imageList.forEach((img) => {
         imageList.push({
@@ -33,19 +50,33 @@ const extractImageList = (inputDataList: InputData[]): MediaItem[] => {
         });
       });
     }
-
   });
 
   return imageList;
 };
 
-// 提取视频列表 - 支持新的media格式和旧格式
+// 提取视频列表 - 支持新的media格式和MediaSet格式
 const extractVideoList = (inputDataList: InputData[]): MediaItem[] => {
   const videoList: MediaItem[] = [];
 
   inputDataList.forEach(data => {
     if (!data) return;
 
+    // Handle MediaSet format (from action-node-runner)
+    if ('mediaList' in data && Array.isArray(data.mediaList)) {
+      data.mediaList.forEach((item: any) => {
+        if (item.type === 'video' && item.url) {
+          videoList.push({
+            url: item.url,
+            data: undefined,
+            fileName: item.fileName
+          });
+        }
+      });
+      return;
+    }
+
+    // Handle InputData format (legacy)
     if (data.media?.videoList) {
       data.media.videoList.forEach((video) => {
         videoList.push({
@@ -55,88 +86,146 @@ const extractVideoList = (inputDataList: InputData[]): MediaItem[] => {
         });
       });
     }
-
   });
 
   return videoList;
 };
 
-// 通用调用函数
-async function callYourEndpoint(node: ServiceNode, inputDataList: InputData[]) {
-  const { prompt, selectedModel } = node.data;
-  const method = getMethodByNodeType(node.type);
+// Model selector - routes to different Supabase edge functions based on model selection
+const callImageToImageAPI = async (
+  model: string,
+  request: ImageCreateRequest
+): Promise<SupabaseImageResponse> => {
+  switch (model?.toLowerCase()) {
+    case 'gemini-2-5-flash':
+    case 'gemini':
+      return await gemini25FlashImage(request);
+    case 'qwen':
+    case 'qwen-image-edit':
+      return await qwenImageEdit(request);
+    case 'wan':
+    case 'wan-image-edit':
+      return await wanImageEdit(request);
+    default:
+      // Default to Qwen if no model specified
+      return await qwenImageEdit(request);
+  }
+};
 
-  // ===== MOCK MODE: Comment out real API call for testing =====
-  // const response = await fetch(YOUR_ENDPOINT, {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({
-  //     model: selectedModel || 'default',
-  //     method: method,
-  //     media: {
-  //       imageList: extractImageList(inputDataList),
-  //       videoList: extractVideoList(inputDataList),
-  //       prompt: prompt
-  //     }
-  //   })
-  // });
+// Transform Supabase response to match the existing mock structure
+const transformSupabaseResponse = (
+  supabaseResponse: SupabaseImageResponse,
+  model: string,
+  method: string,
+  prompt: string
+) => {
+  // Check if it's an error response
+  if ('error' in supabaseResponse) {
+    throw new Error(supabaseResponse.error);
+  }
 
-  // if (!response.ok) {
-  //   throw new Error(`HTTP error! status: ${response.status}`);
-  // }
+  // Extract URLs from response
+  const urls = Array.isArray(supabaseResponse.url)
+    ? supabaseResponse.url
+    : [supabaseResponse.url];
 
-  // const result = await response.json();
-
-  // if (result.error) {
-  //   throw new Error(result.error);
-  // }
-
-  // return result;
-
-  // ===== MOCK RESPONSE: Return mock image for testing =====
-  console.log('🎭 Using MOCK response - prompt:', prompt, 'model:', selectedModel, 'method:', method);
-
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 1500));
-
-  // Return mock image data
+  // Transform to the existing structure
   return {
     media: {
-      imageList: [
-        {
-          url: 'https://picsum.photos/seed/' + Date.now() + '/512/512',
-          fileName: `mock-${method}-${Date.now()}.jpg`,
-          data: null // Or you can add base64 data if needed
-        }
-      ]
+      imageList: urls.map((url, index) => ({
+        url,
+        fileName: `${method}-${model}-${Date.now()}-${index}.jpg`,
+        data: null
+      }))
     },
     metadata: {
-      model: selectedModel || 'mock-model',
-      method: method,
-      prompt: prompt,
-      timestamp: new Date().toISOString()
+      model,
+      method,
+      prompt,
+      status: supabaseResponse.status,
+      timestamp: new Date().toISOString(),
+      ...(('task_id' in supabaseResponse) && { task_id: supabaseResponse.task_id }),
+      ...(('request_id' in supabaseResponse) && { request_id: supabaseResponse.request_id })
     }
   };
+};
+
+// Image-to-image API call using Supabase edge functions
+async function callImageToImageEndpoint(node: ServiceNode, inputDataList: InputData[]) {
+  const { prompt, selectedModel } = node.data;
+  const method = getMethodByNodeType(node.type);
+  const imageList = extractImageList(inputDataList);
+
+  console.log('🖼️ Calling Supabase Image-to-Image API - model:', selectedModel, 'method:', method);
+
+  // Validate we have at least one image
+  if (!imageList || imageList.length === 0) {
+    throw new Error('No input images provided for image-to-image processing');
+  }
+
+  // Extract image URLs (prefer URL over data)
+  const imageUrls = imageList.map(img => img.url || img.data).filter(Boolean) as string[];
+
+  if (imageUrls.length === 0) {
+    throw new Error('No valid image URLs found in input data');
+  }
+
+  // Prepare request for Supabase edge function
+  const request: ImageCreateRequest = {
+    input: {
+      prompt: prompt || '',
+      images: imageUrls // Pass all image URLs
+    },
+  };
+
+  // Call the appropriate model's edge function
+  const supabaseResponse = await callImageToImageAPI(selectedModel || 'qwen', request);
+
+  // Transform response to match existing structure
+  return transformSupabaseResponse(supabaseResponse, selectedModel || 'qwen', method, prompt || '');
 }
 
-// 图片生成服务
+// 图片生成服务 (Text-to-Image) - Currently using mock
 export const imageGenerationService: ApiCallFunction = async (node, inputDataList) => {
   try {
-    console.log('🖼️ Image Generation Service called');
-    return await callYourEndpoint(node, inputDataList);
+    console.log('🖼️ Image Generation Service called (MOCK MODE)');
+    const { prompt, selectedModel } = node.data;
+    const method = getMethodByNodeType(node.type);
+
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    // Return mock image data
+    return {
+      media: {
+        imageList: [
+          {
+            url: 'https://picsum.photos/seed/' + Date.now() + '/512/512',
+            fileName: `mock-${method}-${Date.now()}.jpg`,
+            data: null
+          }
+        ]
+      },
+      metadata: {
+        model: selectedModel || 'mock-model',
+        method: method,
+        prompt: prompt,
+        timestamp: new Date().toISOString()
+      }
+    };
   } catch (error) {
     console.error('Image Generation Service error:', error);
     throw new Error(`Image generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
 
-// 图片编辑服务
+// 图片编辑服务 (Image-to-Image)
 export const imageEditingService: ApiCallFunction = async (node, inputDataList) => {
   try {
     console.log('✏️ Image Editing Service called');
     console.log('Node data:', node.data);
     console.log('Input data list:', inputDataList);
-    const result = await callYourEndpoint(node, inputDataList);
+    const result = await callImageToImageEndpoint(node, inputDataList);
     console.log('✏️ Image Editing Service result:', result);
     return result;
   } catch (error) {
@@ -145,11 +234,11 @@ export const imageEditingService: ApiCallFunction = async (node, inputDataList) 
   }
 };
 
-// 图片复制服务
+// 图片复制服务 (Image Replication) - Uses image-to-image API
 export const imageReplicationService: ApiCallFunction = async (node, inputDataList) => {
   try {
     console.log('🔄 Image Replication Service called');
-    return await callYourEndpoint(node, inputDataList);
+    return await callImageToImageEndpoint(node, inputDataList);
   } catch (error) {
     console.error('Image Replication Service error:', error);
     throw new Error(`Image replication failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
