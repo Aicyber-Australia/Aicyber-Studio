@@ -11,6 +11,12 @@ import {
   Video,
   Layers,
   Pencil,
+  Clapperboard,
+  FileImage,
+  FileVideo,
+  ListVideo,
+  NotebookText,
+  Workflow,
   // Import other icons as needed
 } from 'lucide-react';
 
@@ -30,6 +36,12 @@ export const iconMapping: Record<
   Video: Video,
   Layers: Layers,
   Pencil: Pencil,
+  Clapperboard: Clapperboard,
+  FileImage: FileImage,
+  FileVideo: FileVideo,
+  ListVideo: ListVideo,
+  NotebookText: NotebookText,
+  Workflow: Workflow,
   Media: Images, // Use Images as fallback for Media
   // Add other mappings here
 };

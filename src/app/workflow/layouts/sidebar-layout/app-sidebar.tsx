@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, ComponentProps, useRef } from 'react';
-import { Command, GripVertical, Plus } from 'lucide-react';
+import { Command, GripVertical, Plus, LogOut, Settings, CloudUpload, Save, CircleUserRound } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { useReactFlow } from '@xyflow/react';
 
@@ -16,7 +16,22 @@ import {
   SidebarGroup,
   SidebarGroupContent,
 } from '@/components/ui/sidebar';
-import { SettingsDialog } from '@/app/workflow/components/settings-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenu,
+} from '@/components/ui/dropdown-menu';
+import { useTheme } from 'next-themes';
+import { Moon, Sun } from 'lucide-react';
 import {
   AppNode,
   createNodeByType,
@@ -46,8 +61,80 @@ const nodeCategories = {
   }
 };
 
+function SettingsItem({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-row items-center justify-between rounded-lg border p-4 mb-2">
+      <div className="space-y-0.5">
+        <span className="text-base font-bold">{title}</span>
+        <p>{description}.</p>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function ControlledSettingsDialog({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  const { setTheme } = useTheme();
+  const { isFixedLayout, toggleLayout } = useAppStore(useShallow((state: AppStore) => ({
+    isFixedLayout: state.layout === 'fixed',
+    toggleLayout: state.toggleLayout,
+  })));
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="mb-2">Settings</DialogTitle>
+        </DialogHeader>
+
+        <SettingsItem
+          title="Color mode"
+          description="Toggle between dark, light or system color mode."
+        >
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon">
+                <Sun className="h-[1.2rem] w-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
+                <Moon className="absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
+                <span className="sr-only">Toggle theme</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setTheme('light')}>
+                Light
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme('dark')}>
+                Dark
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme('system')}>
+                System
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </SettingsItem>
+
+        <SettingsItem
+          title="Fixed Layout"
+          description="Toggle between fixed and free layout"
+        >
+          <Switch checked={isFixedLayout} onCheckedChange={toggleLayout} />
+        </SettingsItem>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   const [activeTab, setActiveTab] = useState<TabType>('nodes');
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -163,17 +250,36 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <SettingsDialog />
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
+            {/* 分割线 */}
+            <div className="border-b border-gray-200 mx-3 mb-2" />
+            
+            <div className="flex gap-2 px-3">
+              <button className="flex-1 aspect-square bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg flex items-center justify-center transition-colors duration-200">
+                <LogOut className="size-4 text-gray-600" />
+              </button>
+              <button 
+                className="flex-1 aspect-square bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg flex items-center justify-center transition-colors duration-200"
+                onClick={() => setIsSettingsOpen(true)}
+              >
+                <Settings className="size-4 text-gray-600" />
+              </button>
+              <button className="flex-1 aspect-square bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg flex items-center justify-center transition-colors duration-200">
+                <CloudUpload className="size-4 text-gray-600" />
+              </button>
+              <button className="flex-1 aspect-square bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg flex items-center justify-center transition-colors duration-200">
+                <Save className="size-4 text-gray-600" />
+              </button>
+              <button className="flex-1 aspect-square bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg flex items-center justify-center transition-colors duration-200">
+                <CircleUserRound className="size-4 text-gray-600" />
+              </button>
+            </div>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
       <SidebarRail />
+      
+      {/* Settings Dialog */}
+      <ControlledSettingsDialog isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </Sidebar>
   );
 }
