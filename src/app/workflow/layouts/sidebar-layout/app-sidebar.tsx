@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, ComponentProps, useRef } from 'react';
-import { Command, GripVertical, Plus, LogOut, Settings, CloudUpload, Save, CircleUserRound } from 'lucide-react';
+import { Command, GripVertical, Plus } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { useReactFlow } from '@xyflow/react';
 
@@ -31,7 +31,7 @@ import {
   DropdownMenu,
 } from '@/components/ui/dropdown-menu';
 import { useTheme } from 'next-themes';
-import { Moon, Sun } from 'lucide-react';
+import { Moon, Sun, Sunset } from 'lucide-react';
 import {
   AppNode,
   createNodeByType,
@@ -42,6 +42,7 @@ import { iconMapping } from '@/app/workflow/utils/icon-mapping';
 import { useAppStore } from '@/app/workflow/store';
 import { type AppStore } from '@/app/workflow/store/app-store';
 import { nodesConfig } from '../../config';
+import { SidebarActionButtons } from '@/app/workflow/components/sidebar-action-buttons';
 
 type TabType = 'nodes' | 'template';
 
@@ -82,11 +83,37 @@ function SettingsItem({
 }
 
 function ControlledSettingsDialog({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const { setTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const { isFixedLayout, toggleLayout } = useAppStore(useShallow((state: AppStore) => ({
     isFixedLayout: state.layout === 'fixed',
     toggleLayout: state.toggleLayout,
   })));
+
+  const getThemeIcon = () => {
+    switch (theme) {
+      case 'light':
+        return <Sun className="h-4 w-4" />;
+      case 'dark':
+        return <Moon className="h-4 w-4" />;
+      case 'system':
+        return <Sunset className="h-4 w-4" />;
+      default:
+        return <Sunset className="h-4 w-4" />;
+    }
+  };
+
+  const getThemeLabel = () => {
+    switch (theme) {
+      case 'light':
+        return 'Light';
+      case 'dark':
+        return 'Dark';
+      case 'system':
+        return 'System';
+      default:
+        return 'System';
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -99,26 +126,58 @@ function ControlledSettingsDialog({ isOpen, onClose }: { isOpen: boolean; onClos
           title="Color mode"
           description="Toggle between dark, light or system color mode."
         >
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon">
-                <Sun className="h-[1.2rem] w-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
-                <Moon className="absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
-                <span className="sr-only">Toggle theme</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setTheme('light')}>
-                Light
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme('dark')}>
-                Dark
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme('system')}>
-                System
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-2">
+            <div className="relative flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1.5">
+              {/* 滑动背景 */}
+              <div
+                className="absolute top-1.5 bottom-1.5 bg-white dark:bg-gray-700 rounded-md shadow-sm transition-all duration-300 ease-in-out"
+                style={{
+                  width: 'calc(33.333% - 4px)',
+                  left: theme === 'light' 
+                    ? '6px' 
+                    : theme === 'dark' 
+                    ? 'calc(33.333% + 2px)' 
+                    : 'calc(66.666% - 2px)',
+                }}
+              />
+              
+              <button
+                onClick={() => setTheme('light')}
+                className={`relative z-10 flex items-center justify-center flex-1 h-10 px-4 rounded-md transition-colors duration-200 ${
+                  theme === 'light' 
+                    ? 'text-gray-900 dark:text-gray-100' 
+                    : 'text-gray-600 dark:text-gray-400'
+                }`}
+                title="Light"
+              >
+                <Sun className="h-6 w-6" />
+              </button>
+              
+              <button
+                onClick={() => setTheme('dark')}
+                className={`relative z-10 flex items-center justify-center flex-1 h-10 px-4 rounded-md transition-colors duration-200 ${
+                  theme === 'dark' 
+                    ? 'text-gray-900 dark:text-gray-100' 
+                    : 'text-gray-600 dark:text-gray-400'
+                }`}
+                title="Dark"
+              >
+                <Moon className="h-6 w-6" />
+              </button>
+              
+              <button
+                onClick={() => setTheme('system')}
+                className={`relative z-10 flex items-center justify-center flex-1 h-10 px-4 rounded-md transition-colors duration-200 ${
+                  theme === 'system' 
+                    ? 'text-gray-900 dark:text-gray-100' 
+                    : 'text-gray-600 dark:text-gray-400'
+                }`}
+                title="System"
+              >
+                <Sunset className="h-6 w-6" />
+              </button>
+            </div>
+          </div>
         </SettingsItem>
 
         <SettingsItem
@@ -253,26 +312,13 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
             {/* 分割线 */}
             <div className="border-b border-gray-200 mx-3 mb-2" />
             
-            <div className="flex gap-2 px-3">
-              <button className="flex-1 aspect-square bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg flex items-center justify-center transition-colors duration-200">
-                <LogOut className="size-4 text-gray-600" />
-              </button>
-              <button 
-                className="flex-1 aspect-square bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg flex items-center justify-center transition-colors duration-200"
-                onClick={() => setIsSettingsOpen(true)}
-              >
-                <Settings className="size-4 text-gray-600" />
-              </button>
-              <button className="flex-1 aspect-square bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg flex items-center justify-center transition-colors duration-200">
-                <CloudUpload className="size-4 text-gray-600" />
-              </button>
-              <button className="flex-1 aspect-square bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg flex items-center justify-center transition-colors duration-200">
-                <Save className="size-4 text-gray-600" />
-              </button>
-              <button className="flex-1 aspect-square bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg flex items-center justify-center transition-colors duration-200">
-                <CircleUserRound className="size-4 text-gray-600" />
-              </button>
-            </div>
+            <SidebarActionButtons
+              onSettingsClick={() => setIsSettingsOpen(true)}
+              onSaveClick={() => console.log('Save clicked')}
+              onCloudUploadClick={() => console.log('Cloud upload clicked')}
+              onUserClick={() => console.log('User clicked')}
+              onLogoutClick={() => console.log('Logout clicked')}
+            />
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
