@@ -251,7 +251,7 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                 </div>
                 
                 {/* 分类下的节点 */}
-                <SidebarMenu className="grid grid-cols-3 gap-2">
+                <SidebarMenu className="grid grid-cols-4 gap-1.5">
                   {category.nodes
                     .filter(nodeId => nodesConfig[nodeId as keyof typeof nodesConfig])
                     .map((nodeId) => (
@@ -268,13 +268,46 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
         );
       case 'template':
         return (
-          <div className="px-3 py-2">
+          <div className="px-3 py-2 space-y-4">
             <div className="flex items-center gap-2">
               <div className="h-px bg-gray-200 flex-1" />
               <span className="text-xs font-semibold text-gray-600 px-3 py-1 bg-gray-50 rounded-full">
                 Template
               </span>
               <div className="h-px bg-gray-200 flex-1" />
+            </div>
+            
+            {/* Template items - 长方形卡片布局 */}
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-0.5">
+                <div className="relative border active:scale-[.99] rounded-xl border-gray-200 dark:border-gray-700">
+                  <div className="bg-transparent cursor-grab active:cursor-grabbing h-40 p-4 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 ring-0 focus-visible:ring-0 shadow-none outline-none rounded-xl border-0 w-full">
+                    {/* 空的node框，可以后续添加图标 */}
+                  </div>
+                </div>
+                <div className="px-1">
+                  <div className="text-xs font-medium text-gray-700 text-left leading-tight">
+                    Basic Workflow
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 text-left leading-tight mt-1">
+                    A simple workflow template for basic text processing tasks
+                  </div>
+                </div>
+              </div>
+              
+              {/* 分割线 */}
+              <div className="h-px bg-gray-200 mx-2" />
+              
+              <div className="flex flex-col gap-0.5">
+                <div className="relative border active:scale-[.99] rounded-xl border-gray-200 dark:border-gray-700">
+                  <div className="bg-transparent cursor-grab active:cursor-grabbing h-40 p-4 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 ring-0 focus-visible:ring-0 shadow-none outline-none rounded-xl border-0 w-full">
+                    {/* 空的node框，可以后续添加图标 */}
+                  </div>
+                </div>
+                <span className="text-xs font-medium text-gray-700 text-left leading-tight px-1">
+                  Advanced Workflow
+                </span>
+              </div>
             </div>
           </div>
         );
@@ -417,8 +450,8 @@ function DraggableItem(props: NodeConfig) {
     <div className="flex flex-col gap-0.5">
       <SidebarMenuItem
         className={cn(
-          'relative border-2 active:scale-[.99] rounded-xl',
-          isDragging ? 'border-green-500' : 'border-gray-100',
+          'relative border active:scale-[.99] rounded-2xl',
+          isDragging ? 'border-green-500' : 'border-gray-200 dark:border-gray-700',
         )}
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
@@ -436,9 +469,11 @@ function DraggableItem(props: NodeConfig) {
         )}
         <SidebarMenuButton 
           className={cn(
-            'bg-card cursor-grab active:cursor-grabbing aspect-square h-auto p-3',
-            'flex items-center justify-center',
-            'hover:bg-gray-50 hover:border-gray-200'
+            '!bg-transparent !cursor-grab active:!cursor-grabbing !aspect-square !h-auto !p-1.5',
+            '!flex !items-center !justify-center',
+            'hover:!bg-gray-100 dark:hover:!bg-gray-700',
+            '!ring-0 focus-visible:!ring-0 !shadow-none !outline-none',
+            '!rounded-2xl !border-0 !w-full !min-w-0'
           )}
         >
           <div className="flex-shrink-0">
