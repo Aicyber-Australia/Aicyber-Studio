@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useCallback, ComponentProps, useRef } from 'react';
-import { Command, GripVertical, Plus } from 'lucide-react';
+import { Command, GripVertical, Plus, Home } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { useReactFlow } from '@xyflow/react';
+import Link from 'next/link';
 
 import {
   Sidebar,
@@ -48,6 +49,14 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
         <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
             <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <Link href="/dashboard">
+                    <Home className="size-4" />
+                    <span>Dashboard</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
                   <SettingsDialog />
