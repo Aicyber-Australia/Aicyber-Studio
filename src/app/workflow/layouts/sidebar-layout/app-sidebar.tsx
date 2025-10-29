@@ -179,7 +179,7 @@ function ControlledSettingsDialog({ isOpen, onClose }: { isOpen: boolean; onClos
                 }`}
                 title="Light"
               >
-                <Sun className="h-6 w-6" strokeWidth={theme === 'light' ? 2.5 : 1.5} />
+                <Sun className="h-6 w-6" strokeWidth={2} />
               </button>
               
               <button
@@ -191,7 +191,7 @@ function ControlledSettingsDialog({ isOpen, onClose }: { isOpen: boolean; onClos
                 }`}
                 title="Dark"
               >
-                <Moon className="h-6 w-6" strokeWidth={theme === 'dark' ? 2.5 : 1.5} />
+                <Moon className="h-6 w-6" strokeWidth={2} />
               </button>
               
               <button
@@ -203,7 +203,7 @@ function ControlledSettingsDialog({ isOpen, onClose }: { isOpen: boolean; onClos
                 }`}
                 title="System"
               >
-                <Sunset className="h-6 w-6" strokeWidth={theme === 'system' ? 2.5 : 1.5} />
+                <Sunset className="h-6 w-6" strokeWidth={2} />
               </button>
             </div>
           </div>
@@ -296,11 +296,11 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
 
       {/* 第二部分：Tab和内容主体 */}
-      <SidebarContent>
-        <SidebarGroup>
+      <SidebarContent className="flex flex-col">
+        <SidebarGroup className="flex-shrink-0">
           <SidebarGroupContent>
             {/* 上分割线 */}
-            <div className="border-b border-gray-200 mx-3 mb-0.5" />
+            <div className="border-b border-gray-200 mx-3 mb-3" />
             
             {/* Tab布局 */}
             <div className="px-3">
@@ -340,14 +340,16 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                 </div>
               </div>
             </div>
-
-            {/* Tab内容 */}
-            {renderTabContent()}
           </SidebarGroupContent>
         </SidebarGroup>
 
+        {/* 可滚动的Tab内容区域 */}
+        <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar">
+          {renderTabContent()}
+        </div>
+
         {/* 第三部分：底部按钮 */}
-        <SidebarGroup className="mt-auto">
+        <SidebarGroup className="flex-shrink-0">
           <SidebarGroupContent>
             {/* 分割线 */}
             <div className="border-b border-gray-200 mx-3 mb-2" />
@@ -412,43 +414,45 @@ function DraggableItem(props: NodeConfig) {
   const IconComponent = props?.icon ? iconMapping[props.icon] : undefined;
 
   return (
-    <SidebarMenuItem
-      className={cn(
-        'relative border-2 active:scale-[.99] rounded-xl',
-        isDragging ? 'border-green-500' : 'border-gray-100',
-      )}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      onClick={onClick}
-      draggable
-      key={props.title}
-    >
-      {isDragging && (
-        <span
-          role="presentation"
-          className="absolute -top-2 -right-2 rounded-full border-2 border-green-500 bg-white shadow-sm"
-        >
-          <Plus className="size-3" />
-        </span>
-      )}
-      <SidebarMenuButton 
+    <div className="flex flex-col gap-0.5">
+      <SidebarMenuItem
         className={cn(
-          'bg-card cursor-grab active:cursor-grabbing aspect-square h-auto p-3',
-          'flex flex-col items-center justify-center gap-2',
-          'hover:bg-gray-50 hover:border-gray-200'
+          'relative border-2 active:scale-[.99] rounded-xl',
+          isDragging ? 'border-green-500' : 'border-gray-100',
         )}
+        onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
+        onClick={onClick}
+        draggable
+        key={props.title}
       >
-        <div className="flex-shrink-0">
-          {IconComponent ? (
-            <IconComponent className="size-6 text-gray-600" aria-label={props?.icon} />
-          ) : (
-            <div className="size-6 rounded bg-gray-200" />
+        {isDragging && (
+          <span
+            role="presentation"
+            className="absolute -top-2 -right-2 rounded-full border-2 border-green-500 bg-white shadow-sm"
+          >
+            <Plus className="size-3" />
+          </span>
+        )}
+        <SidebarMenuButton 
+          className={cn(
+            'bg-card cursor-grab active:cursor-grabbing aspect-square h-auto p-3',
+            'flex items-center justify-center',
+            'hover:bg-gray-50 hover:border-gray-200'
           )}
-        </div>
-        <span className="text-xs font-medium text-gray-700 text-center leading-tight">
-          {props.title}
-        </span>
-      </SidebarMenuButton>
-    </SidebarMenuItem>
+        >
+          <div className="flex-shrink-0">
+            {IconComponent ? (
+              <IconComponent className="size-6 text-gray-600" aria-label={props?.icon} />
+            ) : (
+              <div className="size-6 rounded bg-gray-200" />
+            )}
+          </div>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+      <span className="text-xs font-medium text-gray-700 text-center leading-tight px-1">
+        {props.title}
+      </span>
+    </div>
   );
 }
