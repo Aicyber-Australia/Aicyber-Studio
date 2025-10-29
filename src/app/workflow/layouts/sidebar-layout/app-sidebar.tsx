@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, ComponentProps, useRef } from 'react';
+import { useState, useCallback, ComponentProps, useRef, useEffect } from 'react';
 import { Command, GripVertical, Plus } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { useReactFlow } from '@xyflow/react';
@@ -31,7 +31,7 @@ import {
   DropdownMenu,
 } from '@/components/ui/dropdown-menu';
 import { useTheme } from 'next-themes';
-import { Moon, Sun, Sunset } from 'lucide-react';
+import { Moon, Sun, Sunset, Loader2 } from 'lucide-react';
 import {
   AppNode,
   createNodeByType,
@@ -89,6 +89,35 @@ function ControlledSettingsDialog({ isOpen, onClose }: { isOpen: boolean; onClos
     toggleLayout: state.toggleLayout,
   })));
 
+  // 用于控制滑块动画的本地状态
+  const [sliderTheme, setSliderTheme] = useState(theme);
+  const [isThemeChanging, setIsThemeChanging] = useState(false);
+
+  // 同步sliderTheme和theme
+  useEffect(() => {
+    setSliderTheme(theme);
+    setIsThemeChanging(false);
+  }, [theme]);
+
+  // 延迟执行主题切换，让动画先完成
+  const handleThemeChange = (newTheme: string) => {
+    if (theme === newTheme || isThemeChanging) return;
+    
+    // 立即更新滑块位置，触发动画
+    setSliderTheme(newTheme);
+    
+    // 延迟300ms执行主题切换，让滑块动画先完成
+    setTimeout(() => {
+      setIsThemeChanging(true);
+      setTheme(newTheme);
+      
+      // 主题切换完成后，延迟一点时间再隐藏加载效果
+      setTimeout(() => {
+        setIsThemeChanging(false);
+      }, 500);
+    }, 300);
+  };
+
   const getThemeIcon = () => {
     switch (theme) {
       case 'light':
@@ -133,48 +162,48 @@ function ControlledSettingsDialog({ isOpen, onClose }: { isOpen: boolean; onClos
                 className="absolute top-1.5 bottom-1.5 bg-white dark:bg-gray-700 rounded-md shadow-sm transition-all duration-300 ease-in-out"
                 style={{
                   width: 'calc(33.333% - 4px)',
-                  left: theme === 'light' 
+                  left: sliderTheme === 'light' 
                     ? '6px' 
-                    : theme === 'dark' 
+                    : sliderTheme === 'dark' 
                     ? 'calc(33.333% + 2px)' 
                     : 'calc(66.666% - 2px)',
                 }}
               />
               
               <button
-                onClick={() => setTheme('light')}
-                className={`relative z-10 flex items-center justify-center flex-1 h-10 px-4 rounded-md transition-colors duration-200 ${
+                onClick={() => handleThemeChange('light')}
+                className={`relative z-10 flex items-center justify-center flex-1 h-10 px-4 rounded-md transition-all duration-200 ${
                   theme === 'light' 
                     ? 'text-gray-900 dark:text-gray-100' 
-                    : 'text-gray-600 dark:text-gray-400'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
                 }`}
                 title="Light"
               >
-                <Sun className="h-6 w-6" />
+                <Sun className="h-6 w-6" strokeWidth={theme === 'light' ? 2.5 : 1.5} />
               </button>
               
               <button
-                onClick={() => setTheme('dark')}
-                className={`relative z-10 flex items-center justify-center flex-1 h-10 px-4 rounded-md transition-colors duration-200 ${
+                onClick={() => handleThemeChange('dark')}
+                className={`relative z-10 flex items-center justify-center flex-1 h-10 px-4 rounded-md transition-all duration-200 ${
                   theme === 'dark' 
                     ? 'text-gray-900 dark:text-gray-100' 
-                    : 'text-gray-600 dark:text-gray-400'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
                 }`}
                 title="Dark"
               >
-                <Moon className="h-6 w-6" />
+                <Moon className="h-6 w-6" strokeWidth={theme === 'dark' ? 2.5 : 1.5} />
               </button>
               
               <button
-                onClick={() => setTheme('system')}
-                className={`relative z-10 flex items-center justify-center flex-1 h-10 px-4 rounded-md transition-colors duration-200 ${
+                onClick={() => handleThemeChange('system')}
+                className={`relative z-10 flex items-center justify-center flex-1 h-10 px-4 rounded-md transition-all duration-200 ${
                   theme === 'system' 
                     ? 'text-gray-900 dark:text-gray-100' 
-                    : 'text-gray-600 dark:text-gray-400'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
                 }`}
                 title="System"
               >
-                <Sunset className="h-6 w-6" />
+                <Sunset className="h-6 w-6" strokeWidth={theme === 'system' ? 2.5 : 1.5} />
               </button>
             </div>
           </div>
@@ -187,6 +216,16 @@ function ControlledSettingsDialog({ isOpen, onClose }: { isOpen: boolean; onClos
           <Switch checked={isFixedLayout} onCheckedChange={toggleLayout} />
         </SettingsItem>
       </DialogContent>
+      
+      {/* 全屏加载效果 */}
+      {isThemeChanging && (
+        <div className="fixed inset-0 z-[9999] bg-black/20 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-lg flex items-center gap-3">
+            <Loader2 className="h-6 w-6 animate-spin text-gray-600 dark:text-gray-400" />
+            <span className="text-gray-700 dark:text-gray-300 font-medium">Switching theme...</span>
+          </div>
+        </div>
+      )}
     </Dialog>
   );
 }
@@ -229,23 +268,15 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
         );
       case 'template':
         return (
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton>
-                <span>Template Content</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton>
-                <span>Template Item 1</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton>
-                <span>Template Item 2</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
+          <div className="px-3 py-2">
+            <div className="flex items-center gap-2">
+              <div className="h-px bg-gray-200 flex-1" />
+              <span className="text-xs font-semibold text-gray-600 px-3 py-1 bg-gray-50 rounded-full">
+                Template
+              </span>
+              <div className="h-px bg-gray-200 flex-1" />
+            </div>
+          </div>
         );
       default:
         return null;
@@ -254,6 +285,7 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
 
   return (
     <Sidebar className="border-r-0" {...props}>
+      {/* 第一部分：Logo */}
       <SidebarHeader className="py-0">
         <div className="flex gap-2 px-1 h-14 items-center">
           <div className="flex aspect-square size-5 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
@@ -261,52 +293,60 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
           </div>
           <span className="truncate font-semibold">AiCyber Studio</span>
         </div>
-        
-        {/* 上分割线 */}
-        <div className="border-b border-gray-200 mx-3 mb-0.5" />
-        
-        {/* Tab布局 */}
-        <div className="px-3">
-          <div className="bg-white rounded-lg py-1 px-2">
-            <div className="relative flex gap-1">
-              {/* 滑动背景 */}
-              <div
-                className="absolute top-0 h-full bg-gray-100 rounded-md transition-all duration-300 ease-in-out"
-                style={{
-                  width: 'calc(50% - 2px)',
-                  left: activeTab === 'nodes' ? '0px' : 'calc(50% + 2px)',
-                }}
-              />
-              
-              <button
-                onClick={() => setActiveTab('nodes')}
-                className={cn(
-                  'relative z-10 px-4 py-2 text-sm rounded-md transition-all duration-200 flex-1',
-                  activeTab === 'nodes'
-                    ? 'text-gray-900 font-semibold'
-                    : 'text-gray-500 font-medium hover:text-gray-700'
-                )}
-              >
-                Nodes
-              </button>
-              <button
-                onClick={() => setActiveTab('template')}
-                className={cn(
-                  'relative z-10 px-4 py-2 text-sm rounded-md transition-all duration-200 flex-1',
-                  activeTab === 'template'
-                    ? 'text-gray-900 font-semibold'
-                    : 'text-gray-500 font-medium hover:text-gray-700'
-                )}
-              >
-                Template
-              </button>
-            </div>
-          </div>
-        </div>
-        {/* Tab内容 */}
-        {renderTabContent()}
       </SidebarHeader>
+
+      {/* 第二部分：Tab和内容主体 */}
       <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            {/* 上分割线 */}
+            <div className="border-b border-gray-200 mx-3 mb-0.5" />
+            
+            {/* Tab布局 */}
+            <div className="px-3">
+              <div className="bg-white rounded-lg py-1 px-2">
+                <div className="relative flex gap-1">
+                  {/* 滑动背景 */}
+                  <div
+                    className="absolute top-0 h-full bg-gray-100 rounded-md transition-all duration-300 ease-in-out"
+                    style={{
+                      width: 'calc(50% - 2px)',
+                      left: activeTab === 'nodes' ? '0px' : 'calc(50% + 2px)',
+                    }}
+                  />
+                  
+                  <button
+                    onClick={() => setActiveTab('nodes')}
+                    className={cn(
+                      'relative z-10 px-4 py-2 text-sm rounded-md transition-all duration-200 flex-1',
+                      activeTab === 'nodes'
+                        ? 'text-gray-900 font-semibold'
+                        : 'text-gray-500 font-medium hover:text-gray-700'
+                    )}
+                  >
+                    Nodes
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('template')}
+                    className={cn(
+                      'relative z-10 px-4 py-2 text-sm rounded-md transition-all duration-200 flex-1',
+                      activeTab === 'template'
+                        ? 'text-gray-900 font-semibold'
+                        : 'text-gray-500 font-medium hover:text-gray-700'
+                    )}
+                  >
+                    Template
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Tab内容 */}
+            {renderTabContent()}
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* 第三部分：底部按钮 */}
         <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
             {/* 分割线 */}
@@ -314,7 +354,6 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
             
             <SidebarActionButtons
               onSettingsClick={() => setIsSettingsOpen(true)}
-              onSaveClick={() => console.log('Save clicked')}
               onCloudUploadClick={() => console.log('Cloud upload clicked')}
               onUserClick={() => console.log('User clicked')}
               onLogoutClick={() => console.log('Logout clicked')}
@@ -322,6 +361,7 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      
       <SidebarRail />
       
       {/* Settings Dialog */}
@@ -374,7 +414,7 @@ function DraggableItem(props: NodeConfig) {
   return (
     <SidebarMenuItem
       className={cn(
-        'relative border-2 active:scale-[.99] rounded-lg',
+        'relative border-2 active:scale-[.99] rounded-xl',
         isDragging ? 'border-green-500' : 'border-gray-100',
       )}
       onDragStart={onDragStart}
