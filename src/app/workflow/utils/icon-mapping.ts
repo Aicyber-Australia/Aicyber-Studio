@@ -17,6 +17,8 @@ import {
   ListVideo,
   NotebookText,
   Workflow,
+  SquareMousePointer,
+  Boxes,
   // Import other icons as needed
 } from 'lucide-react';
 
@@ -42,6 +44,8 @@ export const iconMapping: Record<
   ListVideo: ListVideo,
   NotebookText: NotebookText,
   Workflow: Workflow,
+  SquareMousePointer: SquareMousePointer,
+  Boxes: Boxes,
   Media: Images, // Use Images as fallback for Media
   // Add other mappings here
 };

@@ -31,7 +31,7 @@ import {
   DropdownMenu,
 } from '@/components/ui/dropdown-menu';
 import { useTheme } from 'next-themes';
-import { Moon, Sun, Sunset, Loader2 } from 'lucide-react';
+import { Moon, Sun, Sunset, Loader2, SquareMousePointer, Boxes, Bolt } from 'lucide-react';
 import {
   AppNode,
   createNodeByType,
@@ -281,8 +281,8 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-0.5">
                 <div className="relative border active:scale-[.99] rounded-xl border-gray-200 dark:border-gray-700">
-                  <div className="bg-transparent cursor-grab active:cursor-grabbing h-40 p-4 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 ring-0 focus-visible:ring-0 shadow-none outline-none rounded-xl border-0 w-full">
-                    {/* 空的node框，可以后续添加图标 */}
+                  <div className="bg-gray-50 dark:bg-gray-800 cursor-grab active:cursor-grabbing h-40 p-4 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 ring-0 focus-visible:ring-0 shadow-none outline-none rounded-xl border-0 w-full">
+                    <Boxes className="size-8 text-gray-600 dark:text-gray-400" />
                   </div>
                 </div>
                 <div className="px-1">
@@ -300,8 +300,8 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
               
               <div className="flex flex-col gap-0.5">
                 <div className="relative border active:scale-[.99] rounded-xl border-gray-200 dark:border-gray-700">
-                  <div className="bg-transparent cursor-grab active:cursor-grabbing h-40 p-4 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 ring-0 focus-visible:ring-0 shadow-none outline-none rounded-xl border-0 w-full">
-                    {/* 空的node框，可以后续添加图标 */}
+                  <div className="bg-gray-50 dark:bg-gray-800 cursor-grab active:cursor-grabbing h-40 p-4 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 ring-0 focus-visible:ring-0 shadow-none outline-none rounded-xl border-0 w-full">
+                    <Boxes className="size-8 text-gray-600 dark:text-gray-400" />
                   </div>
                 </div>
                 <span className="text-xs font-medium text-gray-700 text-left leading-tight px-1">
@@ -320,11 +320,22 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
     <Sidebar className="border-r-0" {...props}>
       {/* 第一部分：Logo */}
       <SidebarHeader className="py-0">
-        <div className="flex gap-2 px-1 h-14 items-center">
-          <div className="flex aspect-square size-5 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
-            <Command className="size-3" />
+        <div className="flex gap-2 px-1 h-14 items-center justify-between">
+          <div className="flex gap-2 items-center">
+            <div className="flex aspect-square size-5 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
+              <Command className="size-3" />
+            </div>
+            <span className="truncate font-semibold">AiCyber Studio</span>
           </div>
-          <span className="truncate font-semibold">AiCyber Studio</span>
+          
+          {/* 设置按钮 */}
+          <button 
+            className="w-10 h-10 hover:bg-gray-100 rounded-lg flex items-center justify-center transition-all duration-200 mt-0.5"
+            onClick={() => setIsSettingsOpen(true)}
+            title="Settings"
+          >
+            <Bolt className="size-5 text-gray-700" />
+          </button>
         </div>
       </SidebarHeader>
 
@@ -351,23 +362,31 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                   <button
                     onClick={() => setActiveTab('nodes')}
                     className={cn(
-                      'relative z-10 px-4 py-2 text-sm rounded-md transition-all duration-200 flex-1',
+                      'relative z-10 px-4 py-2 text-sm rounded-md transition-all duration-200 flex-1 flex items-center gap-2',
                       activeTab === 'nodes'
                         ? 'text-gray-900 font-semibold'
                         : 'text-gray-500 font-medium hover:text-gray-700'
                     )}
                   >
+                    <SquareMousePointer 
+                      className="h-4 w-4" 
+                      strokeWidth={activeTab === 'nodes' ? 2.5 : 1.5}
+                    />
                     Nodes
                   </button>
                   <button
                     onClick={() => setActiveTab('template')}
                     className={cn(
-                      'relative z-10 px-4 py-2 text-sm rounded-md transition-all duration-200 flex-1',
+                      'relative z-10 px-4 py-2 text-sm rounded-md transition-all duration-200 flex-1 flex items-center gap-2',
                       activeTab === 'template'
                         ? 'text-gray-900 font-semibold'
                         : 'text-gray-500 font-medium hover:text-gray-700'
                     )}
                   >
+                    <Boxes 
+                      className="h-4 w-4" 
+                      strokeWidth={activeTab === 'template' ? 2.5 : 1.5}
+                    />
                     Template
                   </button>
                 </div>
@@ -377,7 +396,7 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
         </SidebarGroup>
 
         {/* 可滚动的Tab内容区域 */}
-        <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar -mt-5">
           {renderTabContent()}
         </div>
 
@@ -388,7 +407,6 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
             <div className="border-b border-gray-200 mx-3 mb-2" />
             
             <SidebarActionButtons
-              onSettingsClick={() => setIsSettingsOpen(true)}
               onCloudUploadClick={() => console.log('Cloud upload clicked')}
               onUserClick={() => console.log('User clicked')}
               onLogoutClick={() => console.log('Logout clicked')}
@@ -469,9 +487,9 @@ function DraggableItem(props: NodeConfig) {
         )}
         <SidebarMenuButton 
           className={cn(
-            '!bg-transparent !cursor-grab active:!cursor-grabbing !aspect-square !h-auto !p-1.5',
+            '!bg-white dark:!bg-gray-800 !cursor-grab active:!cursor-grabbing !aspect-square !h-auto !p-1.5',
             '!flex !items-center !justify-center',
-            'hover:!bg-gray-100 dark:hover:!bg-gray-700',
+            'hover:!bg-gray-50 dark:hover:!bg-gray-700',
             '!ring-0 focus-visible:!ring-0 !shadow-none !outline-none',
             '!rounded-2xl !border-0 !w-full !min-w-0'
           )}

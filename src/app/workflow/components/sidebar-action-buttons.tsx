@@ -7,14 +7,12 @@ import {
 } from 'lucide-react';
 
 interface SidebarActionButtonsProps {
-  onSettingsClick: () => void;
   onCloudUploadClick?: () => void;
   onUserClick?: () => void;
   onLogoutClick?: () => void;
 }
 
 export function SidebarActionButtons({
-  onSettingsClick,
   onCloudUploadClick,
   onUserClick,
   onLogoutClick,
@@ -43,14 +41,6 @@ export function SidebarActionButtons({
         title="Logout"
       >
         <LogOut className="size-5 text-gray-700" />
-      </button>
-      
-      <button 
-        className="w-12 h-12 bg-transparent hover:bg-gray-100 rounded-xl shadow-sm hover:shadow-md flex items-center justify-center transition-all duration-200"
-        onClick={onSettingsClick}
-        title="Settings"
-      >
-        <Bolt className="size-5 text-gray-700" />
       </button>
     </div>
   );
