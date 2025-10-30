@@ -19,7 +19,7 @@ import {
 } from '@xyflow/react';
 import { useShallow } from 'zustand/react/shallow';
 import { useTheme } from 'next-themes';
-import { MousePointer2, Hand, Play, Pause, Trash2, Divide, PlayCircle } from 'lucide-react';
+import { MousePointer2, Hand, Play, Pause, Trash2, Divide, PlayCircle, Share2, Save } from 'lucide-react';
 import { useCopilotReadable } from '@copilotkit/react-core';
 
 import { nodeTypes } from '@/app/workflow/components/nodes';
@@ -620,6 +620,22 @@ export default function Workflow() {
           title="Clear Canvas"
         >
           <Trash2 className="h-5 w-5" />
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          title="Save"
+        >
+          <Save className="h-5 w-5" />
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          title="Share"
+        >
+          <Share2 className="h-5 w-5" />
         </Button>
       </div>
     </>

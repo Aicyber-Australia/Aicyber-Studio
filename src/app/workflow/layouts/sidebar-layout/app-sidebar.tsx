@@ -31,7 +31,7 @@ import {
   DropdownMenu,
 } from '@/components/ui/dropdown-menu';
 import { useTheme } from 'next-themes';
-import { Moon, Sun, Sunset, Loader2, SquareMousePointer, Boxes, Bolt } from 'lucide-react';
+import { Moon, Sun, Sunset, Loader2, SquareMousePointer, Boxes, Bolt, Search } from 'lucide-react';
 import {
   AppNode,
   createNodeByType,
@@ -347,7 +347,7 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
             <div className="border-b border-gray-200 mx-3 mb-3" />
             
             {/* Tab布局 */}
-            <div className="px-3">
+            <div className="px-3 space-y-2">
               <div className="bg-white rounded-lg py-1 px-2">
                 <div className="relative flex gap-1">
                   {/* 滑动背景 */}
@@ -390,6 +390,16 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                     Template
                   </button>
                 </div>
+              </div>
+              
+              {/* 搜索框 */}
+              <div className="relative flex items-center">
+                <Search className="absolute left-3 h-4 w-4 text-gray-400 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  className="bg-white rounded-full pl-9 pr-4 py-2 text-sm w-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent placeholder:text-gray-400"
+                />
               </div>
             </div>
           </SidebarGroupContent>
