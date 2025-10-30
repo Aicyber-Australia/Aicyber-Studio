@@ -37,7 +37,7 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
         y: IMAGE_NODE_SIZE.height * 0.5,
       },
     ],
-    icon: 'Images',
+    icon: 'Clapperboard',
   },
   'image-frame': {
     id: 'image-frame',
@@ -57,7 +57,7 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
         y: IMAGE_NODE_SIZE.height * 0.5,
       },
     ],
-    icon: 'Image',
+    icon: 'FileImage',
   },
   'image-set': {
     id: 'image-set',
@@ -97,7 +97,7 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
         y: VIDEO_NODE_SIZE.height * 0.5,
       },
     ],
-    icon: 'Video',
+    icon: 'FileVideo',
   },
   'video-set': {
     id: 'video-set',
@@ -117,7 +117,7 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
         y: VIDEO_NODE_SIZE.height * 0.5,
       },
     ],
-    icon: 'Video',
+    icon: 'ListVideo',
   },
   'text-frame': {
     id: 'text-frame',
@@ -157,7 +157,7 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
         y: TEXT_NODE_SIZE.height * 0.5,
       },
     ],
-    icon: 'FileText',
+    icon: 'NotebookText',
   },
   'text-to-image-node': {
     id: 'text-to-image-node',
@@ -177,7 +177,7 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
         y: ACTION_NODE_SIZE.height * 0.5,
       },
     ],
-    icon: 'Image',
+    icon: 'Workflow',
   },
   'image-to-image-node': {
     id: 'image-to-image-node',
@@ -197,7 +197,7 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
         y: ACTION_NODE_SIZE.height * 0.5,
       },
     ],
-    icon: 'Image',
+    icon: 'Workflow',
   },
   'image-to-text-node': {
     id: 'image-to-text-node',
@@ -217,7 +217,7 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
         y: ACTION_NODE_SIZE.height * 0.5,
       },
     ],
-    icon: 'FileText',
+    icon: 'Workflow',
   },
   'edit-image-node': {
     id: 'edit-image-node',
@@ -237,7 +237,7 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
         y: ACTION_NODE_SIZE.height * 0.5,
       },
     ],
-    icon: 'Pencil',
+    icon: 'Workflow',
     // Output: Single edited image (imageList[0])
   },
   'node-set': {
