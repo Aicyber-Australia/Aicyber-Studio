@@ -244,7 +244,7 @@ function WorkflowNode({
               <Button
                 variant="ghost"
                 size="icon"
-                className="nodrag h-7 w-7 hover:bg-transparent"
+                className="nodrag h-7 w-7 bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                 title="Help"
               >
                 <HelpCircle className="h-4 w-4" />
@@ -278,7 +278,7 @@ function WorkflowNode({
       {/* Settings panel - positioned absolutely to the right of node */}
       {isSettingsOpen && (isSetNode || isActionNode || isFrameNode) && (
         <div 
-          className="absolute top-0 left-full ml-6 w-[260px] rounded-lg border bg-white shadow-lg dark:bg-gray-900 dark:border-gray-800 z-[10000] nodrag"
+          className="absolute top-0 left-full ml-6 w-[280px] rounded-lg border bg-white shadow-lg dark:bg-gray-900 dark:border-gray-800 z-[10000] nodrag"
           style={{ pointerEvents: 'auto' }}
         >
           <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-gray-200 dark:border-gray-800 select-none">
@@ -292,7 +292,7 @@ function WorkflowNode({
               <SquareX className="w-4 h-4" />
             </button>
           </div>
-          <div className="p-4 h-[240px] overflow-auto space-y-4 bg-gray-50 dark:bg-gray-900">
+          <div className="p-4 h-[260px] overflow-auto space-y-4 bg-gray-50 dark:bg-gray-900">
             <NodeSettings nodeId={id} nodeType={nodeType} data={data} />
           </div>
         </div>

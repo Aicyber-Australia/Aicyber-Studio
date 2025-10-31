@@ -6,7 +6,7 @@ import { WorkflowNodeProps } from '@/app/workflow/components/nodes';
 import { nodesConfig } from '@/app/workflow/config';
 import { NodeHandle } from '@/app/workflow/components/nodes/workflow-node/node-handle';
 import WorkflowNode from '@/app/workflow/components/nodes/workflow-node';
-import { Eye, Trash2, FileText, Image as ImageIcon, Video as VideoIcon, Plus, ArrowRightFromLine, ArrowBigRightDash, ImagePlus, FileVideo } from 'lucide-react';
+import { Eye, Trash2, FileText, Image as ImageIcon, Video as VideoIcon, Plus, ArrowRightFromLine, ArrowBigRightDash, ImagePlus, FileVideo, FileVideo2, FileType2 } from 'lucide-react';
 import { ImagePreviewDialog } from '@/app/workflow/components/nodes/image/image-preview-dialog';
 import { uploadFileToStorage } from '@/app/workflow/utils/upload-to-storage';
 import { cn } from '@/lib/utils';
@@ -627,7 +627,7 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
                 )}
               </>
             ) : (
-              <div className="absolute inset-0 flex items-center justify-center">
+              <div className="absolute inset-0 flex justify-center items-start pt-16">
                 <div className="text-gray-500 text-xs text-center flex flex-col items-center justify-center gap-3">
                   <div className="flex items-center gap-0">
                     <button
@@ -636,7 +636,7 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
                       title="Add Image"
                       draggable={false}
                     >
-                      <ImagePlus className="w-12 h-12 text-gray-500 dark:text-gray-400 transition-colors group-hover:text-gray-700 dark:group-hover:text-gray-300" />
+                      <ImagePlus className="w-12 h-12 text-gray-500 dark:text-gray-400 transition-colors group-hover:text-gray-800 dark:group-hover:text-gray-200" />
                     </button>
                     <div className="w-px h-10 bg-gray-300 dark:bg-gray-600"></div>
                     <button
@@ -645,7 +645,7 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
                       title="Add Video"
                       draggable={false}
                     >
-                      <FileVideo className="w-12 h-12 text-gray-500 dark:text-gray-400 transition-colors group-hover:text-gray-700 dark:group-hover:text-gray-300" />
+                      <FileVideo2 className="w-12 h-12 text-gray-500 dark:text-gray-400 transition-colors group-hover:text-gray-800 dark:group-hover:text-gray-200" />
                     </button>
                     <div className="w-px h-10 bg-gray-300 dark:bg-gray-600"></div>
                     <button
@@ -654,7 +654,7 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
                       title="Add Text"
                       draggable={false}
                     >
-                      <FileText className="w-12 h-12 text-gray-500 dark:text-gray-400 transition-colors group-hover:text-gray-700 dark:group-hover:text-gray-300" />
+                      <FileType2 className="w-12 h-12 text-gray-500 dark:text-gray-400 transition-colors group-hover:text-gray-800 dark:group-hover:text-gray-200" />
                     </button>
                   </div>
                   <div>Add images, videos or text</div>

@@ -49,20 +49,22 @@ export function SetNodeSettings({
       {/* Output Mode */}
       <div className="flex items-start gap-4">
         <div className="flex flex-col gap-1 min-w-[240px]">
-          <div className="text-[10px] text-muted-foreground">Output Mode</div>
-          <SegmentedSlider
-            value={setOutputMode === 'individual' ? 'left' : 'right'}
-            onChange={(v) => {
-              const next = v === 'left' ? 'individual' : 'integrated';
-              setData('setOutputMode', next);
-              // Lock process to ALL when integrated
-              if (next === 'integrated' && processLimitMode !== 'all') {
-                setData('processLimitMode', 'all');
-              }
-            }}
-            left="Individual"
-            right="Integrated"
-          />
+          <div className="rounded-2xl bg-white dark:bg-gray-800 p-3 shadow-sm">
+            <div className="text-[10px] text-muted-foreground mb-1">Output Mode</div>
+            <SegmentedSlider
+              value={setOutputMode === 'individual' ? 'left' : 'right'}
+              onChange={(v) => {
+                const next = v === 'left' ? 'individual' : 'integrated';
+                setData('setOutputMode', next);
+                // Lock process to ALL when integrated
+                if (next === 'integrated' && processLimitMode !== 'all') {
+                  setData('processLimitMode', 'all');
+                }
+              }}
+              left="Individual"
+              right="Integrated"
+            />
+          </div>
         </div>
       </div>
 
@@ -70,14 +72,16 @@ export function SetNodeSettings({
       {!isMediaSet && !hasInputEdges && (
         <div className="flex items-start gap-4" aria-disabled={disableProcessControls}>
           <div className="flex flex-col gap-1 min-w-[240px]">
-            <div className="text-[10px] text-muted-foreground">Process Items</div>
-            <SegmentedSlider
-              value={processLimitMode === 'all' ? 'left' : 'right'}
-              onChange={(v) => setData('processLimitMode', v === 'left' ? 'all' : 'limited')}
-              left="Process All"
-              right="First N"
-              disabled={disableProcessControls}
-            />
+            <div className="rounded-2xl bg-white dark:bg-gray-800 p-3 shadow-sm">
+              <div className="text-[10px] text-muted-foreground mb-1">Process Items</div>
+              <SegmentedSlider
+                value={processLimitMode === 'all' ? 'left' : 'right'}
+                onChange={(v) => setData('processLimitMode', v === 'left' ? 'all' : 'limited')}
+                left="Process All"
+                right="First N"
+                disabled={disableProcessControls}
+              />
+            </div>
             {!disableProcessControls && processLimitMode === 'limited' && (
               <div className="flex items-center gap-2 mt-1">
                 <label className="text-[10px] text-muted-foreground whitespace-nowrap">Limit:</label>
