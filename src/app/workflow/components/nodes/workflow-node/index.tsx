@@ -17,6 +17,7 @@ import {
 import { NodeStatusIndicator } from '@/components/node-status-indicator';
 import { IMAGE_NODE_SIZE, TEXT_NODE_SIZE, ACTION_NODE_SIZE, NODE_SET_SIZE, NODE_SIZE } from '@/app/workflow/config';
 import { NodeSettingsDialog } from './node-settings-dialog';
+import { SetNodeSettings } from './set-node-settings';
 
 // This is an example of how to implement the WorkflowNode component. All the nodes in the Workflow Builder example
 // are variations on this CustomNode defined in the index.tsx file.
@@ -119,8 +120,24 @@ function WorkflowNode({
 
   const IconComponent = data?.icon ? iconMapping[data.icon] : undefined;
 
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  const [settingsAnchor, setSettingsAnchor] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+
+  const openSettings = useCallback(() => {
+    setIsSettingsOpen(true);
+    // Compute anchor rect relative to viewport
+    const el = containerRef.current;
+    if (el) {
+      const rect = el.getBoundingClientRect();
+      setSettingsAnchor({ x: rect.left, y: rect.top, width: rect.width, height: rect.height });
+    } else {
+      setSettingsAnchor(null);
+    }
+  }, []);
+
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <NodeStatusIndicator status={data?.status}>
         <NodeResizer
           color="#3b82f6"
@@ -228,7 +245,7 @@ function WorkflowNode({
                   size="icon"
                   className="nodrag bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700 h-7 w-7 transition-colors" 
                   title="Menu"
-                  onClick={() => setIsSettingsOpen(true)}
+                  onClick={openSettings}
                 >
                   <Menu className="h-4 w-4" />
                 </Button>
@@ -273,10 +290,13 @@ function WorkflowNode({
         open={isSettingsOpen}
         onOpenChange={setIsSettingsOpen}
         title="Node Settings"
+        anchorRect={settingsAnchor}
       >
-        <div className="text-xs text-gray-600 dark:text-gray-300">
-          Coming soon: settings for this node type.
-        </div>
+        {isSetNode ? (
+          <SetNodeSettings nodeId={id} nodeType={nodeType} data={data} />
+        ) : (
+          <div className="text-xs text-gray-600 dark:text-gray-300">No settings available for this node.</div>
+        )}
       </NodeSettingsDialog>
     </div>
   );
