@@ -105,7 +105,7 @@ export const EditableTitle = forwardRef<HTMLHeadingElement, EditableTitleProps>(
         </h3>
         {isEditing && (
           <div
-            className="absolute inset-0 flex items-center gap-1 px-3 z-10"
+            className="absolute left-0 right-0 top-0 bottom-0 flex items-center gap-1 z-10"
             style={{
               pointerEvents: 'auto',
             }}
