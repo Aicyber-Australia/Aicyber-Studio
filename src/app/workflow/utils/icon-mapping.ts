@@ -19,6 +19,7 @@ import {
   Workflow,
   SquareMousePointer,
   Boxes,
+  ImagePlay,
   // Import other icons as needed
 } from 'lucide-react';
 
@@ -47,5 +48,6 @@ export const iconMapping: Record<
   SquareMousePointer: SquareMousePointer,
   Boxes: Boxes,
   Media: Images, // Use Images as fallback for Media
+  ImagePlay: ImagePlay,
   // Add other mappings here
 };

@@ -38,6 +38,7 @@ import { useCopilotWorkflowActions } from '@/app/workflow/hooks/useCopilotWorkfl
 import { useLayout } from '@/app/workflow/hooks/use-layout';
 import { registerAllServices } from '@/app/api/services/service-registrar';
 import { useToast } from '@/components/toast-provider';
+import { cn } from '@/lib/utils';
 
 const MIN_DISTANCE = 150;
 
@@ -596,7 +597,10 @@ export default function Workflow() {
           size="icon"
           title={isRunning ? 'Stop Workflow' : 'Run Workflow'}
           disabled={isStopping}
-          className={isStopping ? 'opacity-50 cursor-not-allowed' : ''}
+          className={cn(
+            isStopping ? 'opacity-50 cursor-not-allowed' : '',
+            isRunning ? 'bg-black text-white hover:bg-black hover:text-white' : ''
+          )}
         >
           {isRunning ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
         </Button>

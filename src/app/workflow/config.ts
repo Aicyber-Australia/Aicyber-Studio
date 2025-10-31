@@ -1,10 +1,10 @@
 import { Position } from '@xyflow/react';
 import { AppNodeType, NodeConfig } from './components/nodes';
 
-export const NODE_SIZE = { width: 260, height: 50 };
+export const NODE_SIZE = { width: 260, height: 120 };
 
-// Image nodes need square dimensions for image display
-export const IMAGE_NODE_SIZE = { width: 280, height: 280 };
+// Image nodes use rectangular dimensions for image display
+export const IMAGE_NODE_SIZE = { width: 320, height: 280 };
 
 // Video nodes need 16:9 aspect ratio for video display
 export const VIDEO_NODE_SIZE = { width: 280, height: 200 };
@@ -13,7 +13,7 @@ export const VIDEO_NODE_SIZE = { width: 280, height: 200 };
 export const TEXT_NODE_SIZE = { width: 280, height: 200 };
 
 // Action node needs more height for the UI elements and results display
-export const ACTION_NODE_SIZE = { width: 280, height: 280 };
+export const ACTION_NODE_SIZE = { width: 320, height: 280 };
 
 // Node set needs height to display list of nodes
 export const NODE_SET_SIZE = { width: 280, height: 200 };
@@ -57,7 +57,7 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
         y: IMAGE_NODE_SIZE.height * 0.5,
       },
     ],
-    icon: 'FileImage',
+    icon: 'ImagePlay',
   },
   'image-set': {
     id: 'image-set',

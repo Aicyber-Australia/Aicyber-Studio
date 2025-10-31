@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Play, Trash, RotateCcw, PauseCircle } from 'lucide-react';
+import { Trash, RotateCcw, OctagonMinus, Play, Square, HelpCircle, ImageUp } from 'lucide-react';
 import { NodeResizer, useReactFlow } from '@xyflow/react';
 
 import { Button } from '@/components/ui/button';
@@ -33,12 +33,26 @@ function WorkflowNode({
   onRefresh?: () => void;
   selected?: boolean;
 }) {
-  const { runWorkflow } = useWorkflowRunner();
+  const { runWorkflow, stopWorkflow } = useWorkflowRunner();
   const removeNode = useAppStore((s) => s.removeNode);
   const { setNodes, getNode } = useReactFlow();
   const [isTitleEditing, setIsTitleEditing] = useState(false);
   const [hasBreakpoint, setHasBreakpoint] = useState<boolean>(data?.hasBreakpoint || false);
-  const onPlay = useCallback(() => runWorkflow(id), [id, runWorkflow]);
+  const [isImageUpActive, setIsImageUpActive] = useState<boolean>(false);
+  
+  // Check if node is running (loading status means it's executing)
+  const isNodeRunning = data?.status === 'loading';
+  
+  const onPlay = useCallback(() => {
+    if (isNodeRunning) {
+      // Stop the workflow if node is running
+      stopWorkflow();
+    } else {
+      // Start running from this node
+      runWorkflow(id);
+    }
+  }, [id, runWorkflow, stopWorkflow, isNodeRunning]);
+  
   const onRemove = useCallback(() => removeNode(id), [id, removeNode]);
 
   const handleTitleChange = useCallback((newTitle: string) => {
@@ -59,7 +73,9 @@ function WorkflowNode({
     );
   }, [hasBreakpoint, id, setNodes]);
 
-  const IconComponent = data?.icon ? iconMapping[data.icon] : undefined;
+  const handleImageUpToggle = useCallback(() => {
+    setIsImageUpActive((prev) => !prev);
+  }, []);
 
   // Determine the minimum size based on node type
   const nodeType = type || getNode(id)?.type as AppNodeType;
@@ -74,54 +90,103 @@ function WorkflowNode({
     minSize = NODE_SET_SIZE;
   }
 
+  const IconComponent = data?.icon ? iconMapping[data.icon] : undefined;
+
   return (
-    <NodeStatusIndicator status={data?.status}>
-      <NodeResizer
-        color="#3b82f6"
-        isVisible={selected}
-        minWidth={minSize.width}
-        minHeight={minSize.height}
-      />
-      <BaseNode style={{ width: '100%', height: '100%' }}>
-        <BaseNodeHeader>
-          {IconComponent ? <IconComponent aria-label={data?.icon} /> : null}
-          <BaseNodeHeaderTitle
-            editable
-            onTitleChange={handleTitleChange}
-            onEditingChange={setIsTitleEditing}
-          >
-            {data?.title}
-          </BaseNodeHeaderTitle>
-          <div className="flex items-center gap-1" style={{ visibility: isTitleEditing ? 'hidden' : 'visible' }}>
+    <div className="relative">
+      <NodeStatusIndicator status={data?.status}>
+        <NodeResizer
+          color="#3b82f6"
+          isVisible={selected}
+          minWidth={minSize.width}
+          minHeight={minSize.height}
+        />
+        <BaseNode style={{ width: '100%', height: '100%' }}>
+        <BaseNodeHeader className="flex-col gap-0 border-b border-gray-200 dark:border-gray-700">
+          {/* First layer: Icon, Node Name, Help Circle */}
+          <div className="flex items-center justify-between w-full px-3 py-0.5 min-h-[24px] relative">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              {IconComponent ? <IconComponent aria-label={data?.icon} className="h-5 w-5 flex-shrink-0" /> : null}
+              <BaseNodeHeaderTitle
+                editable
+                onTitleChange={handleTitleChange}
+                onEditingChange={setIsTitleEditing}
+                className="flex-1 min-w-0"
+              >
+                {data?.title}
+              </BaseNodeHeaderTitle>
+            </div>
+            <div className="flex items-center flex-shrink-0" style={{ visibility: isTitleEditing ? 'hidden' : 'visible' }}>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="nodrag h-9 w-9 hover:bg-transparent" 
+                title="Help"
+              >
+                <HelpCircle className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+          {/* Second layer: Toolbar buttons */}
+          <div className="flex items-center justify-start gap-3 w-full px-3 py-0.5 min-h-[24px]">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="nodrag bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 h-7 w-7 transition-colors" 
+              onClick={onPlay}
+              title={isNodeRunning ? "Stop node execution" : "Run node"}
+            >
+              {isNodeRunning ? (
+                <Square className="h-4 w-4" />
+              ) : (
+                <Play className="h-4 w-4" />
+              )}
+            </Button>
             {onRefresh && (
               <Button
                 variant="ghost"
-                className="nodrag px-1!"
+                size="icon"
+                className="nodrag bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 h-7 w-7 transition-colors"
                 onClick={onRefresh}
                 title="刷新"
               >
-                <RotateCcw className="w-4 h-4" />
+                <RotateCcw className="h-4 w-4" />
               </Button>
             )}
             <Button
               variant="ghost"
-              className="nodrag px-1!"
+              size="icon"
+              className="nodrag bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 h-7 w-7 transition-colors"
               onClick={handleBreakpointToggle}
               title={hasBreakpoint ? "Remove breakpoint (workflow will pause after this node)" : "Add breakpoint"}
             >
-              <PauseCircle className={`w-4 h-4 ${hasBreakpoint ? 'text-red-500' : 'text-gray-400'}`} />
+              <OctagonMinus className={`h-4 w-4 ${hasBreakpoint ? 'text-red-500' : 'text-black dark:text-black'}`} />
             </Button>
-            <Button variant="ghost" className="nodrag px-1!" onClick={onPlay}>
-              <Play className="stroke-blue-500 fill-blue-500" />
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="nodrag bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 h-7 w-7 transition-colors" 
+              onClick={handleImageUpToggle}
+              title="Image Up"
+            >
+              <ImageUp className={`h-4 w-4 ${isImageUpActive ? 'text-blue-500' : 'text-black dark:text-black'}`} />
             </Button>
-            <Button variant="ghost" className="nodrag px-1!" onClick={onRemove}>
-              <Trash />
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="nodrag bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 h-7 w-7 transition-colors" 
+              onClick={onRemove}
+            >
+              <Trash className="h-4 w-4" />
             </Button>
           </div>
         </BaseNodeHeader>
-        {children}
-      </BaseNode>
-    </NodeStatusIndicator>
+        <div className="bg-gray-50 dark:bg-gray-900 flex-1 min-h-0">
+          {children}
+        </div>
+        </BaseNode>
+      </NodeStatusIndicator>
+    </div>
   );
 }
 
