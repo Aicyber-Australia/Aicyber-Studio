@@ -259,8 +259,12 @@ function ImageSet({ id, data, selected }: WorkflowNodeProps) {
               <div className="text-[10px] text-muted-foreground mb-1">Output Mode</div>
               <div className="relative flex w-[84px] items-center rounded-md border p-1 box-border overflow-hidden bg-white dark:bg-gray-800">
                 <div
-                  className="absolute top-1 bottom-1 rounded transition-all duration-200 ease-in-out"
-                  style={{ width: 'calc(50% - 4px)', left: setOutputMode === 'individual' ? '2px' : 'calc(50% + 2px)', backgroundColor: 'rgb(243 244 246)' }}
+                  className="absolute top-1 h-7 bg-gray-100 dark:bg-gray-700 rounded-md"
+                  style={{
+                    width: 'calc(50% - 4px)',
+                    left: setOutputMode === 'individual' ? '4px' : 'calc(50% + 0px)',
+                    transition: 'left 300ms ease-in-out',
+                  }}
                 />
                 <button
                   type="button"
@@ -287,8 +291,12 @@ function ImageSet({ id, data, selected }: WorkflowNodeProps) {
                 <div className="text-[10px] text-muted-foreground mb-1">Process Items</div>
                 <div className="relative flex w-[84px] items-center rounded-md border p-1 box-border overflow-hidden bg-white dark:bg-gray-800">
                   <div
-                    className="absolute top-1 bottom-1 rounded transition-all duration-200 ease-in-out"
-                    style={{ width: 'calc(50% - 4px)', left: processLimitMode === 'all' ? '2px' : 'calc(50% + 2px)', backgroundColor: 'rgb(243 244 246)' }}
+                    className="absolute top-1 h-7 bg-gray-100 dark:bg-gray-700 rounded-md"
+                    style={{
+                      width: 'calc(50% - 4px)',
+                      left: processLimitMode === 'all' ? '4px' : 'calc(50% + 0px)',
+                      transition: 'left 300ms ease-in-out',
+                    }}
                   />
                   <button
                     type="button"
