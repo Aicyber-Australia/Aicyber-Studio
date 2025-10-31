@@ -148,17 +148,19 @@ function WorkflowNode({
         <BaseNode style={{ width: '100%', height: '100%' }}>
         <BaseNodeHeader className="flex-col gap-0 border-b border-gray-200 dark:border-gray-700">
           {/* First layer: Icon, Node Name */}
-          <div className="flex items-center justify-between w-full px-0.5 pt-0 pb-0.5 min-h-[20px] relative">
+          <div className="flex items-center justify-between w-full px-0.5 pt-0 pb-0.5 min-h-[20px]">
             <div className="flex items-center gap-1 flex-1 min-w-0">
               {IconComponent ? <IconComponent aria-label={data?.icon} className="h-5 w-5 flex-shrink-0" /> : null}
-              <BaseNodeHeaderTitle
-                editable
-                onTitleChange={handleTitleChange}
-                onEditingChange={setIsTitleEditing}
-                className="flex-1 min-w-0"
-              >
-                {data?.title}
-              </BaseNodeHeaderTitle>
+              <div className="relative flex-1 min-w-0">
+                <BaseNodeHeaderTitle
+                  editable
+                  onTitleChange={handleTitleChange}
+                  onEditingChange={setIsTitleEditing}
+                  className="flex-1 min-w-0"
+                >
+                  {data?.title}
+                </BaseNodeHeaderTitle>
+              </div>
             </div>
           </div>
           <div className="w-2/3 h-px bg-gray-200 dark:bg-gray-700 ml-1 self-start"></div>
@@ -243,7 +245,12 @@ function WorkflowNode({
                 <Button 
                   variant="ghost" 
                   size="icon"
-                  className="nodrag bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700 h-7 w-7 transition-colors" 
+                  className={cn(
+                    "nodrag h-7 w-7 transition-colors",
+                    isSettingsOpen 
+                      ? "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
+                      : "bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700"
+                  )}
                   title="Menu"
                   onClick={openSettings}
                 >
@@ -289,7 +296,7 @@ function WorkflowNode({
       <NodeSettingsDialog
         open={isSettingsOpen}
         onOpenChange={setIsSettingsOpen}
-        title="Node Settings"
+        title={`Node Settings - ${data?.title || 'Untitled'}`}
         anchorRect={settingsAnchor}
       >
         {isSetNode ? (

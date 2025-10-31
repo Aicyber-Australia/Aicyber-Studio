@@ -23,7 +23,7 @@ function SegmentedTwo({
   return (
     <div
       className={
-        "relative flex w-[200px] items-center rounded-md border p-1 box-border " +
+        "relative flex w-[220px] items-center rounded-md border p-1 box-border " +
         (disabled ? " opacity-60 pointer-events-none " : " ") +
         (className || '')
       }
@@ -35,7 +35,7 @@ function SegmentedTwo({
       />
       <button
         type="button"
-        className={`relative z-10 flex-1 text-center px-2 py-1 text-xs rounded-md ${
+        className={`relative z-10 flex-1 text-center px-3 py-1.5 text-xs rounded-md whitespace-nowrap ${
           value === 'left' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-300'
         }`}
         onClick={() => onChange('left')}
@@ -44,7 +44,7 @@ function SegmentedTwo({
       </button>
       <button
         type="button"
-        className={`relative z-10 flex-1 text-center px-2 py-1 text-xs rounded-md ${
+        className={`relative z-10 flex-1 text-center px-3 py-1.5 text-xs rounded-md whitespace-nowrap ${
           value === 'right' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-300'
         }`}
         onClick={() => onChange('right')}
@@ -91,7 +91,7 @@ export function SetNodeSettings({
     <div className="space-y-4">
       {/* 第一行：Output Mode */}
       <div className="flex items-start gap-4">
-        <div className="flex flex-col gap-1 min-w-[220px]">
+        <div className="flex flex-col gap-1 min-w-[240px]">
           <div className="text-[10px] text-muted-foreground">Output Mode</div>
           <SegmentedTwo
             value={setOutputMode === 'individual' ? 'left' : 'right'}
@@ -112,7 +112,7 @@ export function SetNodeSettings({
       {/* 第二行：Process Items */}
       {!hasInputEdges && (
         <div className="flex items-start gap-4" aria-disabled={disableProcessControls}>
-          <div className="flex flex-col gap-1 min-w-[220px]">
+          <div className="flex flex-col gap-1 min-w-[240px]">
             <div className="text-[10px] text-muted-foreground">Process Items</div>
             <SegmentedTwo
               value={processLimitMode === 'all' ? 'left' : 'right'}

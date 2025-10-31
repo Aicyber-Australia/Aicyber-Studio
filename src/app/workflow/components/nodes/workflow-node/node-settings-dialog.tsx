@@ -95,12 +95,17 @@ export function NodeSettingsDialog({
   if (!open || position == null) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[99999]" style={{ pointerEvents: 'auto' }}>
-      {/* No grey backdrop as requested */}
+    <div className="fixed inset-0 z-[99999]" style={{ pointerEvents: 'none' }}>
+      {/* Backdrop to close on outside click */}
+      <div 
+        className="absolute inset-0" 
+        style={{ pointerEvents: 'auto' }}
+        onClick={() => onOpenChange(false)}
+      />
       <div
         ref={dialogRef}
         className="absolute rounded-lg border bg-white shadow-lg dark:bg-gray-900 dark:border-gray-800 box-border"
-        style={{ left: position.x, top: position.y, width: 'min(90vw, 260px)', height: '240px' }}
+        style={{ left: position.x, top: position.y, width: 'min(90vw, 260px)', height: '240px', pointerEvents: 'auto' }}
       >
         {/* Header (draggable handle) */}
         <div
