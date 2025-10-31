@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
-import { Trash, RotateCcw, OctagonMinus, Play, Square, HelpCircle, ImageUp } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Trash, RotateCcw, OctagonMinus, Play, Square, HelpCircle, ImageUp, Menu } from 'lucide-react';
 import { NodeResizer, useReactFlow } from '@xyflow/react';
 
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,7 @@ import {
 } from '@/components/base-node';
 import { NodeStatusIndicator } from '@/components/node-status-indicator';
 import { IMAGE_NODE_SIZE, TEXT_NODE_SIZE, ACTION_NODE_SIZE, NODE_SET_SIZE, NODE_SIZE } from '@/app/workflow/config';
+import { NodeSettingsDialog } from './node-settings-dialog';
 
 // This is an example of how to implement the WorkflowNode component. All the nodes in the Workflow Builder example
 // are variations on this CustomNode defined in the index.tsx file.
@@ -55,6 +57,15 @@ function WorkflowNode({
   }, [id, runWorkflow, stopWorkflow, isNodeRunning]);
   
   const onRemove = useCallback(() => removeNode(id), [id, removeNode]);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const handleDeleteClick = useCallback(() => {
+    setIsDeleteDialogOpen(true);
+  }, []);
+  const handleConfirmDelete = useCallback(() => {
+    removeNode(id);
+    setIsDeleteDialogOpen(false);
+  }, [id, removeNode]);
+  const handleCancelDelete = useCallback(() => setIsDeleteDialogOpen(false), []);
 
   const handleTitleChange = useCallback((newTitle: string) => {
     setNodes((nodes) =>
@@ -77,6 +88,21 @@ function WorkflowNode({
   const handleImageUpToggle = useCallback(() => {
     setIsImageUpActive((prev) => !prev);
   }, []);
+
+  // Settings dialog
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Whether this node is a set-type node
+  const isSetNode = ((): boolean => {
+    const t = (type || (getNode(id)?.type as AppNodeType)) as string | undefined;
+    return [
+      'text-set',
+      'image-set',
+      'video-set',
+      'media-set',
+      'node-set',
+    ].includes(t || '');
+  })();
 
   // Determine the minimum size based on node type
   const nodeType = type || getNode(id)?.type as AppNodeType;
@@ -177,13 +203,15 @@ function WorkflowNode({
               <Button 
                 variant="ghost" 
                 size="icon"
-                className="nodrag bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700 h-7 w-7 transition-colors" 
-                onClick={onRemove}
+                className="nodrag bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700 h-7 w-7 transition-colors"
+                onClick={handleDeleteClick}
+                title="Delete"
               >
                 <Trash className="h-4 w-4" />
               </Button>
             </div>
-            <div className="flex items-center">
+            <div className="flex items-center gap-2">
+              {/* Help */}
               <Button 
                 variant="ghost" 
                 size="icon"
@@ -192,6 +220,18 @@ function WorkflowNode({
               >
                 <HelpCircle className="h-4 w-4" />
               </Button>
+              {/* Menu (settings) for set nodes only */}
+              {isSetNode && (
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="nodrag bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700 h-7 w-7 transition-colors" 
+                  title="Menu"
+                  onClick={() => setIsSettingsOpen(true)}
+                >
+                  <Menu className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </div>
         </BaseNodeHeader>
@@ -200,6 +240,43 @@ function WorkflowNode({
         </div>
         </BaseNode>
       </NodeStatusIndicator>
+      {/* Delete confirmation modal (English) - rendered via portal */}
+      {isDeleteDialogOpen && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center" style={{ pointerEvents: 'auto' }}>
+          <div className="absolute inset-0 bg-black/50" onClick={handleCancelDelete} />
+          <div className="relative z-[100000] w-[320px] rounded-lg border bg-white p-4 shadow-lg dark:bg-gray-900 dark:border-gray-800">
+            <div className="text-sm font-semibold mb-2">Delete node?</div>
+            <div className="text-xs text-gray-600 dark:text-gray-300 mb-4">This action cannot be undone.</div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className="px-2.5 py-1.5 text-xs rounded bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors"
+                onClick={handleCancelDelete}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="px-2.5 py-1.5 text-xs rounded bg-red-600 text-white hover:bg-red-700 transition-colors"
+                onClick={handleConfirmDelete}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+      {/* Settings dialog (generic container, content TBD per nodeType) */}
+      <NodeSettingsDialog
+        open={isSettingsOpen}
+        onOpenChange={setIsSettingsOpen}
+        title="Node Settings"
+      >
+        <div className="text-xs text-gray-600 dark:text-gray-300">
+          Coming soon: settings for this node type.
+        </div>
+      </NodeSettingsDialog>
     </div>
   );
 }

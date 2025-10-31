@@ -6,7 +6,7 @@ import { WorkflowNodeProps } from '@/app/workflow/components/nodes';
 import { nodesConfig } from '@/app/workflow/config';
 import { NodeHandle } from '@/app/workflow/components/nodes/workflow-node/node-handle';
 import WorkflowNode from '@/app/workflow/components/nodes/workflow-node';
-import { Eye, Trash2 } from 'lucide-react';
+import { Eye, Trash2, FolderOpen } from 'lucide-react';
 import { ImagePreviewDialog } from './image-preview-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
@@ -391,9 +391,9 @@ function ImageSet({ id, data, selected }: WorkflowNodeProps) {
           ) : imageError ? (
             <div className="text-red-500 text-xs text-center">加载失败</div>
           ) : (
-            <div className="text-gray-500 text-xs text-center">
-              <div>点击上传多张图片</div>
-              <div className="text-xs mt-1">支持拖拽多文件</div>
+            <div className="flex flex-col items-center justify-center gap-2 text-center" title="click to add files">
+              <FolderOpen className="w-8 h-8 text-gray-400" />
+              <span className="text-gray-500 text-xs">click to add files</span>
             </div>
           )}
           </div>
