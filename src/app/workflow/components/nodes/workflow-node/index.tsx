@@ -3,6 +3,7 @@ import { Trash, RotateCcw, OctagonMinus, Play, Square, HelpCircle, ImageUp } fro
 import { NodeResizer, useReactFlow } from '@xyflow/react';
 
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { WorkflowNodeData, AppNodeType } from '@/app/workflow/components/nodes';
 import { useWorkflowRunner } from '@/app/workflow/hooks/use-workflow-runner';
 import { iconMapping } from '@/app/workflow/utils/icon-mapping';
@@ -106,7 +107,7 @@ function WorkflowNode({
           {/* First layer: Icon, Node Name */}
           <div className="flex items-center justify-between w-full px-0.5 pt-0 pb-0.5 min-h-[20px] relative">
             <div className="flex items-center gap-1 flex-1 min-w-0">
-              {IconComponent ? <IconComponent aria-label={data?.icon} className="h-4 w-4 flex-shrink-0" /> : null}
+              {IconComponent ? <IconComponent aria-label={data?.icon} className="h-5 w-5 flex-shrink-0" /> : null}
               <BaseNodeHeaderTitle
                 editable
                 onTitleChange={handleTitleChange}
@@ -117,7 +118,7 @@ function WorkflowNode({
               </BaseNodeHeaderTitle>
             </div>
           </div>
-          <div className="w-full h-px bg-gray-200 dark:bg-gray-700"></div>
+          <div className="w-2/3 h-px bg-gray-200 dark:bg-gray-700 -ml-3 self-start"></div>
           {/* Second layer: Toolbar buttons */}
           <div className="flex items-center justify-between w-full px-0.5 pt-1 min-h-[10px]">
             <div className="flex items-center gap-2 flex-shrink-0">
@@ -134,6 +135,34 @@ function WorkflowNode({
                   <Play className="h-4 w-4" />
                 )}
               </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "nodrag h-7 w-7 transition-colors",
+                  hasBreakpoint 
+                    ? "bg-gray-200 dark:bg-gray-700 shadow-md hover:bg-gray-300 dark:hover:bg-gray-600" 
+                    : "bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700"
+                )}
+                onClick={handleBreakpointToggle}
+                title={hasBreakpoint ? "Remove breakpoint (workflow will pause after this node)" : "Add breakpoint"}
+              >
+                <OctagonMinus className={`h-4 w-4 ${hasBreakpoint ? 'text-red-500' : 'text-black dark:text-black'}`} />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className={cn(
+                  "nodrag h-7 w-7 transition-colors",
+                  isImageUpActive 
+                    ? "bg-gray-200 dark:bg-gray-700 shadow-md hover:bg-gray-300 dark:hover:bg-gray-600" 
+                    : "bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700"
+                )}
+                onClick={handleImageUpToggle}
+                title="Image Up"
+              >
+                <ImageUp className={`h-4 w-4 ${isImageUpActive ? 'text-blue-500' : 'text-black dark:text-black'}`} />
+              </Button>
               {onRefresh && (
                 <Button
                   variant="ghost"
@@ -145,24 +174,6 @@ function WorkflowNode({
                   <RotateCcw className="h-4 w-4" />
                 </Button>
               )}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="nodrag bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700 h-7 w-7 transition-colors"
-                onClick={handleBreakpointToggle}
-                title={hasBreakpoint ? "Remove breakpoint (workflow will pause after this node)" : "Add breakpoint"}
-              >
-                <OctagonMinus className={`h-4 w-4 ${hasBreakpoint ? 'text-red-500' : 'text-black dark:text-black'}`} />
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="icon"
-                className="nodrag bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700 h-7 w-7 transition-colors" 
-                onClick={handleImageUpToggle}
-                title="Image Up"
-              >
-                <ImageUp className={`h-4 w-4 ${isImageUpActive ? 'text-blue-500' : 'text-black dark:text-black'}`} />
-              </Button>
               <Button 
                 variant="ghost" 
                 size="icon"
@@ -172,8 +183,7 @@ function WorkflowNode({
                 <Trash className="h-4 w-4" />
               </Button>
             </div>
-            <div className="flex items-center gap-1">
-              <div className="h-4 w-px bg-gray-300 dark:bg-gray-600 mx-1" />
+            <div className="flex items-center">
               <Button 
                 variant="ghost" 
                 size="icon"

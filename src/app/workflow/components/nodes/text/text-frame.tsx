@@ -98,7 +98,7 @@ function TextFrame({ id, data, selected }: WorkflowNodeProps) {
                   value={textContent}
                   onChange={handleTextChange}
                   className="nodrag w-full h-full resize-none border-none outline-none p-3 text-sm text-gray-800 placeholder-gray-400 leading-relaxed"
-                  placeholder="输入文本..."
+                  placeholder="Enter text..."
                   draggable={false}
                 />
 
