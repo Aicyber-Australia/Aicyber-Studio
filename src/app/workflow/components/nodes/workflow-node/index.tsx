@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Trash, RotateCcw, OctagonMinus, Play, Square, HelpCircle, ImageUp, Menu } from 'lucide-react';
+import { Trash, Trash2, RotateCcw, OctagonMinus, Play, Square, HelpCircle, ImageUp, Menu } from 'lucide-react';
 import { NodeResizer, useReactFlow } from '@xyflow/react';
 
 import { Button } from '@/components/ui/button';
@@ -203,11 +203,12 @@ function WorkflowNode({
               <Button 
                 variant="ghost" 
                 size="icon"
-                className="nodrag bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700 h-7 w-7 transition-colors"
+                className="nodrag bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700 h-7 w-7 transition-colors group"
                 onClick={handleDeleteClick}
                 title="Delete"
               >
-                <Trash className="h-4 w-4" />
+                <Trash className="h-4 w-4 block group-hover:hidden" />
+                <Trash2 className="h-4 w-4 hidden group-hover:block" />
               </Button>
             </div>
             <div className="flex items-center gap-2">

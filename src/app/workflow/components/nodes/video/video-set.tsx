@@ -6,7 +6,7 @@ import { WorkflowNodeProps } from '@/app/workflow/components/nodes';
 import { nodesConfig } from '@/app/workflow/config';
 import { NodeHandle } from '@/app/workflow/components/nodes/workflow-node/node-handle';
 import WorkflowNode from '@/app/workflow/components/nodes/workflow-node';
-import { Eye, Trash2 } from 'lucide-react';
+import { Eye, Trash2, FolderOpen } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { uploadFileToStorage } from '@/app/workflow/utils/upload-to-storage';
@@ -231,8 +231,10 @@ function VideoSet({ id, data, selected }: WorkflowNodeProps) {
     <>
       <WorkflowNode id={id} data={data} type="video-set" onRefresh={handleRefresh} selected={selected}>
         <div className="w-full flex-1 flex flex-col p-3 min-h-0 nodrag space-y-2">
-          {/* Output Mode Selection */}
-          <div className="nodrag flex-shrink-0">
+          {/* Output + Process controls in one row */}
+          <div className="nodrag flex items-start gap-4 flex-shrink-0">
+            {/* Output Mode Selection */}
+            <div className="nodrag flex-shrink-0">
             <div className="text-[10px] text-muted-foreground mb-1">Output Mode</div>
             <Select value={setOutputMode} onValueChange={handleSetOutputModeChange}>
               <SelectTrigger className="h-7 text-xs nodrag">
@@ -243,10 +245,10 @@ function VideoSet({ id, data, selected }: WorkflowNodeProps) {
                 <SelectItem value="integrated" className="text-xs">Integrated</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+            </div>
 
-          {/* Process Limit Selection - Only shown when no input edges */}
-          {!hasInputEdges && (
+            {/* Process Limit Selection - Only shown when no input edges */}
+            {!hasInputEdges && (
             <div className="nodrag flex-shrink-0 space-y-1.5">
               <div className="text-[10px] text-muted-foreground">Process Items</div>
               <Select value={processLimitMode} onValueChange={handleProcessLimitModeChange}>
@@ -276,7 +278,8 @@ function VideoSet({ id, data, selected }: WorkflowNodeProps) {
                 </div>
               )}
             </div>
-          )}
+            )}
+          </div>
 
           {/* 多视频网格显示区域 - 自适应节点尺寸 */}
           <div
@@ -361,9 +364,9 @@ function VideoSet({ id, data, selected }: WorkflowNodeProps) {
             ) : videoError ? (
               <div className="text-red-500 text-xs text-center">加载失败</div>
             ) : (
-              <div className="text-gray-500 text-xs text-center">
-                <div>点击上传多个视频</div>
-                <div className="text-xs mt-1">支持拖拽多文件</div>
+              <div className="flex flex-col items-center justify-center gap-2 text-center" title="click to add files">
+                <FolderOpen className="w-8 h-8 text-gray-400" />
+                <span className="text-gray-500 text-xs">click to add files</span>
               </div>
             )}
           </div>

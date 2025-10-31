@@ -252,8 +252,10 @@ function ImageSet({ id, data, selected }: WorkflowNodeProps) {
     <>
       <WorkflowNode id={id} data={data} type="image-set" onRefresh={handleRefresh} selected={selected}>
         <div className="w-full flex-1 flex flex-col p-3 min-h-0 nodrag space-y-2">
-          {/* Output Mode Selection */}
-          <div className="nodrag flex-shrink-0">
+          {/* Output + Process controls in one row */}
+          <div className="nodrag flex items-start gap-4 flex-shrink-0">
+            {/* Output Mode Selection */}
+            <div className="nodrag flex-shrink-0">
             <div className="text-[10px] text-muted-foreground mb-1">Output Mode</div>
             <Select value={setOutputMode} onValueChange={handleSetOutputModeChange}>
               <SelectTrigger className="h-7 text-xs nodrag">
@@ -264,10 +266,10 @@ function ImageSet({ id, data, selected }: WorkflowNodeProps) {
                 <SelectItem value="integrated" className="text-xs">Integrated</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+            </div>
 
-          {/* Process Limit Selection - Only shown when no input edges */}
-          {!hasInputEdges && (
+            {/* Process Limit Selection - Only shown when no input edges */}
+            {!hasInputEdges && (
             <div className="nodrag flex-shrink-0 space-y-1.5">
               <div className="text-[10px] text-muted-foreground">Process Items</div>
               <Select value={processLimitMode} onValueChange={handleProcessLimitModeChange}>
@@ -297,7 +299,8 @@ function ImageSet({ id, data, selected }: WorkflowNodeProps) {
                 </div>
               )}
             </div>
-          )}
+            )}
+          </div>
 
           {/* 多图网格显示区域 - 自适应节点尺寸 */}
           <div
