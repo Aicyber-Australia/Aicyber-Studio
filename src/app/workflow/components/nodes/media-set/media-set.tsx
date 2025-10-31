@@ -6,10 +6,10 @@ import { WorkflowNodeProps } from '@/app/workflow/components/nodes';
 import { nodesConfig } from '@/app/workflow/config';
 import { NodeHandle } from '@/app/workflow/components/nodes/workflow-node/node-handle';
 import WorkflowNode from '@/app/workflow/components/nodes/workflow-node';
-import { Eye, Trash2, FileText, Image as ImageIcon, Video as VideoIcon, Plus } from 'lucide-react';
+import { Eye, Trash2, FileText, Image as ImageIcon, Video as VideoIcon, Plus, ArrowRightFromLine, ArrowBigRightDash, ImagePlus, FileVideo } from 'lucide-react';
 import { ImagePreviewDialog } from '@/app/workflow/components/nodes/image/image-preview-dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { uploadFileToStorage } from '@/app/workflow/utils/upload-to-storage';
+import { cn } from '@/lib/utils';
 
 type MediaItem = {
   id: string;
@@ -393,14 +393,14 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
   const textCount = mediaList.filter(m => m.type === 'text').length;
 
   // Handle set output mode change
-  const handleSetOutputModeChange = useCallback((value: string) => {
+  const handleSetOutputModeChange = useCallback((value: 'individual' | 'integrated') => {
     setNodes(nodes => nodes.map(node =>
       node.id === id
         ? {
             ...node,
             data: {
               ...node.data,
-              setOutputMode: value as 'individual' | 'integrated',
+              setOutputMode: value,
             },
           }
         : node
@@ -413,8 +413,8 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
     <>
       <WorkflowNode id={id} data={data} type="media-set" onRefresh={handleRefresh} selected={selected}>
         <div className="w-full flex-1 flex flex-col p-3 min-h-0 nodrag space-y-2">
-          {/* Output Mode Selection */}
-          <div className="nodrag flex-shrink-0">
+          {/* Output Mode Selection - icon segmented slider */}
+          <div className="nodrag flex-shrink-0 w-[120px]">
             <div className="text-[10px] text-muted-foreground mb-1">
               Output Mode
               {connectionRestriction.isRestricted && (
@@ -423,21 +423,40 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
                 </span>
               )}
             </div>
-            <Select
-              value={setOutputMode}
-              onValueChange={handleSetOutputModeChange}
-              disabled={connectionRestriction.isRestricted}
-            >
-              <SelectTrigger className="h-7 text-xs nodrag" disabled={connectionRestriction.isRestricted}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="nodrag">
-                <SelectItem value="individual" className="text-xs" disabled={connectionRestriction.isRestricted}>
-                  Individual
-                </SelectItem>
-                <SelectItem value="integrated" className="text-xs">Integrated</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="relative flex w-[84px] items-center rounded-md border p-1 box-border overflow-hidden bg-white dark:bg-gray-800">
+              <div
+                className="absolute top-1 h-7 bg-gray-100 dark:bg-gray-700 rounded-md"
+                style={{
+                  width: 'calc(50% - 4px)',
+                  left: setOutputMode === 'individual' ? '4px' : 'calc(50% + 0px)',
+                  transition: 'left 300ms ease-in-out',
+                }}
+              />
+              <button
+                type="button"
+                className={cn(
+                  `relative z-10 flex-1 flex items-center justify-center h-7 w-7 rounded-md transition-colors`,
+                  setOutputMode === 'individual' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400',
+                  connectionRestriction.isRestricted && 'opacity-50 cursor-not-allowed'
+                )}
+                onClick={() => !connectionRestriction.isRestricted && handleSetOutputModeChange('individual')}
+                disabled={connectionRestriction.isRestricted}
+                title="Individual"
+              >
+                <ArrowRightFromLine className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  `relative z-10 flex-1 flex items-center justify-center h-7 w-7 rounded-md transition-colors`,
+                  setOutputMode === 'integrated' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'
+                )}
+                onClick={() => handleSetOutputModeChange('integrated')}
+                title="Integrated"
+              >
+                <ArrowBigRightDash className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
           {/* 混合媒体显示区域 */}

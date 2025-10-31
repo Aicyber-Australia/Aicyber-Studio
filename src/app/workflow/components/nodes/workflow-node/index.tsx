@@ -16,7 +16,7 @@ import {
 } from '@/components/base-node';
 import { NodeStatusIndicator } from '@/components/node-status-indicator';
 import { IMAGE_NODE_SIZE, TEXT_NODE_SIZE, ACTION_NODE_SIZE, NODE_SET_SIZE, NODE_SIZE } from '@/app/workflow/config';
-import { SetNodeSettings } from './set-node-settings';
+import { NodeSettings } from './node-settings';
 
 // This is an example of how to implement the WorkflowNode component. All the nodes in the Workflow Builder example
 // are variations on this CustomNode defined in the index.tsx file.
@@ -92,9 +92,12 @@ function WorkflowNode({
     setIsImageUpActive((prev) => !prev);
   }, []);
 
+  // Determine the minimum size based on node type
+  const nodeType = (type || (getNode(id)?.type as AppNodeType)) as AppNodeType;
+  
   // Whether this node is a set-type node
   const isSetNode = (() => {
-    const t = (type || (getNode(id)?.type as AppNodeType)) as string | undefined;
+    const t = nodeType as string | undefined;
     return [
       'text-set',
       'image-set',
@@ -104,8 +107,25 @@ function WorkflowNode({
     ].includes(t || '');
   })();
 
-  // Determine the minimum size based on node type
-  const nodeType = (type || (getNode(id)?.type as AppNodeType)) as AppNodeType;
+  // Whether this node is an action-type node
+  const isActionNode = (() => {
+    const t = nodeType as string | undefined;
+    return [
+      'text-to-image-node',
+      'image-to-image-node',
+      // Add more action node types here
+    ].includes(t || '');
+  })();
+
+  // Whether this node is a frame-type node
+  const isFrameNode = (() => {
+    const t = nodeType as string | undefined;
+    return [
+      'image-frame',
+      'video-frame',
+      'text-frame',
+    ].includes(t || '');
+  })();
   let minSize = NODE_SIZE;
   if (nodeType === 'image-frame' || nodeType === 'image-set' || nodeType === 'media-set') {
     minSize = IMAGE_NODE_SIZE;
@@ -229,23 +249,23 @@ function WorkflowNode({
               >
                 <HelpCircle className="h-4 w-4" />
               </Button>
-              {/* Menu (settings) for set nodes only */}
-              {isSetNode && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={cn(
-                    "nodrag h-7 w-7 transition-colors",
-                    isSettingsOpen
-                      ? "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
-                      : "bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700"
-                  )}
-                  title="Menu"
-                  onClick={toggleSettings}
-                >
-                  <Menu className="h-4 w-4" />
-                </Button>
-              )}
+              {/* Menu (settings) for set nodes, action nodes, and frame nodes */}
+              
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "nodrag h-7 w-7 transition-colors",
+                  isSettingsOpen
+                    ? "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
+                    : "bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700"
+                )}
+                title="Menu"
+                onClick={toggleSettings}
+              >
+                <Menu className="h-4 w-4" />
+              </Button>
+              
             </div>
           </div>
         </BaseNodeHeader>
@@ -256,7 +276,7 @@ function WorkflowNode({
       </NodeStatusIndicator>
 
       {/* Settings panel - positioned absolutely to the right of node */}
-      {isSettingsOpen && isSetNode && (
+      {isSettingsOpen && (isSetNode || isActionNode || isFrameNode) && (
         <div 
           className="absolute top-0 left-full ml-6 w-[260px] rounded-lg border bg-white shadow-lg dark:bg-gray-900 dark:border-gray-800 z-[10000] nodrag"
           style={{ pointerEvents: 'auto' }}
@@ -273,8 +293,7 @@ function WorkflowNode({
             </button>
           </div>
           <div className="p-4 h-[240px] overflow-auto space-y-4 bg-gray-50 dark:bg-gray-900">
-
-            <SetNodeSettings nodeId={id} nodeType={nodeType} data={data} />
+            <NodeSettings nodeId={id} nodeType={nodeType} data={data} />
           </div>
         </div>
       )}

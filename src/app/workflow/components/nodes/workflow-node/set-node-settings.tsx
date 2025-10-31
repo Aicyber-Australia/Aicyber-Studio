@@ -4,62 +4,11 @@ import React, { useMemo } from 'react';
 import { useReactFlow } from '@xyflow/react';
 import type { WorkflowNodeData, AppNodeType } from '@/app/workflow/components/nodes';
 import { Input } from '@/components/ui/input';
+import { SegmentedSlider } from '@/components/ui/segmented-slider';
 
-function SegmentedTwo({
-  value,
-  onChange,
-  left,
-  right,
-  className,
-  disabled,
-}: {
-  value: 'left' | 'right';
-  onChange: (v: 'left' | 'right') => void;
-  left: string;
-  right: string;
-  className?: string;
-  disabled?: boolean;
-}) {
-  return (
-    <div
-      className={
-        "relative flex w-[220px] items-center rounded-md border p-1 box-border overflow-hidden bg-white dark:bg-gray-800 " +
-        (disabled ? " opacity-60 pointer-events-none " : " ") +
-        (className || '')
-      }
-      aria-disabled={disabled}
-    >
-      <div
-        className="absolute top-1 bottom-1 rounded"
-        style={{ 
-          width: 'calc(50% - 4px)',
-          left: value === 'left' ? '2px' : 'calc(50% + 2px)',
-          transition: 'left 300ms ease-in-out',
-          backgroundColor: 'rgb(243 244 246)', // gray-100
-        }}
-      />
-      <button
-        type="button"
-        className={`relative z-10 flex-1 text-center px-3 py-1.5 text-xs rounded-md whitespace-nowrap transition-colors ${
-          value === 'left' ? 'text-gray-900 dark:text-gray-100 font-semibold' : 'text-gray-500 dark:text-gray-400'
-        }`}
-        onClick={() => onChange('left')}
-      >
-        {left}
-      </button>
-      <button
-        type="button"
-        className={`relative z-10 flex-1 text-center px-3 py-1.5 text-xs rounded-md whitespace-nowrap transition-colors ${
-          value === 'right' ? 'text-gray-900 dark:text-gray-100 font-semibold' : 'text-gray-500 dark:text-gray-400'
-        }`}
-        onClick={() => onChange('right')}
-      >
-        {right}
-      </button>
-    </div>
-  );
-}
-
+/**
+ * Settings panel for set nodes (image-set, video-set, text-set, media-set)
+ */
 export function SetNodeSettings({
   nodeId,
   nodeType,
@@ -91,14 +40,17 @@ export function SetNodeSettings({
   };
 
   const disableProcessControls = setOutputMode === 'integrated';
+  
+  // media-set only shows Output Mode
+  const isMediaSet = nodeType === 'media-set';
 
   return (
     <div className="space-y-4">
-      {/* 第一行：Output Mode */}
+      {/* Output Mode */}
       <div className="flex items-start gap-4">
         <div className="flex flex-col gap-1 min-w-[240px]">
           <div className="text-[10px] text-muted-foreground">Output Mode</div>
-          <SegmentedTwo
+          <SegmentedSlider
             value={setOutputMode === 'individual' ? 'left' : 'right'}
             onChange={(v) => {
               const next = v === 'left' ? 'individual' : 'integrated';
@@ -114,12 +66,12 @@ export function SetNodeSettings({
         </div>
       </div>
 
-      {/* 第二行：Process Items */}
-      {!hasInputEdges && (
+      {/* Process Items - hidden for media-set */}
+      {!isMediaSet && !hasInputEdges && (
         <div className="flex items-start gap-4" aria-disabled={disableProcessControls}>
           <div className="flex flex-col gap-1 min-w-[240px]">
             <div className="text-[10px] text-muted-foreground">Process Items</div>
-            <SegmentedTwo
+            <SegmentedSlider
               value={processLimitMode === 'all' ? 'left' : 'right'}
               onChange={(v) => setData('processLimitMode', v === 'left' ? 'all' : 'limited')}
               left="Process All"
