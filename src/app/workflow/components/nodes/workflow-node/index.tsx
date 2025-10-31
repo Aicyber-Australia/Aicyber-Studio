@@ -125,6 +125,10 @@ function WorkflowNode({
   const [settingsAnchor, setSettingsAnchor] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
   const openSettings = useCallback(() => {
+    if (isSettingsOpen) {
+      setIsSettingsOpen(false);
+      return;
+    }
     setIsSettingsOpen(true);
     // Compute anchor rect relative to viewport
     const el = containerRef.current;
@@ -134,7 +138,7 @@ function WorkflowNode({
     } else {
       setSettingsAnchor(null);
     }
-  }, []);
+  }, [isSettingsOpen]);
 
   return (
     <div className="relative" ref={containerRef}>

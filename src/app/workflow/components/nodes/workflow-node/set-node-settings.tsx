@@ -133,7 +133,7 @@ export function SetNodeSettings({
                     const v = parseInt(e.target.value || '1', 10);
                     setData('processLimit', isNaN(v) ? 1 : v);
                   }}
-                  className="h-7 text-xs nodrag"
+                  className="h-7 text-xs nodrag w-16 flex-none text-center"
                 />
                 <span className="text-[10px] text-muted-foreground whitespace-nowrap">/ {Math.max(listLen, 1)}</span>
               </div>
