@@ -11,15 +11,24 @@ function SegmentedTwo({
   left,
   right,
   className,
+  disabled,
 }: {
   value: 'left' | 'right';
   onChange: (v: 'left' | 'right') => void;
   left: string;
   right: string;
   className?: string;
+  disabled?: boolean;
 }) {
   return (
-    <div className={("relative flex w-[200px] items-center rounded-md border p-1 box-border " + (className || ''))}>
+    <div
+      className={
+        "relative flex w-[200px] items-center rounded-md border p-1 box-border " +
+        (disabled ? " opacity-60 pointer-events-none " : " ") +
+        (className || '')
+      }
+      aria-disabled={disabled}
+    >
       <div
         className="absolute left-1 top-1 bottom-1 w-1/2 bg-gray-200 dark:bg-gray-700 rounded transition-transform duration-200"
         style={{ transform: value === 'left' ? 'translateX(0%)' : 'translateX(100%)' }}
@@ -86,7 +95,14 @@ export function SetNodeSettings({
           <div className="text-[10px] text-muted-foreground">Output Mode</div>
           <SegmentedTwo
             value={setOutputMode === 'individual' ? 'left' : 'right'}
-            onChange={(v) => setData('setOutputMode', v === 'left' ? 'individual' : 'integrated')}
+            onChange={(v) => {
+              const next = v === 'left' ? 'individual' : 'integrated';
+              setData('setOutputMode', next);
+              // Lock process to ALL when integrated
+              if (next === 'integrated' && processLimitMode !== 'all') {
+                setData('processLimitMode', 'all');
+              }
+            }}
             left="Individual"
             right="Integrated"
           />
@@ -103,6 +119,7 @@ export function SetNodeSettings({
               onChange={(v) => setData('processLimitMode', v === 'left' ? 'all' : 'limited')}
               left="Process All"
               right="First N"
+              disabled={disableProcessControls}
             />
             {!disableProcessControls && processLimitMode === 'limited' && (
               <div className="flex items-center gap-2 mt-1">

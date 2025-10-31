@@ -100,7 +100,7 @@ export function NodeSettingsDialog({
       <div
         ref={dialogRef}
         className="absolute rounded-lg border bg-white shadow-lg dark:bg-gray-900 dark:border-gray-800 box-border"
-        style={{ left: position.x, top: position.y, width: 'min(90vw, 300px)', height: '360px' }}
+        style={{ left: position.x, top: position.y, width: 'min(90vw, 260px)', height: '240px' }}
       >
         {/* Header (draggable handle) */}
         <div
