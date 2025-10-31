@@ -556,7 +556,7 @@ export default function Workflow() {
         <WorkflowControls />
         <FlowContextMenu />
         {/* <DebugPanel /> */}
-        <MiniMap  />
+        <MiniMap nodeStrokeWidth={3} />
       </ReactFlow>
 
       {/* Floating Mode Toolbar */}

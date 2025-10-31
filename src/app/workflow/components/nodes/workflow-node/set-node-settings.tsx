@@ -23,14 +23,14 @@ function SegmentedTwo({
   return (
     <div
       className={
-        "relative flex w-[220px] items-center rounded-md border p-1 box-border " +
+        "relative flex w-[220px] items-center rounded-md border p-1 box-border overflow-hidden " +
         (disabled ? " opacity-60 pointer-events-none " : " ") +
         (className || '')
       }
       aria-disabled={disabled}
     >
       <div
-        className="absolute left-1 top-1 bottom-1 w-1/2 bg-gray-200 dark:bg-gray-700 rounded transition-transform duration-200"
+        className="absolute left-1 top-1 bottom-1 w-1/2 bg-gray-200 dark:bg-gray-700 rounded transition-transform duration-200 will-change-transform"
         style={{ transform: value === 'left' ? 'translateX(0%)' : 'translateX(100%)' }}
       />
       <button
