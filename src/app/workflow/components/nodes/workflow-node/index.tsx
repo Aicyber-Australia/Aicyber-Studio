@@ -118,7 +118,7 @@ function WorkflowNode({
               </BaseNodeHeaderTitle>
             </div>
           </div>
-          <div className="w-2/3 h-px bg-gray-200 dark:bg-gray-700 -ml-3 self-start"></div>
+          <div className="w-2/3 h-px bg-gray-200 dark:bg-gray-700 ml-1 self-start"></div>
           {/* Second layer: Toolbar buttons */}
           <div className="flex items-center justify-between w-full px-0.5 pt-1 min-h-[10px]">
             <div className="flex items-center gap-2 flex-shrink-0">
@@ -141,7 +141,7 @@ function WorkflowNode({
                 className={cn(
                   "nodrag h-7 w-7 transition-colors",
                   hasBreakpoint 
-                    ? "bg-gray-200 dark:bg-gray-700 shadow-md hover:bg-gray-300 dark:hover:bg-gray-600" 
+                    ? "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600" 
                     : "bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700"
                 )}
                 onClick={handleBreakpointToggle}
@@ -155,7 +155,7 @@ function WorkflowNode({
                 className={cn(
                   "nodrag h-7 w-7 transition-colors",
                   isImageUpActive 
-                    ? "bg-gray-200 dark:bg-gray-700 shadow-md hover:bg-gray-300 dark:hover:bg-gray-600" 
+                    ? "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600" 
                     : "bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700"
                 )}
                 onClick={handleImageUpToggle}

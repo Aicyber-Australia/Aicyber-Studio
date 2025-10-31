@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useReactFlow } from '@xyflow/react';
+import { FilePlus2 } from 'lucide-react';
 import { WorkflowNodeProps } from '@/app/workflow/components/nodes';
 import { nodesConfig } from '@/app/workflow/config';
 import { NodeHandle } from '@/app/workflow/components/nodes/workflow-node/node-handle';
@@ -153,7 +154,10 @@ function VideoFrame({ id, data, selected }: WorkflowNodeProps) {
           ) : videoError ? (
             <div className="text-red-500 text-xs text-center">加载失败</div>
           ) : (
-            <div className="text-gray-500 text-xs text-center">点击上传</div>
+            <div className="flex flex-col items-center justify-center gap-2" title="click to add file">
+              <FilePlus2 className="w-8 h-8 text-gray-400" />
+              <span className="text-gray-500 text-xs">click to add file</span>
+            </div>
           )}
         </div>
 
