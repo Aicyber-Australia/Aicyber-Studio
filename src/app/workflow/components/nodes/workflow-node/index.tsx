@@ -272,7 +272,8 @@ function WorkflowNode({
               <SquareX className="w-4 h-4" />
             </button>
           </div>
-          <div className="p-4 h-[300px] overflow-auto space-y-4">
+          <div className="p-4 h-[300px] overflow-auto space-y-4 bg-gray-50 dark:bg-gray-900">
+
             <SetNodeSettings nodeId={id} nodeType={nodeType} data={data} />
           </div>
         </div>

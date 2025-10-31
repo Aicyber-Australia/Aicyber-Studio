@@ -23,20 +23,24 @@ function SegmentedTwo({
   return (
     <div
       className={
-        "relative flex w-[220px] items-center rounded-md border p-1 box-border overflow-hidden " +
+        "relative flex w-[220px] items-center rounded-md border p-1 box-border overflow-hidden bg-gray-50 dark:bg-gray-800 " +
         (disabled ? " opacity-60 pointer-events-none " : " ") +
         (className || '')
       }
       aria-disabled={disabled}
     >
       <div
-        className="absolute left-1 top-1 bottom-1 w-1/2 bg-gray-200 dark:bg-gray-700 rounded transition-transform duration-200 will-change-transform"
-        style={{ transform: value === 'left' ? 'translateX(0%)' : 'translateX(100%)' }}
+        className="absolute left-1 top-1 bottom-1 rounded transition-transform duration-200 ease-out"
+        style={{ 
+          width: 'calc(50% - 4px)',
+          transform: value === 'left' ? 'translateX(0%)' : 'translateX(calc(100% + 4px))',
+          backgroundColor: 'rgb(229 231 235)',
+        }}
       />
       <button
         type="button"
-        className={`relative z-10 flex-1 text-center px-3 py-1.5 text-xs rounded-md whitespace-nowrap ${
-          value === 'left' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-300'
+        className={`relative z-10 flex-1 text-center px-3 py-1.5 text-xs rounded-md whitespace-nowrap transition-colors ${
+          value === 'left' ? 'text-gray-900 dark:text-gray-100 font-semibold' : 'text-gray-500 dark:text-gray-400'
         }`}
         onClick={() => onChange('left')}
       >
@@ -44,8 +48,8 @@ function SegmentedTwo({
       </button>
       <button
         type="button"
-        className={`relative z-10 flex-1 text-center px-3 py-1.5 text-xs rounded-md whitespace-nowrap ${
-          value === 'right' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-300'
+        className={`relative z-10 flex-1 text-center px-3 py-1.5 text-xs rounded-md whitespace-nowrap transition-colors ${
+          value === 'right' ? 'text-gray-900 dark:text-gray-100 font-semibold' : 'text-gray-500 dark:text-gray-400'
         }`}
         onClick={() => onChange('right')}
       >
