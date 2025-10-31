@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Trash, Trash2, RotateCcw, OctagonMinus, Play, Square, HelpCircle, ImageUp, Menu } from 'lucide-react';
+import { Trash, Trash2, RotateCcw, OctagonMinus, Play, Square, HelpCircle, ImageUp, Menu, SquareX } from 'lucide-react';
 import { NodeResizer, useReactFlow } from '@xyflow/react';
 
 import { Button } from '@/components/ui/button';
@@ -16,9 +16,7 @@ import {
 } from '@/components/base-node';
 import { NodeStatusIndicator } from '@/components/node-status-indicator';
 import { IMAGE_NODE_SIZE, TEXT_NODE_SIZE, ACTION_NODE_SIZE, NODE_SET_SIZE, NODE_SIZE } from '@/app/workflow/config';
-
-// import { NodeSettingsDialog } from './node-settings-dialog'; // replaced by canvas settings-node
-// import { SetNodeSettings } from './set-node-settings'; // now used inside settings-node component
+import { SetNodeSettings } from './set-node-settings';
 
 // This is an example of how to implement the WorkflowNode component. All the nodes in the Workflow Builder example
 // are variations on this CustomNode defined in the index.tsx file.
@@ -123,72 +121,9 @@ function WorkflowNode({
 
   const containerRef = React.useRef<HTMLDivElement>(null);
 
-  const settingsNodeId = `settings-${id}`;
-
-  const createOrUpdateSettingsNode = useCallback(() => {
-    const currentNode = getNode(id);
-    if (!currentNode) return;
-    
-    const gap = 24; // reserve handle space and avoid overlap
-    const settingsX = (currentNode.position?.x || 0) + (currentNode.width || minSize.width) + gap;
-    const settingsY = currentNode.position?.y || 0;
-
-    setNodes((nodes) => {
-      const base = nodes.filter((n) => n.id !== settingsNodeId);
-      const position = { x: settingsX, y: settingsY };
-      const settingsNode = {
-        id: settingsNodeId,
-        type: 'settings-node',
-        position,
-        data: {
-          targetId: id,
-          targetType: nodeType,
-          targetData: data,
-          title: `Node Settings - ${data?.title || 'Untitled'}`,
-          onClose: () => {
-            setIsSettingsOpen(false);
-            setNodes((ns) => ns.filter((n) => n.id !== settingsNodeId));
-          },
-        },
-        draggable: false,
-        selectable: true,
-        width: 260,
-        height: 360,
-        zIndex: 10000,
-        style: { zIndex: 10000, pointerEvents: 'auto' },
-      } as any;
-
-      return [...base, settingsNode];
-    });
-  }, [data, id, nodeType, getNode, minSize.width, setNodes, settingsNodeId]);
-
-  const removeSettingsNode = useCallback(() => {
-    setNodes((ns) => ns.filter((n) => n.id !== settingsNodeId));
-  }, [setNodes]);
-
-  const openSettings = useCallback(() => {
-    if (isSettingsOpen) {
-      setIsSettingsOpen(false);
-      removeSettingsNode();
-      return;
-    }
-    setIsSettingsOpen(true);
-    createOrUpdateSettingsNode();
-  }, [isSettingsOpen, createOrUpdateSettingsNode, removeSettingsNode]);
-
-  // Keep settings node anchored to the right of this node when position/size changes
-  React.useEffect(() => {
-    if (!isSettingsOpen) return;
-    createOrUpdateSettingsNode();
-  }, [isSettingsOpen, data?.title, createOrUpdateSettingsNode]);
-
-  // Also update when this node's position changes (via React Flow internals)
-  React.useEffect(() => {
-    if (!isSettingsOpen) return;
-    const currentNode = getNode(id);
-    if (!currentNode) return;
-    createOrUpdateSettingsNode();
-  }, [isSettingsOpen, getNode(id)?.position?.x, getNode(id)?.position?.y, getNode(id)?.width, getNode(id)?.height, createOrUpdateSettingsNode]);
+  const toggleSettings = useCallback(() => {
+    setIsSettingsOpen((prev) => !prev);
+  }, []);
 
   return (
     <div className="relative" ref={containerRef}>
@@ -306,7 +241,7 @@ function WorkflowNode({
                       : "bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700"
                   )}
                   title="Menu"
-                  onClick={openSettings}
+                  onClick={toggleSettings}
                 >
                   <Menu className="h-4 w-4" />
                 </Button>
@@ -319,6 +254,29 @@ function WorkflowNode({
         </div>
         </BaseNode>
       </NodeStatusIndicator>
+
+      {/* Settings panel - positioned absolutely to the right of node */}
+      {isSettingsOpen && isSetNode && (
+        <div 
+          className="absolute top-0 left-full ml-6 w-[260px] rounded-lg border bg-white shadow-lg dark:bg-gray-900 dark:border-gray-800 z-[10000] nodrag"
+          style={{ pointerEvents: 'auto' }}
+        >
+          <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-gray-200 dark:border-gray-800 select-none">
+            <div className="text-base font-semibold">Node Settings - {data?.title || 'Untitled'}</div>
+            <button
+              type="button"
+              className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+              onClick={toggleSettings}
+              title="Close"
+            >
+              <SquareX className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="p-4 h-[300px] overflow-auto space-y-4">
+            <SetNodeSettings nodeId={id} nodeType={nodeType} data={data} />
+          </div>
+        </div>
+      )}
 
       {/* Delete confirmation modal (English) - rendered via portal */}
       {isDeleteDialogOpen && createPortal(
