@@ -462,6 +462,7 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
           {/* 混合媒体显示区域 */}
           <div
             className="nodrag nopan nowheel w-full h-full border-2 border-dashed border-gray-300 rounded-lg overflow-auto hover:border-gray-400 transition-colors relative"
+            style={{ minHeight: mediaList.length > 0 ? undefined : 220 }}
             onWheel={(e) => e.stopPropagation()}
           >
             {mediaList.length > 0 ? (
@@ -626,32 +627,38 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
                 )}
               </>
             ) : (
-              <div className="text-gray-500 text-xs text-center flex flex-col items-center justify-center h-full gap-2">
-                <Plus className="w-8 h-8 text-gray-400" />
-                <div>Add images, videos or text</div>
-                <div className="text-xs mt-1">Mixed media support</div>
-                <div className="flex gap-2 mt-2">
-                  <button
-                    onClick={() => document.getElementById(`image-upload-${id}`)?.click()}
-                    className="nodrag px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-xs"
-                    draggable={false}
-                  >
-                    Add Image
-                  </button>
-                  <button
-                    onClick={() => document.getElementById(`video-upload-${id}`)?.click()}
-                    className="nodrag px-3 py-1 bg-purple-500 text-white rounded-md hover:bg-purple-600 transition-colors text-xs"
-                    draggable={false}
-                  >
-                    Add Video
-                  </button>
-                  <button
-                    onClick={handleAddText}
-                    className="nodrag px-3 py-1 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors text-xs"
-                    draggable={false}
-                  >
-                    Add Text
-                  </button>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-gray-500 text-xs text-center flex flex-col items-center justify-center gap-3">
+                  <div className="flex items-center gap-0">
+                    <button
+                      onClick={() => document.getElementById(`image-upload-${id}`)?.click()}
+                      className="nodrag p-4 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors rounded-md group"
+                      title="Add Image"
+                      draggable={false}
+                    >
+                      <ImagePlus className="w-12 h-12 text-gray-500 dark:text-gray-400 transition-colors group-hover:text-gray-700 dark:group-hover:text-gray-300" />
+                    </button>
+                    <div className="w-px h-10 bg-gray-300 dark:bg-gray-600"></div>
+                    <button
+                      onClick={() => document.getElementById(`video-upload-${id}`)?.click()}
+                      className="nodrag p-4 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors rounded-md group"
+                      title="Add Video"
+                      draggable={false}
+                    >
+                      <FileVideo className="w-12 h-12 text-gray-500 dark:text-gray-400 transition-colors group-hover:text-gray-700 dark:group-hover:text-gray-300" />
+                    </button>
+                    <div className="w-px h-10 bg-gray-300 dark:bg-gray-600"></div>
+                    <button
+                      onClick={handleAddText}
+                      className="nodrag p-4 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors rounded-md group"
+                      title="Add Text"
+                      draggable={false}
+                    >
+                      <FileText className="w-12 h-12 text-gray-500 dark:text-gray-400 transition-colors group-hover:text-gray-700 dark:group-hover:text-gray-300" />
+                    </button>
+                  </div>
+                  <div>Add images, videos or text</div>
+                  <div className="text-[10px] text-gray-400">Mixed media support</div>
                 </div>
               </div>
             )}
