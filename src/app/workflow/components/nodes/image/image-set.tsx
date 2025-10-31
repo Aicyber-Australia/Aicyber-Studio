@@ -6,7 +6,7 @@ import { WorkflowNodeProps } from '@/app/workflow/components/nodes';
 import { nodesConfig } from '@/app/workflow/config';
 import { NodeHandle } from '@/app/workflow/components/nodes/workflow-node/node-handle';
 import WorkflowNode from '@/app/workflow/components/nodes/workflow-node';
-import { Eye, Trash2, FolderOpen, ArrowRightFromLine, ArrowBigRightDash } from 'lucide-react';
+import { Eye, Trash2, FolderOpen, ArrowRightFromLine, ArrowBigRightDash, GalleryHorizontalEnd, BetweenHorizontalStart } from 'lucide-react';
 import { ImagePreviewDialog } from './image-preview-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
@@ -281,37 +281,50 @@ function ImageSet({ id, data, selected }: WorkflowNodeProps) {
               </div>
             </div>
 
-            {/* Process Limit Selection - Only shown when no input edges */}
+            {/* Process Items - Only shown when no input edges */}
             {!hasInputEdges && (
-            <div className="nodrag flex-shrink-0 space-y-1.5">
-              <div className="text-[10px] text-muted-foreground">Process Items</div>
-              <Select value={processLimitMode} onValueChange={handleProcessLimitModeChange}>
-                <SelectTrigger className="h-7 text-xs nodrag">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="nodrag">
-                  <SelectItem value="all" className="text-xs">Process All</SelectItem>
-                  <SelectItem value="limited" className="text-xs">Process First N</SelectItem>
-                </SelectContent>
-              </Select>
-              {processLimitMode === 'limited' && (
-                <div className="flex items-center gap-2">
-                  <label htmlFor={`process-limit-${id}`} className="text-[10px] text-muted-foreground whitespace-nowrap">
-                    Limit:
-                  </label>
-                  <Input
-                    id={`process-limit-${id}`}
-                    type="number"
-                    min="1"
-                    max={maxLimit}
-                    value={processLimit}
-                    onChange={(e) => handleProcessLimitChange(parseInt(e.target.value) || 1)}
-                    className="h-7 text-xs nodrag"
+              <div className="nodrag flex-shrink-0 space-y-1.5">
+                <div className="text-[10px] text-muted-foreground">Process Items</div>
+                <div className="relative flex w-[84px] items-center rounded-md border p-1 box-border overflow-hidden bg-white dark:bg-gray-800">
+                  <div
+                    className="absolute top-1 bottom-1 rounded transition-all duration-200 ease-in-out"
+                    style={{ width: 'calc(50% - 4px)', left: processLimitMode === 'all' ? '2px' : 'calc(50% + 2px)', backgroundColor: 'rgb(243 244 246)' }}
                   />
-                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">/ {maxLimit}</span>
+                  <button
+                    type="button"
+                    className={`relative z-10 flex-1 flex items-center justify-center h-7 w-7 rounded-md ${processLimitMode === 'all' ? 'text-gray-900' : 'text-gray-500'}`}
+                    title="Process All"
+                    onClick={() => handleProcessLimitModeChange('all')}
+                  >
+                    <GalleryHorizontalEnd className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    className={`relative z-10 flex-1 flex items-center justify-center h-7 w-7 rounded-md ${processLimitMode === 'limited' ? 'text-gray-900' : 'text-gray-500'}`}
+                    title="First N"
+                    onClick={() => handleProcessLimitModeChange('limited')}
+                  >
+                    <BetweenHorizontalStart className="h-3.5 w-3.5" />
+                  </button>
                 </div>
-              )}
-            </div>
+                {processLimitMode === 'limited' && (
+                  <div className="flex items-center gap-2">
+                    <label htmlFor={`process-limit-${id}`} className="text-[10px] text-muted-foreground whitespace-nowrap">
+                      Limit:
+                    </label>
+                    <Input
+                      id={`process-limit-${id}`}
+                      type="number"
+                      min="1"
+                      max={maxLimit}
+                      value={processLimit}
+                      onChange={(e) => handleProcessLimitChange(parseInt(e.target.value) || 1)}
+                      className="h-7 text-xs nodrag"
+                    />
+                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">/ {maxLimit}</span>
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
