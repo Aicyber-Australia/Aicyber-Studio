@@ -310,36 +310,32 @@ function ImageSet({ id, data, selected }: WorkflowNodeProps) {
               </div>
             )}
 
-            {/* Limit column */}
-            {!hasInputEdges && (
+            {/* Limit column - only when First N */}
+            {!hasInputEdges && processLimitMode === 'limited' && (
               <div className="nodrag flex-shrink-0 w-[84px]">
-                <div className="text-[10px] text-muted-foreground mb-1">Limit</div>
-                {processLimitMode === 'limited' ? (
-                  <>
-                    <div className="inline-flex items-center justify-between gap-1 w-[84px] h-7 border rounded bg-white dark:bg-gray-800 px-1">
-                      <button
-                        type="button"
-                        className="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-gray-700"
-                        onClick={() => handleProcessLimitChange(Math.max(1, (processLimit || 1) - 1))}
-                        title="Decrease"
-                      >
-                        −
-                      </button>
-                      <span className="text-xs w-6 text-center select-none">{processLimit}</span>
-                      <button
-                        type="button"
-                        className="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-gray-700"
-                        onClick={() => handleProcessLimitChange(Math.min(maxLimit, (processLimit || 1) + 1))}
-                        title="Increase"
-                      >
-                        +
-                      </button>
-                    </div>
-                    <div className="text-[10px] text-muted-foreground mt-0.5 text-center">/ {maxLimit}</div>
-                  </>
-                ) : (
-                  <div className="h-7" />
-                )}
+                <div className="flex items-center justify-between mb-1">
+                  <div className="text-[10px] text-muted-foreground">Limit</div>
+                  <span className="text-[10px] text-muted-foreground">/ {maxLimit}</span>
+                </div>
+                <div className="inline-flex items-center justify-between gap-1 w-[84px] h-7 border rounded bg-white dark:bg-gray-800 px-1">
+                  <button
+                    type="button"
+                    className="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                    onClick={() => handleProcessLimitChange(Math.max(1, (processLimit || 1) - 1))}
+                    title="Decrease"
+                  >
+                    −
+                  </button>
+                  <span className="text-xs w-6 text-center select-none">{processLimit}</span>
+                  <button
+                    type="button"
+                    className="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                    onClick={() => handleProcessLimitChange(Math.min(maxLimit, (processLimit || 1) + 1))}
+                    title="Increase"
+                  >
+                    +
+                  </button>
+                </div>
               </div>
             )}
           </div>
