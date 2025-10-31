@@ -262,7 +262,7 @@ function WorkflowNode({
           style={{ pointerEvents: 'auto' }}
         >
           <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-gray-200 dark:border-gray-800 select-none">
-            <div className="text-base font-semibold">Node Settings - {data?.title || 'Untitled'}</div>
+            <div className="text-sm font-normal">Node Settings - {data?.title || 'Untitled'}</div>
             <button
               type="button"
               className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -272,7 +272,7 @@ function WorkflowNode({
               <SquareX className="w-4 h-4" />
             </button>
           </div>
-          <div className="p-4 h-[300px] overflow-auto space-y-4 bg-gray-50 dark:bg-gray-900">
+          <div className="p-4 h-[240px] overflow-auto space-y-4 bg-gray-50 dark:bg-gray-900">
 
             <SetNodeSettings nodeId={id} nodeType={nodeType} data={data} />
           </div>

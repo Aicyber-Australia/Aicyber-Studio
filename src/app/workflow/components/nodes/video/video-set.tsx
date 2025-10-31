@@ -6,7 +6,7 @@ import { WorkflowNodeProps } from '@/app/workflow/components/nodes';
 import { nodesConfig } from '@/app/workflow/config';
 import { NodeHandle } from '@/app/workflow/components/nodes/workflow-node/node-handle';
 import WorkflowNode from '@/app/workflow/components/nodes/workflow-node';
-import { Eye, Trash2, FolderOpen } from 'lucide-react';
+import { Eye, Trash2, FolderOpen, ArrowRightFromLine, ArrowBigRightDash } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { uploadFileToStorage } from '@/app/workflow/utils/upload-to-storage';
@@ -233,18 +233,31 @@ function VideoSet({ id, data, selected }: WorkflowNodeProps) {
         <div className="w-full flex-1 flex flex-col p-3 min-h-0 nodrag space-y-2">
           {/* Output + Process controls in one row */}
           <div className="nodrag flex items-start gap-4 flex-shrink-0">
-            {/* Output Mode Selection */}
+            {/* Output Mode - icon segmented */}
             <div className="nodrag flex-shrink-0">
-            <div className="text-[10px] text-muted-foreground mb-1">Output Mode</div>
-            <Select value={setOutputMode} onValueChange={handleSetOutputModeChange}>
-              <SelectTrigger className="h-7 text-xs nodrag">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="nodrag">
-                <SelectItem value="individual" className="text-xs">Individual</SelectItem>
-                <SelectItem value="integrated" className="text-xs">Integrated</SelectItem>
-              </SelectContent>
-            </Select>
+              <div className="text-[10px] text-muted-foreground mb-1">Output Mode</div>
+              <div className="relative flex w-[84px] items-center rounded-md border p-1 box-border overflow-hidden bg-white dark:bg-gray-800">
+                <div
+                  className="absolute top-1 bottom-1 rounded transition-all duration-200 ease-in-out"
+                  style={{ width: 'calc(50% - 4px)', left: setOutputMode === 'individual' ? '2px' : 'calc(50% + 2px)', backgroundColor: 'rgb(243 244 246)' }}
+                />
+                <button
+                  type="button"
+                  className={`relative z-10 flex-1 flex items-center justify-center h-7 w-7 rounded-md ${setOutputMode === 'individual' ? 'text-gray-900' : 'text-gray-500'}`}
+                  title="Individual"
+                  onClick={() => handleSetOutputModeChange('individual')}
+                >
+                  <ArrowRightFromLine className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  className={`relative z-10 flex-1 flex items-center justify-center h-7 w-7 rounded-md ${setOutputMode === 'integrated' ? 'text-gray-900' : 'text-gray-500'}`}
+                  title="Integrated"
+                  onClick={() => handleSetOutputModeChange('integrated')}
+                >
+                  <ArrowBigRightDash className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
 
             {/* Process Limit Selection - Only shown when no input edges */}
