@@ -231,10 +231,10 @@ function VideoSet({ id, data, selected }: WorkflowNodeProps) {
     <>
       <WorkflowNode id={id} data={data} type="video-set" onRefresh={handleRefresh} selected={selected}>
         <div className="w-full flex-1 flex flex-col p-3 min-h-0 nodrag space-y-2">
-          {/* Output + Process controls in one row */}
-          <div className="nodrag flex items-start gap-4 flex-shrink-0">
+          {/* Output + Process + Limit aligned */}
+          <div className="nodrag grid grid-cols-3 items-start gap-4 flex-shrink-0">
             {/* Output Mode - icon segmented */}
-            <div className="nodrag flex-shrink-0">
+            <div className="nodrag flex-shrink-0 w-[120px]">
               <div className="text-[10px] text-muted-foreground mb-1">Output Mode</div>
               <div className="relative flex w-[84px] items-center rounded-md border p-1 box-border overflow-hidden bg-white dark:bg-gray-800">
                 <div
@@ -247,7 +247,7 @@ function VideoSet({ id, data, selected }: WorkflowNodeProps) {
                   title="Individual"
                   onClick={() => handleSetOutputModeChange('individual')}
                 >
-                  <ArrowRightFromLine className="h-3.5 w-3.5" />
+                  <ArrowRightFromLine className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
@@ -255,15 +255,15 @@ function VideoSet({ id, data, selected }: WorkflowNodeProps) {
                   title="Integrated"
                   onClick={() => handleSetOutputModeChange('integrated')}
                 >
-                  <ArrowBigRightDash className="h-3.5 w-3.5" />
+                  <ArrowBigRightDash className="h-4 w-4" />
                 </button>
               </div>
             </div>
 
             {/* Process Items - Only shown when no input edges */}
             {!hasInputEdges && (
-              <div className="nodrag flex-shrink-0 space-y-1.5">
-                <div className="text-[10px] text-muted-foreground">Process Items</div>
+              <div className="nodrag flex-shrink-0 w-[120px]">
+                <div className="text-[10px] text-muted-foreground mb-1">Process Items</div>
                 <div className="relative flex w-[84px] items-center rounded-md border p-1 box-border overflow-hidden bg-white dark:bg-gray-800">
                   <div
                     className="absolute top-1 bottom-1 rounded transition-all duration-200 ease-in-out"
@@ -286,22 +286,38 @@ function VideoSet({ id, data, selected }: WorkflowNodeProps) {
                     <BetweenHorizontalStart className="h-3.5 w-3.5" />
                   </button>
                 </div>
-                {processLimitMode === 'limited' && (
-                  <div className="flex items-center gap-2">
-                    <label htmlFor={`process-limit-${id}`} className="text-[10px] text-muted-foreground whitespace-nowrap">
-                      Limit:
-                    </label>
-                    <Input
-                      id={`process-limit-${id}`}
-                      type="number"
-                      min="1"
-                      max={maxLimit}
-                      value={processLimit}
-                      onChange={(e) => handleProcessLimitChange(parseInt(e.target.value) || 1)}
-                      className="h-7 text-xs nodrag"
-                    />
-                    <span className="text-[10px] text-muted-foreground whitespace-nowrap">/ {maxLimit}</span>
-                  </div>
+              </div>
+            )}
+
+            {/* Limit column */}
+            {!hasInputEdges && (
+              <div className="nodrag flex-shrink-0 w-[84px]">
+                <div className="text-[10px] text-muted-foreground mb-1">Limit</div>
+                {processLimitMode === 'limited' ? (
+                  <>
+                    <div className="inline-flex items-center justify-between gap-1 w-[84px] h-7 border rounded bg-white dark:bg-gray-800 px-1">
+                      <button
+                        type="button"
+                        className="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                        onClick={() => handleProcessLimitChange(Math.max(1, (processLimit || 1) - 1))}
+                        title="Decrease"
+                      >
+                        −
+                      </button>
+                      <span className="text-xs w-6 text-center select-none">{processLimit}</span>
+                      <button
+                        type="button"
+                        className="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                        onClick={() => handleProcessLimitChange(Math.min(maxLimit, (processLimit || 1) + 1))}
+                        title="Increase"
+                      >
+                        +
+                      </button>
+                    </div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5 text-center">/ {maxLimit}</div>
+                  </>
+                ) : (
+                  <div className="h-7" />
                 )}
               </div>
             )}
