@@ -275,6 +275,7 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                 Template
               </span>
               <div className="h-px bg-gray-200 flex-1" />
+              
             </div>
             
             {/* Template items - 长方形卡片布局 */}
