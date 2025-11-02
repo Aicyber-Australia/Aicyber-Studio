@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useCallback, useState, useMemo, useEffect } from 'react';
-import { Play, Trash, RotateCcw, CheckCircle2, XCircle, ChevronDown, ChevronUp, Download, PauseCircle } from 'lucide-react';
+import { Play, Trash, Trash2, Square, RotateCcw, CheckCircle2, XCircle, ChevronDown, ChevronUp, Download, OctagonMinus } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import {
   Select,
   SelectContent,
@@ -25,6 +26,7 @@ import {
 import { NodeStatusIndicator } from '@/components/node-status-indicator';
 import { ACTION_NODE_SIZE } from '@/app/workflow/config';
 import { getExecutionCount } from '@/app/workflow/runners/media-set-utils';
+import { iconMapping } from '@/app/workflow/utils/icon-mapping';
 
 // Available models for selection - Image-to-Image models
 const IMAGE_TO_IMAGE_MODELS = [
@@ -47,7 +49,7 @@ interface ActionNodeBaseProps {
 }
 
 function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeBaseProps) {
-  const { runWorkflow } = useWorkflowRunner();
+  const { runWorkflow, stopWorkflow } = useWorkflowRunner();
   const removeNode = useAppStore((s) => s.removeNode);
   const addNode = useAppStore((s) => s.addNode);
   const { setNodes, getNode } = useReactFlow();
@@ -177,7 +179,13 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
     return DEFAULT_MODELS;
   }, [id, nodes]);
 
-  const onPlay = useCallback(() => runWorkflow(id), [id, runWorkflow]);
+  const onPlay = useCallback(() => {
+    if (data?.status === 'loading') {
+      stopWorkflow();
+    } else {
+      runWorkflow(id);
+    }
+  }, [id, runWorkflow, stopWorkflow, data?.status]);
   const onRemove = useCallback(() => removeNode(id), [id, removeNode]);
   const updateNodeData = useCallback((newData: Partial<WorkflowNodeData>) => {
     setNodes((nodes) =>
@@ -314,6 +322,12 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
   // Check if extraction is available
   const canExtract = canExtractMedia(data);
 
+  // Get icon component
+  const IconComponent = data?.icon ? iconMapping[data.icon] : undefined;
+
+  // Check if node is running
+  const isNodeRunning = data?.status === 'loading';
+
   return (
     <NodeStatusIndicator status={data?.status}>
       <NodeResizer
@@ -322,75 +336,118 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
         minWidth={ACTION_NODE_SIZE.width}
         minHeight={ACTION_NODE_SIZE.height}
       />
-      <BaseNode style={{ width: '100%', height: '100%' }}>
-        <BaseNodeHeader>
-          <BaseNodeHeaderTitle
-            editable
-            onTitleChange={handleTitleChange}
-            onEditingChange={setIsTitleEditing}
-          >
-            {data?.title || 'Action Node'}
-            {shouldShowExecutionCount && executionCount > 0 && (
-              <span className="ml-2 text-xs text-muted-foreground font-normal">
-                ({executionCount}x)
-              </span>
-            )}
-            {data?.executionMetadata && data.executionMetadata.errorCount > 0 && (
-              <span className="ml-2 text-xs text-red-500 font-normal">
-                ({data.executionMetadata.errorCount} errors)
-              </span>
-            )}
-          </BaseNodeHeaderTitle>
-          <div className="flex items-center gap-1" style={{ visibility: isTitleEditing ? 'hidden' : 'visible' }}>
-            {onRefresh && (
+      <BaseNode style={{ width: '100%', height: '100%', minWidth: 0, overflow: 'visible' }}>
+        <BaseNodeHeader className="flex-col gap-0 border-b border-gray-200 dark:border-gray-700 min-w-0">
+          {/* First layer: Icon, Node Name */}
+          <div className="flex items-center justify-between w-full px-0.5 pt-0 pb-0.5 min-h-[20px]">
+            <div className="flex items-center gap-1 flex-1 min-w-0">
+              {IconComponent ? <IconComponent aria-label={data?.icon} className="h-5 w-5 flex-shrink-0" /> : null}
+              <div className="relative flex-1 min-w-0">
+                <BaseNodeHeaderTitle
+                  editable
+                  onTitleChange={handleTitleChange}
+                  onEditingChange={setIsTitleEditing}
+                  className="flex-1 min-w-0"
+                >
+                  {data?.title || 'Action Node'}
+                  {shouldShowExecutionCount && executionCount > 0 && (
+                    <span className="ml-2 text-xs text-muted-foreground font-normal">
+                      ({executionCount}x)
+                    </span>
+                  )}
+                  {data?.executionMetadata && data.executionMetadata.errorCount > 0 && (
+                    <span className="ml-2 text-xs text-red-500 font-normal">
+                      ({data.executionMetadata.errorCount} errors)
+                    </span>
+                  )}
+                </BaseNodeHeaderTitle>
+              </div>
+            </div>
+          </div>
+          <div className="w-2/3 h-px bg-gray-200 dark:bg-gray-700 ml-1 self-start"></div>
+          {/* Second layer: Toolbar buttons */}
+          <div className="flex items-center justify-between w-full px-0.5 pt-1 min-h-[10px]" style={{ visibility: isTitleEditing ? 'hidden' : 'visible' }}>
+            <div className="flex items-center gap-2 flex-shrink-0">
               <Button
                 variant="ghost"
-                className="nodrag px-1!"
-                onClick={onRefresh}
-                title="刷新"
+                size="icon"
+                className="nodrag bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700 h-7 w-7 transition-colors"
+                onClick={onPlay}
+                title={isNodeRunning ? "Stop node execution" : "Run node"}
               >
-                <RotateCcw className="w-4 h-4" />
+                {isNodeRunning ? (
+                  <Square className="h-4 w-4" />
+                ) : (
+                  <Play className="h-4 w-4" />
+                )}
               </Button>
-            )}
-            <Button
-              variant="ghost"
-              className="nodrag px-1!"
-              onClick={handleExtractMedia}
-              disabled={!canExtract}
-              title={canExtract ? "Extract media to new node" : "Complete execution to extract media"}
-            >
-              <Download className={`w-4 h-4 ${canExtract ? 'text-green-500' : 'text-gray-400'}`} />
-            </Button>
-            <Button
-              variant="ghost"
-              className="nodrag px-1!"
-              onClick={onReset}
-              title="重置节点"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              className="nodrag px-1!"
-              onClick={handleBreakpointToggle}
-              title={hasBreakpoint ? "Remove breakpoint (workflow will pause after this node)" : "Add breakpoint"}
-            >
-              <PauseCircle className={`w-4 h-4 ${hasBreakpoint ? 'text-red-500' : 'text-gray-400'}`} />
-            </Button>
-            <Button variant="ghost" className="nodrag px-1!" onClick={onPlay}>
-              <Play className="stroke-blue-500 fill-blue-500" />
-            </Button>
-            <Button variant="ghost" className="nodrag px-1!" onClick={onRemove}>
-              <Trash />
-            </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "nodrag h-7 w-7 transition-colors",
+                  hasBreakpoint
+                    ? "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
+                    : "bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700"
+                )}
+                onClick={handleBreakpointToggle}
+                title={hasBreakpoint ? "Remove breakpoint (workflow will pause after this node)" : "Add breakpoint"}
+              >
+                <OctagonMinus className={`h-4 w-4 ${hasBreakpoint ? 'text-red-500' : 'text-black dark:text-black'}`} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "nodrag h-7 w-7 transition-colors",
+                  "bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700",
+                  !canExtract && "opacity-50 cursor-not-allowed"
+                )}
+                onClick={handleExtractMedia}
+                disabled={!canExtract}
+                title={canExtract ? "Extract media to new node" : "Complete execution to extract media"}
+              >
+                <Download className={`h-4 w-4 ${canExtract ? 'text-green-500' : 'text-gray-400'}`} />
+              </Button>
+              {onRefresh && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="nodrag bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700 h-7 w-7 transition-colors"
+                  onClick={onRefresh}
+                  title="刷新"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="nodrag bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700 h-7 w-7 transition-colors"
+                onClick={onReset}
+                title="重置节点"
+              >
+                <RotateCcw className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="group nodrag bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700 h-7 w-7 transition-colors"
+                onClick={onRemove}
+                title="Delete"
+              >
+                <Trash className="h-4 w-4 group-hover:hidden" />
+                <Trash2 className="h-4 w-4 hidden group-hover:block" />
+              </Button>
+            </div>
           </div>
         </BaseNodeHeader>
 
-        <BaseNodeContent className="flex-1 flex flex-col space-y-4">
+        <BaseNodeContent className="flex-1 flex flex-col space-y-4 min-w-0 bg-gray-50 dark:bg-gray-900">
           {/* Model Selection - Small expandable box */}
-          <div className="flex justify-start flex-shrink-0 nodrag">
+          <div className="flex justify-start flex-shrink-0 nodrag w-full min-w-0">
             <Select value={selectedModel} onValueChange={handleModelChange}>
-              <SelectTrigger className="w-full h-9">
+              <SelectTrigger className="w-1/2 h-9 rounded-full bg-white dark:bg-white">
                 <SelectValue placeholder="Select model:" />
               </SelectTrigger>
               <SelectContent>
@@ -404,9 +461,9 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
           </div>
 
           {/* Output Mode Selection */}
-          <div className="flex justify-start flex-shrink-0 nodrag">
+          <div className="flex justify-start flex-shrink-0 nodrag w-full min-w-0">
             <Select value={setOutputMode} onValueChange={handleSetOutputModeChange}>
-              <SelectTrigger className="w-full h-9">
+              <SelectTrigger className="w-full h-9 bg-white dark:bg-white">
                 <SelectValue placeholder="Output mode:" />
               </SelectTrigger>
               <SelectContent>
@@ -421,13 +478,13 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
           </div>
 
           {/* Execution Mode Selection */}
-          <div className="flex flex-col justify-start flex-shrink-0 nodrag space-y-1">
+          <div className="flex flex-col justify-start flex-shrink-0 nodrag space-y-1 w-full min-w-0">
             <Select
               value={executionMode}
               onValueChange={handleExecutionModeChange}
               disabled={setOutputMode === 'integrated' || isExecutionModeLocked}
             >
-              <SelectTrigger className="w-full h-9">
+              <SelectTrigger className="w-full h-9 bg-white dark:bg-white">
                 <SelectValue placeholder="Execution mode:" />
               </SelectTrigger>
               <SelectContent>
@@ -447,12 +504,12 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
           </div>
 
           {/* Large Text Input Area */}
-          <div className="flex-1 flex flex-col -mt-4 min-h-0 nodrag">
+          <div className="flex-1 flex flex-col -mt-4 min-h-0 nodrag w-full min-w-0">
             <textarea
               value={prompt}
               onChange={(e) => handlePromptChange(e.target.value)}
               placeholder="Enter your prompt here..."
-              className="w-full h-full p-3 border border-input rounded-md bg-transparent text-sm placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] outline-none resize-none"
+              className="w-full h-full p-3 border border-input rounded-md bg-white dark:bg-white text-sm placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] outline-none resize-none min-w-0"
             />
           </div>
 
