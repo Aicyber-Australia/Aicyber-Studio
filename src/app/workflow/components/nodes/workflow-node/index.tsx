@@ -46,6 +46,7 @@ function WorkflowNode({
 
   // Settings open state for menu button style
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isSettingsClosing, setIsSettingsClosing] = useState(false); // Track closing animation
 
   const isNodeRunning = data?.status === 'loading';
 
@@ -150,8 +151,19 @@ function WorkflowNode({
   const containerRef = React.useRef<HTMLDivElement>(null);
 
   const toggleSettings = useCallback(() => {
-    setIsSettingsOpen((prev) => !prev);
-  }, []);
+    if (isSettingsOpen && !isSettingsClosing) {
+      // Closing: trigger exit animation first
+      setIsSettingsClosing(true);
+      // Wait for animation to complete before actually closing
+      setTimeout(() => {
+        setIsSettingsOpen(false);
+        setIsSettingsClosing(false);
+      }, 250); // Slightly longer to ensure animation completes
+    } else if (!isSettingsOpen) {
+      // Opening: just open
+      setIsSettingsOpen(true);
+    }
+  }, [isSettingsOpen, isSettingsClosing]);
 
   return (
     <div className="relative w-full h-full" ref={containerRef}>
@@ -284,9 +296,9 @@ function WorkflowNode({
       </NodeStatusIndicator>
 
       {/* Settings panel - positioned absolutely to the right of node */}
-      {isSettingsOpen && (isSetNode || isActionNode || isFrameNode) && (
+      {(isSettingsOpen || isSettingsClosing) && (isSetNode || isActionNode || isFrameNode) && (
         <div 
-          className="absolute top-0 left-full ml-6 w-[280px] rounded-lg border bg-white shadow-lg dark:bg-gray-900 dark:border-gray-800 z-[10000] nodrag"
+          className={`${isSettingsClosing ? 'settings-panel-exit' : 'settings-panel-enter'} absolute top-0 left-full ml-6 w-[280px] rounded-lg border bg-white shadow-lg dark:bg-gray-900 dark:border-gray-800 z-[10000] nodrag`}
           style={{ pointerEvents: 'auto' }}
         >
           <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-gray-200 dark:border-gray-800 select-none">

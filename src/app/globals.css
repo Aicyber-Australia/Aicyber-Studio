@@ -220,6 +220,39 @@
   opacity: 1;
 }
 
+/* Settings panel fade-in animation */
+@keyframes settingsFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+/* Settings panel fade-out animation */
+@keyframes settingsFadeOut {
+  from {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-20px) scale(0.9);
+  }
+}
+
+.settings-panel-enter {
+  animation: settingsFadeIn 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.settings-panel-exit {
+  animation: settingsFadeOut 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  pointer-events: none; /* Disable interactions during exit */
+}
+
 .react-flow__node {
   transition: none !important;
 }

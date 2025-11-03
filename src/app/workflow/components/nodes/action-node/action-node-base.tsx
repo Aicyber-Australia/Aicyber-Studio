@@ -70,6 +70,7 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
   const [hasBreakpoint, setHasBreakpoint] = useState<boolean>(data?.hasBreakpoint || false);
   const [isImageUpActive, setIsImageUpActive] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isSettingsClosing, setIsSettingsClosing] = useState(false); // Track closing animation
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false); // State for delete confirmation dialog
   const [isExtensionCollapsed, setIsExtensionCollapsed] = useState<boolean>(true); // Extension panel collapsed state
 
@@ -331,8 +332,19 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
   }, []);
 
   const toggleSettings = useCallback(() => {
-    setIsSettingsOpen((prev) => !prev);
-  }, []);
+    if (isSettingsOpen && !isSettingsClosing) {
+      // Closing: trigger exit animation first
+      setIsSettingsClosing(true);
+      // Wait for animation to complete before actually closing
+      setTimeout(() => {
+        setIsSettingsOpen(false);
+        setIsSettingsClosing(false);
+      }, 250); // Slightly longer to ensure animation completes
+    } else if (!isSettingsOpen) {
+      // Opening: just open
+      setIsSettingsOpen(true);
+    }
+  }, [isSettingsOpen, isSettingsClosing]);
 
   // Helper to check if a response is an error
   const isError = (response: any): response is ApiExecutionError => {
@@ -793,9 +805,9 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
       </NodeStatusIndicator>
 
       {/* Settings panel - positioned absolutely to the right of node */}
-      {isSettingsOpen && (
+      {(isSettingsOpen || isSettingsClosing) && (
         <div 
-          className="absolute top-0 left-full ml-6 min-w-[280px] max-w-[400px] rounded-lg border bg-white shadow-lg dark:bg-gray-900 dark:border-gray-800 z-[10000] nodrag"
+          className={`${isSettingsClosing ? 'settings-panel-exit' : 'settings-panel-enter'} absolute top-0 left-full ml-6 min-w-[280px] max-w-[400px] rounded-lg border bg-white shadow-lg dark:bg-gray-900 dark:border-gray-800 z-[10000] nodrag`}
           style={{ pointerEvents: 'auto' }}
         >
           <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-gray-200 dark:border-gray-800 select-none">
