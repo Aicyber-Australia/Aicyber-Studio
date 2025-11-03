@@ -538,7 +538,7 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
           </div>
         </BaseNodeHeader>
 
-        <BaseNodeContent className="flex-1 flex flex-col space-y-4 min-w-0 bg-gray-50 dark:bg-gray-900 rounded-b-lg">
+        <BaseNodeContent className="flex-1 flex flex-col space-y-4 min-w-0 bg-gray-50 dark:bg-gray-900 rounded-b-lg border-b border-gray-200 dark:border-gray-700 shadow-sm">
           {/* Model Selection - Small expandable box */}
           <div className="flex flex-col justify-start flex-shrink-0 nodrag w-full min-w-0">
             <div className="text-[10px] text-muted-foreground mb-1">Model</div>
@@ -686,8 +686,8 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
 
         {/* Extension Panel - Collapsible */}
         <div className="flex-shrink-0 nodrag w-full">
-          {/* Content Area - White background with rounded corners (top border follows BaseNodeContent, bottom has rounded corners) */}
-          <div className="bg-white dark:bg-white border-t dark:border-gray-700 rounded-b-lg">
+          {/* Content Area - White background with rounded bottom corners */}
+          <div className="bg-white dark:bg-white rounded-b-lg">
             {/* Header - Always visible, one line when collapsed */}
             <div className="w-full flex items-center justify-between px-3 py-2">
               <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Status</span>
