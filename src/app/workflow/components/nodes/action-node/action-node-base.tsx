@@ -1,29 +1,6 @@
 "use client";
 
 import React, { useCallback, useState, useMemo, useEffect } from 'react';
-
-// Add shimmer animation styles for progress bar
-if (typeof document !== 'undefined') {
-  const styleId = 'action-node-progress-shimmer-style';
-  if (!document.getElementById(styleId)) {
-    const style = document.createElement('style');
-    style.id = styleId;
-    style.textContent = `
-      @keyframes action-progress-shimmer {
-        0% {
-          transform: translateX(-100%);
-        }
-        100% {
-          transform: translateX(100%);
-        }
-      }
-      .action-progress-shimmer {
-        animation: action-progress-shimmer 2s infinite;
-      }
-    `;
-    document.head.appendChild(style);
-  }
-}
 import { createPortal } from 'react-dom';
 import { Play, Trash, Trash2, Square, RotateCcw, CheckCircle2, XCircle, ChevronDown, ChevronUp, Download, OctagonMinus, ImageUp, HelpCircle, Menu, SquareX, List } from 'lucide-react';
 
@@ -801,22 +778,27 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
                       </span>
                     </div>
                     {/* Progress bar with smooth animation */}
-                    <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden relative">
+                    <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full progress-bar-container">
                       <div
-                        className="h-full bg-gradient-to-r from-blue-500 via-blue-400 to-blue-500 dark:from-blue-600 dark:via-blue-500 dark:to-blue-600 relative overflow-hidden"
+                        className="h-full bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 dark:from-gray-600 dark:via-gray-500 dark:to-gray-600 relative overflow-hidden progress-bar-fill"
                         style={{ 
                           width: `${progressInfo.percentage}%`,
-                          transition: 'width 0.7s cubic-bezier(0.4, 0, 0.2, 1)',
-                          willChange: 'width'
+                          transition: 'width 0.7s cubic-bezier(0.4, 0, 0.2, 1)'
                         }}
                       >
                         {/* Shimmer effect - only show when progressing */}
                         {isNodeRunning && progressInfo.percentage > 0 && progressInfo.percentage < 100 && (
                           <div 
-                            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent action-progress-shimmer"
+                            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent progress-bar-shimmer"
                           />
                         )}
                       </div>
+                      {/* Completion animation - green sweep from left to right */}
+                      {progressInfo.percentage === 100 && data?.status === 'success' && (
+                        <div 
+                          className="absolute inset-0 bg-gradient-to-r from-green-400 to-green-500 dark:from-green-500 dark:to-green-400 progress-bar-complete rounded-full"
+                        />
+                      )}
                     </div>
                   </div>
                 ) : (

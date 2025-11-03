@@ -162,12 +162,63 @@
   }
 }
 
+/* Progress bar animations */
+@keyframes progress-shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* Progress bar completion animation - green sweep from left to right */
+@keyframes progress-complete {
+  0% {
+    transform: scaleX(0);
+    transform-origin: left center;
+  }
+  100% {
+    transform: scaleX(1);
+    transform-origin: left center;
+  }
+}
+
+/* Progress bar styles with smooth transitions */
+.progress-bar-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  will-change: width;
+}
+
+.progress-bar-shimmer {
+  animation: progress-shimmer 2s infinite !important;
+}
+
+.progress-bar-complete {
+  animation: progress-complete 0.8s ease-out forwards !important;
+}
+
 .react-flow__node {
   transition: none !important;
 }
 
 .react-flow__node * {
   transition: none !important;
+}
+
+/* Progress bar animations - must override react-flow__node * transition */
+.react-flow__node .progress-bar-fill {
+  transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  will-change: width;
+}
+
+.react-flow__node .progress-bar-shimmer {
+  animation: progress-shimmer 2s infinite !important;
 }
 
 /* 自定义滚动条样式 - 鼠标悬停时显示 */
