@@ -146,6 +146,13 @@
   stroke-width: 2;
 }
 
+/* Animated edges (normal connections) */
+.react-flow__edge.animated path,
+.react-flow__edge-path.animated {
+  stroke-dasharray: 5;
+  animation: dashdraw 0.5s linear infinite;
+}
+
 @keyframes dashdraw {
   from {
     stroke-dashoffset: 10;

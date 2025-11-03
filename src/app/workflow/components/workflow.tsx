@@ -45,6 +45,7 @@ const MIN_DISTANCE = 150;
 
 const defaultEdgeOptions = {
   type: 'default',
+  animated: true,
   markerEnd: {
     type: MarkerType.Arrow,
   },
