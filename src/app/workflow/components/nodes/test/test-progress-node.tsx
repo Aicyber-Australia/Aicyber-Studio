@@ -133,7 +133,7 @@ function TestProgressNode({ id, data, selected }: WorkflowNodeProps) {
           {/* Progress bar with enhanced animations */}
           <div className="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full progress-bar-container">
             <div
-              className="h-full bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 dark:from-gray-600 dark:via-gray-500 dark:to-gray-600 relative overflow-hidden progress-bar-fill"
+              className={`h-full bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 dark:from-gray-600 dark:via-gray-500 dark:to-gray-600 relative progress-bar-fill ${percentage === 100 ? 'rounded-full' : 'rounded-l-full rounded-r-full'}`}
               style={{ 
                 width: `${percentage}%`,
                 transition: 'width 0.7s cubic-bezier(0.4, 0, 0.2, 1)'
@@ -142,7 +142,7 @@ function TestProgressNode({ id, data, selected }: WorkflowNodeProps) {
               {/* Shimmer effect - only show when progressing */}
               {isRunning && percentage > 0 && percentage < 100 && (
                 <div 
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent progress-bar-shimmer"
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent progress-bar-shimmer rounded-l-full rounded-r-full"
                 />
               )}
             </div>

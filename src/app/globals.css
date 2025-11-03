@@ -203,12 +203,35 @@
   animation: progress-complete 0.8s ease-out forwards !important;
 }
 
+/* Extension panel slide animations */
+.extension-panel-content {
+  overflow: hidden;
+  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.extension-panel-content.collapsed {
+  max-height: 0;
+  opacity: 0;
+}
+
+.extension-panel-content.expanded {
+  max-height: 500px;
+  opacity: 1;
+}
+
 .react-flow__node {
   transition: none !important;
 }
 
 .react-flow__node * {
   transition: none !important;
+}
+
+/* Override transition for extension panel content */
+.react-flow__node .extension-panel-content {
+  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 /* Progress bar animations - must override react-flow__node * transition */

@@ -75,9 +75,6 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
 
   const containerRef = React.useRef<HTMLDivElement>(null);
 
-  // Extension panel height when expanded
-  const EXTENSION_CONTENT_HEIGHT = 100; // Height of extension content when expanded
-
   // Subscribe to ReactFlow store for real-time updates
   // This will re-render when nodes or edges change
   const nodes = useStore((state) => state.nodes);
@@ -211,30 +208,10 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
     setIsDeleteDialogOpen(false); // Close dialog on cancel
   }, []);
 
-  // Toggle extension panel and adjust node height
+  // Toggle extension panel
   const handleToggleExtension = useCallback(() => {
-    const currentNode = getNode(id);
-    if (!currentNode) return;
-
-    const newCollapsedState = !isExtensionCollapsed;
-    setIsExtensionCollapsed(newCollapsedState);
-
-    // Adjust node height based on extension state
-    const heightAdjustment = newCollapsedState ? -EXTENSION_CONTENT_HEIGHT : EXTENSION_CONTENT_HEIGHT;
-    const currentHeight = currentNode.height || ACTION_NODE_SIZE.height;
-    const newHeight = currentHeight + heightAdjustment;
-
-    setNodes((nodes) =>
-      nodes.map((node) =>
-        node.id === id
-          ? {
-              ...node,
-              height: newHeight,
-            }
-          : node
-      )
-    );
-  }, [id, isExtensionCollapsed, getNode, setNodes, EXTENSION_CONTENT_HEIGHT]);
+    setIsExtensionCollapsed(prev => !prev);
+  }, []);
   
   const updateNodeData = useCallback((newData: Partial<WorkflowNodeData>) => {
     setNodes((nodes) =>
@@ -763,9 +740,9 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
               </button>
             </div>
 
-            {/* Content - Collapsible */}
-            {!isExtensionCollapsed && (
-              <div className="px-3 pb-3" style={{ height: `${EXTENSION_CONTENT_HEIGHT}px` }}>
+            {/* Content - Collapsible with slide animation */}
+            <div className={`extension-panel-content ${isExtensionCollapsed ? 'collapsed' : 'expanded'}`}>
+              <div className="px-3 pb-3">
                 {progressInfo.total > 0 ? (
                   <div className="space-y-2">
                     {/* Progress text */}
@@ -780,7 +757,7 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
                     {/* Progress bar with smooth animation */}
                     <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full progress-bar-container">
                       <div
-                        className="h-full bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 dark:from-gray-600 dark:via-gray-500 dark:to-gray-600 relative overflow-hidden progress-bar-fill"
+                        className={`h-full bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 dark:from-gray-600 dark:via-gray-500 dark:to-gray-600 relative progress-bar-fill ${progressInfo.percentage === 100 ? 'rounded-full' : 'rounded-l-full rounded-r-full'}`}
                         style={{ 
                           width: `${progressInfo.percentage}%`,
                           transition: 'width 0.7s cubic-bezier(0.4, 0, 0.2, 1)'
@@ -789,7 +766,7 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
                         {/* Shimmer effect - only show when progressing */}
                         {isNodeRunning && progressInfo.percentage > 0 && progressInfo.percentage < 100 && (
                           <div 
-                            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent progress-bar-shimmer"
+                            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent progress-bar-shimmer rounded-l-full rounded-r-full"
                           />
                         )}
                       </div>
@@ -807,7 +784,7 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
                   </div>
                 )}
               </div>
-            )}
+            </div>
           </div>
         </div>
 
