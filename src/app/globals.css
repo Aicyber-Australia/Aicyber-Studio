@@ -253,6 +253,51 @@
   pointer-events: none; /* Disable interactions during exit */
 }
 
+/* Segmented slider animations */
+.segmented-slider-track {
+  position: absolute;
+  top: 4px;
+  height: calc(100% - 8px);
+  border-radius: 0.375rem; /* rounded-md */
+  background-color: rgb(243 244 246); /* gray-100 */
+  transition: left 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark .segmented-slider-track {
+  background-color: rgb(55 65 81); /* gray-700 */
+}
+
+.segmented-slider-track.left {
+  left: 4px;
+}
+
+.segmented-slider-track.right {
+  left: calc(50% + 0px);
+}
+
+/* Icon segmented slider - smaller version for icons */
+.icon-slider-track {
+  position: absolute;
+  top: 4px;
+  height: 1.75rem; /* h-7 */
+  width: calc(50% - 4px);
+  border-radius: 0.375rem; /* rounded-md */
+  background-color: rgb(243 244 246); /* gray-100 */
+  transition: left 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark .icon-slider-track {
+  background-color: rgb(55 65 81); /* gray-700 */
+}
+
+.icon-slider-track.left {
+  left: 4px;
+}
+
+.icon-slider-track.right {
+  left: calc(50% + 0px);
+}
+
 .react-flow__node {
   transition: none !important;
 }
@@ -265,6 +310,12 @@
 .react-flow__node .extension-panel-content {
   transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
               opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Override for slider tracks - MUST have transition */
+.react-flow__node .segmented-slider-track,
+.react-flow__node .icon-slider-track {
+  transition: left 300ms cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 /* Progress bar animations - must override react-flow__node * transition */

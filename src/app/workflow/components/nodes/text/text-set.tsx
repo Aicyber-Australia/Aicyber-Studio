@@ -182,14 +182,7 @@ function TextSet({ id, data, selected }: WorkflowNodeProps) {
             <div className="nodrag flex-shrink-0 w-[120px]">
               <div className="text-[10px] text-muted-foreground mb-1">Output Mode</div>
               <div className="relative flex w-[84px] items-center rounded-md border p-1 box-border overflow-hidden bg-white dark:bg-gray-800">
-                <div
-                  className="absolute top-1 h-7 bg-gray-100 dark:bg-gray-700 rounded-md"
-                  style={{
-                    width: 'calc(50% - 4px)',
-                    left: setOutputMode === 'individual' ? '4px' : 'calc(50% + 0px)',
-                    transition: 'left 300ms ease-in-out',
-                  }}
-                />
+                <div className={`icon-slider-track ${setOutputMode === 'individual' ? 'left' : 'right'}`} />
                 <button
                   type="button"
                   className={`relative z-10 flex-1 flex items-center justify-center h-7 w-7 rounded-md ${setOutputMode === 'individual' ? 'text-gray-900' : 'text-gray-500'}`}
@@ -214,14 +207,7 @@ function TextSet({ id, data, selected }: WorkflowNodeProps) {
               <div className="nodrag flex-shrink-0 w-[120px]">
                 <div className="text-[10px] text-muted-foreground mb-1">Process Items</div>
                 <div className="relative flex w-[84px] items-center rounded-md border p-1 box-border overflow-hidden bg-white dark:bg-gray-800">
-                  <div
-                    className="absolute top-1 h-7 bg-gray-100 dark:bg-gray-700 rounded-md"
-                    style={{
-                      width: 'calc(50% - 4px)',
-                      left: processLimitMode === 'all' ? '4px' : 'calc(50% + 0px)',
-                      transition: 'left 300ms ease-in-out',
-                    }}
-                  />
+                  <div className={`icon-slider-track ${processLimitMode === 'all' ? 'left' : 'right'}`} />
                   <button
                     type="button"
                     className={`relative z-10 flex-1 flex items-center justify-center h-7 w-7 rounded-md ${processLimitMode === 'all' ? 'text-gray-900' : 'text-gray-500'}`}

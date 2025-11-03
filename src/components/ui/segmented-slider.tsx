@@ -31,13 +31,8 @@ export function SegmentedSlider({
       aria-disabled={disabled}
     >
       <div
-        className="absolute top-1 bottom-1 rounded"
-        style={{ 
-          width: 'calc(50% - 4px)',
-          left: value === 'left' ? '2px' : 'calc(50% + 2px)',
-          transition: 'left 300ms ease-in-out',
-          backgroundColor: 'rgb(243 244 246)', // gray-100
-        }}
+        className={`segmented-slider-track ${value === 'left' ? 'left' : 'right'}`}
+        style={{ width: 'calc(50% - 4px)' }}
       />
       <button
         type="button"

@@ -424,14 +424,7 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
               )}
             </div>
             <div className="relative flex w-[84px] items-center rounded-md border p-1 box-border overflow-hidden bg-white dark:bg-gray-800">
-              <div
-                className="absolute top-1 h-7 bg-gray-100 dark:bg-gray-700 rounded-md"
-                style={{
-                  width: 'calc(50% - 4px)',
-                  left: setOutputMode === 'individual' ? '4px' : 'calc(50% + 0px)',
-                  transition: 'left 300ms ease-in-out',
-                }}
-              />
+              <div className={`icon-slider-track ${setOutputMode === 'individual' ? 'left' : 'right'}`} />
               <button
                 type="button"
                 className={cn(
