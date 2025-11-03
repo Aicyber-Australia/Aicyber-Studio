@@ -1,6 +1,29 @@
 "use client";
 
 import React, { useCallback, useState, useMemo, useEffect } from 'react';
+
+// Add shimmer animation styles for progress bar
+if (typeof document !== 'undefined') {
+  const styleId = 'action-node-progress-shimmer-style';
+  if (!document.getElementById(styleId)) {
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = `
+      @keyframes action-progress-shimmer {
+        0% {
+          transform: translateX(-100%);
+        }
+        100% {
+          transform: translateX(100%);
+        }
+      }
+      .action-progress-shimmer {
+        animation: action-progress-shimmer 2s infinite;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+}
 import { createPortal } from 'react-dom';
 import { Play, Trash, Trash2, Square, RotateCcw, CheckCircle2, XCircle, ChevronDown, ChevronUp, Download, OctagonMinus, ImageUp, HelpCircle, Menu, SquareX, List } from 'lucide-react';
 
@@ -410,6 +433,38 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
   // Check if node is running
   const isNodeRunning = data?.status === 'loading';
 
+  // Calculate progress for status display
+  const progressInfo = useMemo(() => {
+    const totalExecutions = executionCount || 0;
+    if (totalExecutions === 0) {
+      return { current: 0, total: 0, percentage: 0 };
+    }
+
+    const metadata = data?.executionMetadata;
+    const successCount = metadata?.successCount || 0;
+    const errorCount = metadata?.errorCount || 0;
+    const completedCount = successCount + errorCount;
+
+    // If node is running, current step is completed + 1
+    // If node is done, current step equals total
+    let currentStep: number;
+    if (isNodeRunning) {
+      currentStep = completedCount + 1;
+    } else if (data?.status === 'success' || data?.status === 'error') {
+      currentStep = totalExecutions;
+    } else {
+      currentStep = completedCount;
+    }
+
+    const percentage = totalExecutions > 0 ? (currentStep / totalExecutions) * 100 : 0;
+    
+    return {
+      current: currentStep,
+      total: totalExecutions,
+      percentage: Math.min(percentage, 100)
+    };
+  }, [executionCount, data?.status, data?.executionMetadata, isNodeRunning]);
+
   return (
     <div className="relative w-full h-full" ref={containerRef}>
       <NodeStatusIndicator status={data?.status}>
@@ -734,9 +789,41 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
             {/* Content - Collapsible */}
             {!isExtensionCollapsed && (
               <div className="px-3 pb-3" style={{ height: `${EXTENSION_CONTENT_HEIGHT}px` }}>
-                <div className="text-xs text-gray-600 dark:text-gray-400">
-                  Extension content goes here...
-                </div>
+                {progressInfo.total > 0 ? (
+                  <div className="space-y-2">
+                    {/* Progress text */}
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-700 dark:text-gray-300 font-medium">
+                        Progress
+                      </span>
+                      <span className="text-gray-600 dark:text-gray-400">
+                        {progressInfo.current} / {progressInfo.total}
+                      </span>
+                    </div>
+                    {/* Progress bar with smooth animation */}
+                    <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden relative">
+                      <div
+                        className="h-full bg-gradient-to-r from-blue-500 via-blue-400 to-blue-500 dark:from-blue-600 dark:via-blue-500 dark:to-blue-600 relative overflow-hidden"
+                        style={{ 
+                          width: `${progressInfo.percentage}%`,
+                          transition: 'width 0.7s cubic-bezier(0.4, 0, 0.2, 1)',
+                          willChange: 'width'
+                        }}
+                      >
+                        {/* Shimmer effect - only show when progressing */}
+                        {isNodeRunning && progressInfo.percentage > 0 && progressInfo.percentage < 100 && (
+                          <div 
+                            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent action-progress-shimmer"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    No execution data available
+                  </div>
+                )}
               </div>
             )}
           </div>
