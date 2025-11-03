@@ -269,7 +269,7 @@ function WorkflowNode({
             </div>
           </div>
         </BaseNodeHeader>
-        <div className="bg-gray-50 dark:bg-gray-900 flex-1 min-h-0">
+        <div className={`bg-gray-50 dark:bg-gray-900 flex-1 min-h-0 ${isFrameNode || isSetNode ? 'rounded-b-lg' : ''}`}>
           {children}
         </div>
         </BaseNode>

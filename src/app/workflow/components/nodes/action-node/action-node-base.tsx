@@ -538,7 +538,7 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
           </div>
         </BaseNodeHeader>
 
-        <BaseNodeContent className="flex-1 flex flex-col space-y-4 min-w-0 bg-gray-50 dark:bg-gray-900">
+        <BaseNodeContent className="flex-1 flex flex-col space-y-4 min-w-0 bg-gray-50 dark:bg-gray-900 rounded-b-lg">
           {/* Model Selection - Small expandable box */}
           <div className="flex flex-col justify-start flex-shrink-0 nodrag w-full min-w-0">
             <div className="text-[10px] text-muted-foreground mb-1">Model</div>
@@ -614,32 +614,6 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
             />
           </div>
 
-          {/* Extension Panel - Collapsible */}
-          <div className="flex-shrink-0 nodrag w-full bg-white dark:bg-white border border-gray-200 dark:border-gray-700 rounded-md">
-            {/* Header - Always visible, one line when collapsed */}
-            <button
-              type="button"
-              onClick={() => setIsExtensionCollapsed(!isExtensionCollapsed)}
-              className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors rounded-md"
-            >
-              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Extension</span>
-              {isExtensionCollapsed ? (
-                <ChevronDown className="w-4 h-4 text-gray-500" />
-              ) : (
-                <ChevronUp className="w-4 h-4 text-gray-500" />
-              )}
-            </button>
-
-            {/* Content - Collapsible */}
-            {!isExtensionCollapsed && (
-              <div className="px-3 pb-3 border-t border-gray-200 dark:border-gray-700">
-                <div className="pt-3 text-xs text-gray-600 dark:text-gray-400">
-                  Extension content goes here...
-                </div>
-              </div>
-            )}
-          </div>
-
           {/* Execution Results Section - Only show if there are responses to display */}
           {data.apiResponses && data.apiResponses.length > 0 && (
             <div className="flex-shrink-0 nodrag border-t pt-3 space-y-2">
@@ -709,6 +683,38 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
             </div>
           )}
         </BaseNodeContent>
+
+        {/* Extension Panel - Collapsible */}
+        <div className="flex-shrink-0 nodrag w-full">
+          {/* Content Area - White background with rounded corners (top border follows BaseNodeContent, bottom has rounded corners) */}
+          <div className="bg-white dark:bg-white border-t dark:border-gray-700 rounded-b-lg">
+            {/* Header - Always visible, one line when collapsed */}
+            <div className="w-full flex items-center justify-between px-3 py-2">
+              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Status</span>
+              <button
+                type="button"
+                onClick={() => setIsExtensionCollapsed(!isExtensionCollapsed)}
+                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+              >
+                {isExtensionCollapsed ? (
+                  <ChevronDown className="w-4 h-4 text-gray-500" />
+                ) : (
+                  <ChevronUp className="w-4 h-4 text-gray-500" />
+                )}
+              </button>
+            </div>
+
+            {/* Content - Collapsible */}
+            {!isExtensionCollapsed && (
+              <div className="px-3 pb-3">
+                <div className="text-xs text-gray-600 dark:text-gray-400">
+                  Extension content goes here...
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
         {children}
       </BaseNode>
       </NodeStatusIndicator>
