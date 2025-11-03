@@ -15,6 +15,9 @@ export const VIDEO_SET_SIZE = { width: 400, height: 360 };
 // Text nodes need more height for text display
 export const TEXT_NODE_SIZE = { width: 280, height: 200 };
 
+// Text set needs more height for multiple text display
+export const TEXT_SET_SIZE = { width: 400, height: 360 };
+
 // Action node needs more height for the UI elements and results display
 export const ACTION_NODE_SIZE = { width: 360, height: 380 };
 
@@ -154,13 +157,13 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
         type: 'target',
         position: Position.Left,
         x: 0,
-        y: TEXT_NODE_SIZE.height * 0.5,
+        y: TEXT_SET_SIZE.height * 0.5,
       },
       {
         type: 'source',
         position: Position.Right,
-        x: TEXT_NODE_SIZE.width,
-        y: TEXT_NODE_SIZE.height * 0.5,
+        x: TEXT_SET_SIZE.width,
+        y: TEXT_SET_SIZE.height * 0.5,
       },
     ],
     icon: 'NotebookText',

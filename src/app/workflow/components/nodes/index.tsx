@@ -1,7 +1,7 @@
 import { Node, NodeProps, XYPosition } from '@xyflow/react';
 import { nanoid } from 'nanoid';
 
-import { NODE_SIZE, IMAGE_NODE_SIZE, VIDEO_NODE_SIZE, VIDEO_SET_SIZE, TEXT_NODE_SIZE, ACTION_NODE_SIZE, NODE_SET_SIZE, MEDIA_SET_SIZE, nodesConfig } from '../../config';
+import { NODE_SIZE, IMAGE_NODE_SIZE, VIDEO_NODE_SIZE, VIDEO_SET_SIZE, TEXT_NODE_SIZE, TEXT_SET_SIZE, ACTION_NODE_SIZE, NODE_SET_SIZE, MEDIA_SET_SIZE, nodesConfig } from '../../config';
 import { iconMapping } from '@/app/workflow/utils/icon-mapping';
 import ImageFrame from '@/app/workflow/components/nodes/image/image-frame';
 import ImageSet from '@/app/workflow/components/nodes/image/image-set';
@@ -149,11 +149,13 @@ export const createNodeByType = ({
     nodeSize = MEDIA_SET_SIZE;
   } else if (type === 'video-set') {
     nodeSize = VIDEO_SET_SIZE;
+  } else if (type === 'text-set') {
+    nodeSize = TEXT_SET_SIZE;
   } else if (type === 'image-frame' || type === 'image-set') {
     nodeSize = IMAGE_NODE_SIZE;
   } else if (type === 'video-frame') {
     nodeSize = VIDEO_NODE_SIZE;
-  } else if (type === 'text-frame' || type === 'text-set') {
+  } else if (type === 'text-frame') {
     nodeSize = TEXT_NODE_SIZE;
   } else if (type === 'text-to-image-node' || type === 'image-to-image-node' || type === 'image-to-text-node' || type === 'edit-image-node') {
     nodeSize = ACTION_NODE_SIZE;

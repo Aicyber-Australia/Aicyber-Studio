@@ -15,7 +15,7 @@ import {
   BaseNodeHeaderTitle,
 } from '@/components/base-node';
 import { NodeStatusIndicator } from '@/components/node-status-indicator';
-import { IMAGE_NODE_SIZE, TEXT_NODE_SIZE, ACTION_NODE_SIZE, NODE_SET_SIZE, MEDIA_SET_SIZE, VIDEO_NODE_SIZE, VIDEO_SET_SIZE, NODE_SIZE } from '@/app/workflow/config';
+import { IMAGE_NODE_SIZE, TEXT_NODE_SIZE, TEXT_SET_SIZE, ACTION_NODE_SIZE, NODE_SET_SIZE, MEDIA_SET_SIZE, VIDEO_NODE_SIZE, VIDEO_SET_SIZE, NODE_SIZE } from '@/app/workflow/config';
 import { NodeSettings } from './node-settings';
 
 // This is an example of how to implement the WorkflowNode component. All the nodes in the Workflow Builder example
@@ -131,11 +131,13 @@ function WorkflowNode({
     minSize = MEDIA_SET_SIZE;
   } else if (nodeType === 'video-set') {
     minSize = VIDEO_SET_SIZE;
+  } else if (nodeType === 'text-set') {
+    minSize = TEXT_SET_SIZE;
   } else if (nodeType === 'image-frame' || nodeType === 'image-set') {
     minSize = IMAGE_NODE_SIZE;
   } else if (nodeType === 'video-frame') {
     minSize = VIDEO_NODE_SIZE;
-  } else if (nodeType === 'text-frame' || nodeType === 'text-set') {
+  } else if (nodeType === 'text-frame') {
     minSize = TEXT_NODE_SIZE;
   } else if (nodeType === 'text-to-image-node' || nodeType === 'image-to-image-node') {
     minSize = ACTION_NODE_SIZE;
