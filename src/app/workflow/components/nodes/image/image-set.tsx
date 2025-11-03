@@ -304,28 +304,30 @@ function ImageSet({ id, data, selected }: WorkflowNodeProps) {
               </div>
             )}
 
-            {/* Limit column - only when First N */}
-            {!hasInputEdges && processLimitMode === 'limited' && (
+            {/* Limit column - always visible; disabled when Process All */}
+            {!hasInputEdges && (
               <div className="nodrag flex-shrink-0 w-[84px]">
                 <div className="flex items-center justify-between mb-1">
                   <div className="text-[10px] text-muted-foreground">Limit</div>
                   <span className="text-[10px] text-muted-foreground">/ {maxLimit}</span>
                 </div>
-                <div className="inline-flex items-center justify-between gap-1 w-[84px] h-7 border rounded bg-white dark:bg-gray-800 px-1">
+                <div className={`inline-flex items-center justify-between gap-1 w-[84px] h-7 border rounded bg-white dark:bg-gray-800 px-1 ${processLimitMode !== 'limited' ? 'opacity-50' : ''}`}>
                   <button
                     type="button"
-                    className="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-gray-700"
-                    onClick={() => handleProcessLimitChange(Math.max(1, (processLimit || 1) - 1))}
+                    className={`w-5 h-5 flex items-center justify-center rounded ${processLimitMode === 'limited' ? 'hover:bg-gray-100 dark:hover:bg-gray-700' : 'cursor-not-allowed'}`}
+                    onClick={() => processLimitMode === 'limited' && handleProcessLimitChange(Math.max(1, (processLimit || 1) - 1))}
                     title="Decrease"
+                    disabled={processLimitMode !== 'limited'}
                   >
                     −
                   </button>
                   <span className="text-xs w-6 text-center select-none">{processLimit}</span>
                   <button
                     type="button"
-                    className="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-gray-700"
-                    onClick={() => handleProcessLimitChange(Math.min(maxLimit, (processLimit || 1) + 1))}
+                    className={`w-5 h-5 flex items-center justify-center rounded ${processLimitMode === 'limited' ? 'hover:bg-gray-100 dark:hover:bg-gray-700' : 'cursor-not-allowed'}`}
+                    onClick={() => processLimitMode === 'limited' && handleProcessLimitChange(Math.min(maxLimit, (processLimit || 1) + 1))}
                     title="Increase"
+                    disabled={processLimitMode !== 'limited'}
                   >
                     +
                   </button>

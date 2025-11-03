@@ -82,23 +82,23 @@ export function SetNodeSettings({
                 disabled={disableProcessControls}
               />
             </div>
-            {!disableProcessControls && processLimitMode === 'limited' && (
-              <div className="flex items-center gap-2 mt-1">
-                <label className="text-[10px] text-muted-foreground whitespace-nowrap">Limit:</label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={Math.max(listLen, 1)}
-                  value={processLimit}
-                  onChange={(e) => {
-                    const v = parseInt(e.target.value || '1', 10);
-                    setData('processLimit', isNaN(v) ? 1 : v);
-                  }}
-                  className="h-7 text-xs nodrag w-16 flex-none text-center"
-                />
-                <span className="text-[10px] text-muted-foreground whitespace-nowrap">/ {Math.max(listLen, 1)}</span>
-              </div>
-            )}
+            {/* Always show Limit; disable when mode is 'all' or controls disabled */}
+            <div className="flex items-center gap-2 mt-1">
+              <label className="text-[10px] text-muted-foreground whitespace-nowrap">Limit:</label>
+              <Input
+                type="number"
+                min={1}
+                max={Math.max(listLen, 1)}
+                value={processLimit}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value || '1', 10);
+                  setData('processLimit', isNaN(v) ? 1 : v);
+                }}
+                disabled={disableProcessControls || processLimitMode !== 'limited'}
+                className={`h-7 text-xs nodrag w-16 flex-none text-center ${disableProcessControls || processLimitMode !== 'limited' ? 'opacity-50 cursor-not-allowed' : ''}`}
+              />
+              <span className="text-[10px] text-muted-foreground whitespace-nowrap">/ {Math.max(listLen, 1)}</span>
+            </div>
           </div>
         </div>
       )}
