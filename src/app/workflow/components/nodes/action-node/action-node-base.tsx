@@ -394,7 +394,7 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
       <BaseNode style={{ width: '100%', height: '100%', minWidth: 0, overflow: 'visible' }}>
         <BaseNodeHeader className="flex-col gap-0 border-b border-gray-200 dark:border-gray-700 min-w-0">
           {/* First layer: Icon, Node Name, Model Selection */}
-          <div className="flex items-center justify-between w-full px-0.5 pt-0 pb-0.5 min-h-[20px]">
+          <div className="flex items-center justify-between w-full px-0.5 pt-0 pb-0.5 min-h-[28px]">
             <div className="flex items-center gap-1 flex-1 min-w-0">
               {IconComponent ? <IconComponent aria-label={data?.icon} className="h-5 w-5 flex-shrink-0" /> : null}
               <div className="relative flex-1 min-w-0">
@@ -421,9 +421,9 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
             {/* Model Selection */}
             <div className="nodrag flex-shrink-0 ml-2">
               <Select value={selectedModel} onValueChange={handleModelChange}>
-                <SelectTrigger className="h-3 w-26 rounded-sm bg-gray-200 dark:bg-gray-700 border-0 shadow-sm text-[10px] [&>svg:last-child]:hidden">
+                <SelectTrigger className="!h-5 w-26 !py-0 !px-2 rounded-sm bg-gray-200 dark:bg-gray-700 border-0 shadow-sm text-[10px] [&>svg:last-child]:hidden">
                   <span className="flex-1 text-left">{selectedModel || 'Model'}</span>
-                  <List className="w-3 h-3 opacity-50 flex-shrink-0" />
+                  <List className="w-1.5 h-1.5 opacity-50 flex-shrink-0" />
                 </SelectTrigger>
                 <SelectContent>
                   {availableModels.map((model) => (
@@ -435,7 +435,7 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
               </Select>
             </div>
           </div>
-          <div className="w-2/3 h-px bg-gray-200 dark:bg-gray-700 ml-1 self-start"></div>
+          <div className="w-3/5 h-px bg-gray-200 dark:bg-gray-700 ml-1 self-start"></div>
           {/* Second layer: Toolbar buttons */}
           <div className="flex items-center justify-between w-full px-0.5 pt-1 min-h-[10px]" style={{ visibility: isTitleEditing ? 'hidden' : 'visible' }}>
             <div className="flex items-center gap-2 flex-shrink-0">
