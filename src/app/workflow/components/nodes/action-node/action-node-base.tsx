@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useCallback, useState, useMemo, useEffect } from 'react';
-import { Play, Trash, Trash2, Square, RotateCcw, CheckCircle2, XCircle, ChevronDown, ChevronUp, Download, OctagonMinus } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Play, Trash, Trash2, Square, RotateCcw, CheckCircle2, XCircle, ChevronDown, ChevronUp, Download, OctagonMinus, ImageUp, HelpCircle, Menu, SquareX } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -12,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { WorkflowNodeData, ApiExecutionError, createNodeByType } from '@/app/workflow/components/nodes';
+import { WorkflowNodeData, ApiExecutionError, createNodeByType, AppNodeType } from '@/app/workflow/components/nodes';
 import { useWorkflowRunner } from '@/app/workflow/hooks/use-workflow-runner';
 import { useAppStore } from '@/app/workflow/store';
 import { useReactFlow, NodeResizer, getIncomers, useStore } from '@xyflow/react';
@@ -27,6 +28,7 @@ import { NodeStatusIndicator } from '@/components/node-status-indicator';
 import { ACTION_NODE_SIZE } from '@/app/workflow/config';
 import { getExecutionCount } from '@/app/workflow/runners/media-set-utils';
 import { iconMapping } from '@/app/workflow/utils/icon-mapping';
+import { NodeSettings } from '../workflow-node/node-settings';
 
 // Available models for selection - Image-to-Image models
 const IMAGE_TO_IMAGE_MODELS = [
@@ -66,6 +68,10 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
   const [isTitleEditing, setIsTitleEditing] = useState(false);
   const [showResponses, setShowResponses] = useState(false);
   const [hasBreakpoint, setHasBreakpoint] = useState<boolean>(data?.hasBreakpoint || false);
+  const [isImageUpActive, setIsImageUpActive] = useState<boolean>(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
   // Subscribe to ReactFlow store for real-time updates
   // This will re-render when nodes or edges change
@@ -211,6 +217,31 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
     }
   }, [isExecutionModeLocked, executionMode, id, lockReason, updateNodeData]);
 
+  // Sync state with data when data changes (e.g., from settings panel)
+  useEffect(() => {
+    const dataOutputMode = data?.setOutputMode || 'individual';
+    if (dataOutputMode !== setOutputMode) {
+      setSetOutputMode(dataOutputMode);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.setOutputMode]);
+
+  useEffect(() => {
+    const dataExecutionMode = data?.executionMode || 'concurrent';
+    if (dataExecutionMode !== executionMode) {
+      setExecutionMode(dataExecutionMode);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.executionMode]);
+
+  useEffect(() => {
+    const dataSelectedModel = data?.selectedModel || defaultModel;
+    if (dataSelectedModel !== selectedModel) {
+      setSelectedModel(dataSelectedModel);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.selectedModel]);
+
   const handleTitleChange = useCallback((newTitle: string) => {
     updateNodeData({ title: newTitle });
   }, [updateNodeData]);
@@ -275,6 +306,14 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
     }
   }, [hasBreakpoint, executionMode, updateNodeData]);
 
+  const handleImageUpToggle = useCallback(() => {
+    setIsImageUpActive((prev) => !prev);
+  }, []);
+
+  const toggleSettings = useCallback(() => {
+    setIsSettingsOpen((prev) => !prev);
+  }, []);
+
   // Helper to check if a response is an error
   const isError = (response: any): response is ApiExecutionError => {
     return 'error' in response;
@@ -329,7 +368,8 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
   const isNodeRunning = data?.status === 'loading';
 
   return (
-    <NodeStatusIndicator status={data?.status}>
+    <div className="relative" ref={containerRef}>
+      <NodeStatusIndicator status={data?.status}>
       <NodeResizer
         color="#3b82f6"
         isVisible={selected}
@@ -409,6 +449,20 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
               >
                 <Download className={`h-4 w-4 ${canExtract ? 'text-green-500' : 'text-gray-400'}`} />
               </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "nodrag h-7 w-7 transition-colors",
+                  isImageUpActive
+                    ? "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
+                    : "bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700"
+                )}
+                onClick={handleImageUpToggle}
+                title="Image Up"
+              >
+                <ImageUp className={`h-4 w-4 ${isImageUpActive ? 'text-blue-500' : 'text-black dark:text-black'}`} />
+              </Button>
               {onRefresh && (
                 <Button
                   variant="ghost"
@@ -440,12 +494,39 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
                 <Trash2 className="h-4 w-4 hidden group-hover:block" />
               </Button>
             </div>
+            <div className="flex items-center gap-2">
+              {/* Help */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="nodrag h-7 w-7 bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                title="Help"
+              >
+                <HelpCircle className="h-4 w-4" />
+              </Button>
+              {/* Menu (settings) */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "nodrag h-7 w-7 transition-colors",
+                  isSettingsOpen
+                    ? "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
+                    : "bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700"
+                )}
+                title="Menu"
+                onClick={toggleSettings}
+              >
+                <Menu className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </BaseNodeHeader>
 
         <BaseNodeContent className="flex-1 flex flex-col space-y-4 min-w-0 bg-gray-50 dark:bg-gray-900">
           {/* Model Selection - Small expandable box */}
-          <div className="flex justify-start flex-shrink-0 nodrag w-full min-w-0">
+          <div className="flex flex-col justify-start flex-shrink-0 nodrag w-full min-w-0">
+            <div className="text-[10px] text-muted-foreground mb-1">Model</div>
             <Select value={selectedModel} onValueChange={handleModelChange}>
               <SelectTrigger className="w-1/2 h-9 rounded-full bg-white dark:bg-white">
                 <SelectValue placeholder="Select model:" />
@@ -460,47 +541,52 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
             </Select>
           </div>
 
-          {/* Output Mode Selection */}
-          <div className="flex justify-start flex-shrink-0 nodrag w-full min-w-0">
-            <Select value={setOutputMode} onValueChange={handleSetOutputModeChange}>
-              <SelectTrigger className="w-full h-9 bg-white dark:bg-white">
-                <SelectValue placeholder="Output mode:" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="individual">
-                  Individual (Separate outputs)
-                </SelectItem>
-                <SelectItem value="integrated">
-                  Integrated (Combined output)
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Output and Input Mode Selection - In one row */}
+          <div className="flex items-start gap-4 flex-shrink-0 nodrag w-full min-w-0">
+            {/* Output Mode Selection */}
+            <div className="flex flex-col justify-start flex-1 min-w-0">
+              <div className="text-[10px] text-muted-foreground mb-1">Output</div>
+              <Select value={setOutputMode} onValueChange={handleSetOutputModeChange}>
+                <SelectTrigger className="w-full h-9 bg-white dark:bg-white">
+                  <SelectValue placeholder="Output mode:" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="individual">
+                    Separate outputs
+                  </SelectItem>
+                  <SelectItem value="integrated">
+                    Combined output
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-          {/* Execution Mode Selection */}
-          <div className="flex flex-col justify-start flex-shrink-0 nodrag space-y-1 w-full min-w-0">
-            <Select
-              value={executionMode}
-              onValueChange={handleExecutionModeChange}
-              disabled={setOutputMode === 'integrated' || isExecutionModeLocked}
-            >
-              <SelectTrigger className="w-full h-9 bg-white dark:bg-white">
-                <SelectValue placeholder="Execution mode:" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="concurrent">
-                  Concurrent (All at once)
-                </SelectItem>
-                <SelectItem value="progressive" disabled={setOutputMode === 'integrated' || isExecutionModeLocked}>
-                  Progressive (One-by-one)
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            {isExecutionModeLocked && (
-              <div className="text-[10px] text-amber-600 dark:text-amber-400 leading-tight">
-                {lockReason}
-              </div>
-            )}
+            {/* Execution Mode Selection */}
+            <div className="flex flex-col justify-start flex-1 min-w-0">
+              <div className="text-[10px] text-muted-foreground mb-1">Input</div>
+              <Select
+                value={executionMode}
+                onValueChange={handleExecutionModeChange}
+                disabled={setOutputMode === 'integrated' || isExecutionModeLocked}
+              >
+                <SelectTrigger className="w-full h-9 bg-white dark:bg-white">
+                  <SelectValue placeholder="Execution mode:" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="concurrent">
+                    All at once
+                  </SelectItem>
+                  <SelectItem value="progressive" disabled={setOutputMode === 'integrated' || isExecutionModeLocked}>
+                    One-by-one
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              {isExecutionModeLocked && (
+                <div className="text-[10px] text-amber-600 dark:text-amber-400 leading-tight mt-1">
+                  {lockReason}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Large Text Input Area */}
@@ -584,7 +670,31 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
         </BaseNodeContent>
         {children}
       </BaseNode>
-    </NodeStatusIndicator>
+      </NodeStatusIndicator>
+
+      {/* Settings panel - positioned absolutely to the right of node */}
+      {isSettingsOpen && (
+        <div 
+          className="absolute top-0 left-full ml-6 min-w-[280px] max-w-[400px] rounded-lg border bg-white shadow-lg dark:bg-gray-900 dark:border-gray-800 z-[10000] nodrag"
+          style={{ pointerEvents: 'auto' }}
+        >
+          <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-gray-200 dark:border-gray-800 select-none">
+            <div className="text-sm font-normal">Node Settings - {data?.title || 'Untitled'}</div>
+            <button
+              type="button"
+              className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+              onClick={toggleSettings}
+              title="Close"
+            >
+              <SquareX className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="p-4 max-h-[500px] overflow-auto space-y-4 bg-gray-50 dark:bg-gray-900">
+            <NodeSettings nodeId={id} nodeType={nodeType as AppNodeType} data={data} />
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

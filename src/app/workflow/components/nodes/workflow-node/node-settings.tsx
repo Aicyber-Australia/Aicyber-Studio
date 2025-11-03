@@ -32,7 +32,9 @@ export function NodeSettings({
   const isActionNode = [
     'text-to-image-node',
     'image-to-image-node',
-    // Add more action node types here
+    'image-to-text-node',
+    'edit-image-node',
+    'image-replicate-node',
   ].includes(nodeType);
 
   // Determine if this is a frame node
