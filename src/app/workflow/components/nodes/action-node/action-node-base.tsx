@@ -75,6 +75,9 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
 
   const containerRef = React.useRef<HTMLDivElement>(null);
 
+  // Extension panel height when expanded
+  const EXTENSION_CONTENT_HEIGHT = 100; // Height of extension content when expanded
+
   // Subscribe to ReactFlow store for real-time updates
   // This will re-render when nodes or edges change
   const nodes = useStore((state) => state.nodes);
@@ -207,6 +210,31 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
   const handleCancelDelete = useCallback(() => {
     setIsDeleteDialogOpen(false); // Close dialog on cancel
   }, []);
+
+  // Toggle extension panel and adjust node height
+  const handleToggleExtension = useCallback(() => {
+    const currentNode = getNode(id);
+    if (!currentNode) return;
+
+    const newCollapsedState = !isExtensionCollapsed;
+    setIsExtensionCollapsed(newCollapsedState);
+
+    // Adjust node height based on extension state
+    const heightAdjustment = newCollapsedState ? -EXTENSION_CONTENT_HEIGHT : EXTENSION_CONTENT_HEIGHT;
+    const currentHeight = currentNode.height || ACTION_NODE_SIZE.height;
+    const newHeight = currentHeight + heightAdjustment;
+
+    setNodes((nodes) =>
+      nodes.map((node) =>
+        node.id === id
+          ? {
+              ...node,
+              height: newHeight,
+            }
+          : node
+      )
+    );
+  }, [id, isExtensionCollapsed, getNode, setNodes, EXTENSION_CONTENT_HEIGHT]);
   
   const updateNodeData = useCallback((newData: Partial<WorkflowNodeData>) => {
     setNodes((nodes) =>
@@ -692,7 +720,7 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
               <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Status</span>
               <button
                 type="button"
-                onClick={() => setIsExtensionCollapsed(!isExtensionCollapsed)}
+                onClick={handleToggleExtension}
                 className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
               >
                 {isExtensionCollapsed ? (
@@ -705,7 +733,7 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
 
             {/* Content - Collapsible */}
             {!isExtensionCollapsed && (
-              <div className="px-3 pb-3">
+              <div className="px-3 pb-3" style={{ height: `${EXTENSION_CONTENT_HEIGHT}px` }}>
                 <div className="text-xs text-gray-600 dark:text-gray-400">
                   Extension content goes here...
                 </div>
