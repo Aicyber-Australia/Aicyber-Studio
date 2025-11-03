@@ -383,7 +383,7 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
   const isNodeRunning = data?.status === 'loading';
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div className="relative w-full h-full" ref={containerRef}>
       <NodeStatusIndicator status={data?.status}>
       <NodeResizer
         color="#3b82f6"
@@ -391,8 +391,8 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
         minWidth={ACTION_NODE_SIZE.width}
         minHeight={ACTION_NODE_SIZE.height}
       />
-      <BaseNode style={{ width: '100%', height: '100%', minWidth: 0, overflow: 'visible' }}>
-        <BaseNodeHeader className="flex-col gap-0 border-b border-gray-200 dark:border-gray-700 min-w-0">
+      <BaseNode>
+        <BaseNodeHeader className="flex-col gap-0 border-b border-gray-200 dark:border-gray-700 min-w-0 flex-shrink-0">
           {/* First layer: Icon, Node Name, Model Selection */}
           <div className="flex items-center justify-between w-full px-0.5 pt-0 pb-0.5 min-h-[28px]">
             <div className="flex items-center gap-1 flex-1 min-w-0">
@@ -554,7 +554,7 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
           </div>
         </BaseNodeHeader>
 
-        <BaseNodeContent className="flex-1 flex flex-col space-y-4 min-w-0 bg-gray-50 dark:bg-gray-900 rounded-b-lg border-b border-gray-200 dark:border-gray-700 shadow-sm">
+        <BaseNodeContent className="flex-1 flex flex-col space-y-4 min-w-0 min-h-0 bg-gray-50 dark:bg-gray-900 rounded-b-lg border-b border-gray-200 dark:border-gray-700 shadow-sm overflow-y-auto">
           {/* Output and Input Mode Selection - In one row */}
           <div className="flex items-start gap-4 flex-shrink-0 nodrag w-full min-w-0">
             {/* Execution Mode Selection */}

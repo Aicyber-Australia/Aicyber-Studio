@@ -129,13 +129,12 @@ function ImageFrame({ id, data, selected }: WorkflowNodeProps) {
 
   return (
     <WorkflowNode id={id} data={data} type="image-frame" onRefresh={handleRefresh} selected={selected}>
-      <div className="w-full flex-1 flex items-center justify-center p-3 min-h-0">
+      <div className="w-full h-full flex flex-col p-3 min-h-0">
         {/* 图片显示区域 - 长方形，随节点缩放 */}
         <div
-          className={`w-full border-2 rounded-2xl flex items-center justify-center overflow-auto cursor-pointer hover:border-gray-400 transition-colors relative ${
+          className={`w-full flex-1 min-h-0 border-2 rounded-2xl flex items-center justify-center overflow-auto cursor-pointer hover:border-gray-400 transition-colors relative ${
             imageUrl && !imageError ? 'border-solid border-gray-300' : 'border-dashed border-gray-300'
           }`}
-          style={{ aspectRatio: '16/14', maxHeight: '100%' }}
           onClick={() => document.getElementById(`image-upload-${id}`)?.click()}
         >
           {imageUrl && !imageError ? (

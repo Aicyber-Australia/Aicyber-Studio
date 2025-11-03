@@ -412,7 +412,7 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
   return (
     <>
       <WorkflowNode id={id} data={data} type="media-set" onRefresh={handleRefresh} selected={selected}>
-        <div className="w-full flex-1 flex flex-col p-3 min-h-0 nodrag space-y-2">
+        <div className="w-full h-full flex flex-col p-3 min-h-0 nodrag space-y-2">
           {/* Output Mode Selection - icon segmented slider */}
           <div className="nodrag flex-shrink-0 w-[120px]">
             <div className="text-[10px] text-muted-foreground mb-1">
@@ -461,8 +461,7 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
 
           {/* 混合媒体显示区域 */}
           <div
-            className="nodrag nopan nowheel w-full h-full border-2 border-dashed border-gray-300 rounded-lg overflow-auto hover:border-gray-400 transition-colors relative"
-            style={{ minHeight: mediaList.length > 0 ? undefined : 220 }}
+            className="nodrag nopan nowheel w-full flex-1 min-h-0 border-2 border-dashed border-gray-300 rounded-lg overflow-auto hover:border-gray-400 transition-colors relative"
             onWheel={(e) => e.stopPropagation()}
           >
             {mediaList.length > 0 ? (

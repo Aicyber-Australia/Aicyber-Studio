@@ -251,7 +251,7 @@ function ImageSet({ id, data, selected }: WorkflowNodeProps) {
   return (
     <>
       <WorkflowNode id={id} data={data} type="image-set" onRefresh={handleRefresh} selected={selected}>
-        <div className="w-full flex-1 flex flex-col p-3 min-h-0 nodrag space-y-2">
+        <div className="w-full h-full flex flex-col p-3 min-h-0 nodrag space-y-2">
           {/* Output + Process + Limit (aligned in three columns) */}
           <div className="nodrag grid grid-cols-3 items-start gap-4 flex-shrink-0">
             {/* Output Mode - icon segmented */}
@@ -350,7 +350,7 @@ function ImageSet({ id, data, selected }: WorkflowNodeProps) {
 
           {/* 多图网格显示区域 - 自适应节点尺寸 */}
           <div
-            className="nodrag nopan nowheel w-full h-full border-2 border-dashed border-gray-300 rounded-lg overflow-auto cursor-pointer hover:border-gray-400 transition-colors relative"
+            className={`nodrag nopan nowheel w-full flex-1 min-h-0 border-2 border-dashed border-gray-300 rounded-lg overflow-auto cursor-pointer hover:border-gray-400 transition-colors relative ${imageList.length === 0 && !imageError ? 'flex items-center justify-center' : ''}`}
             onClick={() => document.getElementById(`image-upload-${id}`)?.click()}
             onWheel={(e) => e.stopPropagation()}
           >
@@ -358,7 +358,7 @@ function ImageSet({ id, data, selected }: WorkflowNodeProps) {
             <>
               {/* 网格布局显示多张图片 - 图片保持1:1比例，完整显示 */}
               <div
-                className={`nodrag grid ${getGridLayout(imageList.length)} gap-1 p-2`}
+                className={`nodrag grid ${getGridLayout(imageList.length)} gap-1 p-2 w-full`}
                 style={{
                   minWidth: '100%',
                   minHeight: 'fit-content',
@@ -438,7 +438,9 @@ function ImageSet({ id, data, selected }: WorkflowNodeProps) {
               )}
             </>
           ) : imageError ? (
-            <div className="text-red-500 text-xs text-center">加载失败</div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-red-500 text-xs text-center">加载失败</div>
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center gap-2 text-center" title="click to add files">
               <FolderOpen className="w-8 h-8 text-gray-400" />

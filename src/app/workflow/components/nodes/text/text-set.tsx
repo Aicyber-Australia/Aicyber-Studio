@@ -175,7 +175,7 @@ function TextSet({ id, data, selected }: WorkflowNodeProps) {
   return (
     <>
       <WorkflowNode id={id} data={data} type="text-set" onRefresh={handleRefresh} selected={selected}>
-        <div className="w-full flex-1 flex flex-col p-3 min-h-0 nodrag space-y-2">
+        <div className="w-full h-full flex flex-col p-3 min-h-0 nodrag space-y-2">
           {/* Output + Process + Limit aligned */}
           <div className="nodrag grid grid-cols-3 items-start gap-4 flex-shrink-0">
             {/* Output Mode - icon segmented */}
@@ -274,7 +274,7 @@ function TextSet({ id, data, selected }: WorkflowNodeProps) {
 
           {/* 多文本显示区域 - 简洁设计 */}
           <div
-            className="nodrag nopan nowheel w-full h-full border-2 border-purple-200 bg-white rounded-lg overflow-auto hover:border-purple-300 transition-colors relative"
+            className="nodrag nopan nowheel w-full flex-1 min-h-0 border-2 border-purple-200 bg-white rounded-lg overflow-auto hover:border-purple-300 transition-colors relative"
             onWheel={(e) => e.stopPropagation()}
           >
             {textError ? (

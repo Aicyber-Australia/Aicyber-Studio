@@ -102,8 +102,8 @@ export function EditImageNode({ id, data, selected }: WorkflowNodeProps) {
           minWidth={ACTION_NODE_SIZE.width}
           minHeight={ACTION_NODE_SIZE.height}
         />
-        <BaseNode style={{ width: '100%', height: '100%' }}>
-          <BaseNodeHeader>
+        <BaseNode>
+          <BaseNodeHeader className="flex-shrink-0">
             <BaseNodeHeaderTitle
               editable
               onTitleChange={handleTitleChange}
@@ -129,7 +129,7 @@ export function EditImageNode({ id, data, selected }: WorkflowNodeProps) {
             </div>
           </BaseNodeHeader>
 
-          <BaseNodeContent className="flex-1 flex flex-col p-3">
+          <BaseNodeContent className="flex-1 flex flex-col p-3 min-h-0 overflow-y-auto">
             {/* Image Preview and Edit Button */}
             <div className="flex-1 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg overflow-hidden min-h-0 relative">
               {imageUrl ? (

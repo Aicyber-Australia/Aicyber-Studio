@@ -15,7 +15,7 @@ import {
   BaseNodeHeaderTitle,
 } from '@/components/base-node';
 import { NodeStatusIndicator } from '@/components/node-status-indicator';
-import { IMAGE_NODE_SIZE, TEXT_NODE_SIZE, ACTION_NODE_SIZE, NODE_SET_SIZE, NODE_SIZE } from '@/app/workflow/config';
+import { IMAGE_NODE_SIZE, TEXT_NODE_SIZE, ACTION_NODE_SIZE, NODE_SET_SIZE, MEDIA_SET_SIZE, VIDEO_NODE_SIZE, VIDEO_SET_SIZE, NODE_SIZE } from '@/app/workflow/config';
 import { NodeSettings } from './node-settings';
 
 // This is an example of how to implement the WorkflowNode component. All the nodes in the Workflow Builder example
@@ -127,8 +127,14 @@ function WorkflowNode({
     ].includes(t || '');
   })();
   let minSize = NODE_SIZE;
-  if (nodeType === 'image-frame' || nodeType === 'image-set' || nodeType === 'media-set') {
+  if (nodeType === 'media-set') {
+    minSize = MEDIA_SET_SIZE;
+  } else if (nodeType === 'video-set') {
+    minSize = VIDEO_SET_SIZE;
+  } else if (nodeType === 'image-frame' || nodeType === 'image-set') {
     minSize = IMAGE_NODE_SIZE;
+  } else if (nodeType === 'video-frame') {
+    minSize = VIDEO_NODE_SIZE;
   } else if (nodeType === 'text-frame' || nodeType === 'text-set') {
     minSize = TEXT_NODE_SIZE;
   } else if (nodeType === 'text-to-image-node' || nodeType === 'image-to-image-node') {
@@ -146,7 +152,7 @@ function WorkflowNode({
   }, []);
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div className="relative w-full h-full" ref={containerRef}>
       <NodeStatusIndicator status={data?.status}>
         <NodeResizer
           color="#3b82f6"
@@ -154,8 +160,8 @@ function WorkflowNode({
           minWidth={minSize.width}
           minHeight={minSize.height}
         />
-        <BaseNode style={{ width: '100%', height: '100%' }}>
-        <BaseNodeHeader className="flex-col gap-0 border-b border-gray-200 dark:border-gray-700">
+        <BaseNode>
+        <BaseNodeHeader className="flex-col gap-0 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           {/* First layer: Icon, Node Name */}
           <div className="flex items-center justify-between w-full px-0.5 pt-0 pb-0.5 min-h-[20px]">
             <div className="flex items-center gap-1 flex-1 min-w-0">
@@ -269,7 +275,7 @@ function WorkflowNode({
             </div>
           </div>
         </BaseNodeHeader>
-        <div className={`bg-gray-50 dark:bg-gray-900 flex-1 min-h-0 ${isFrameNode || isSetNode ? 'rounded-b-lg' : ''}`}>
+        <div className={`bg-gray-50 dark:bg-gray-900 flex flex-col flex-1 min-h-0 overflow-y-auto ${isFrameNode || isSetNode ? 'rounded-b-lg' : ''}`}>
           {children}
         </div>
         </BaseNode>

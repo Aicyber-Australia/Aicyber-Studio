@@ -14,6 +14,7 @@ export const BaseNode = forwardRef<
       'overflow-visible',
       'flex flex-col',
       'shadow-md',
+      'w-full h-full',
       // React Flow displays node elements inside of a `NodeWrapper` component,
       // which compiles down to a div with the class `react-flow__node`.
       // When a node is selected, the class `selected` is added to the

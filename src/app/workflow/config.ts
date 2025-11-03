@@ -4,10 +4,13 @@ import { AppNodeType, NodeConfig } from './components/nodes';
 export const NODE_SIZE = { width: 260, height: 120 };
 
 // Image nodes use rectangular dimensions for image display
-export const IMAGE_NODE_SIZE = { width: 320, height: 280 };
+export const IMAGE_NODE_SIZE = { width: 400, height: 360 };
 
 // Video nodes need 16:9 aspect ratio for video display
 export const VIDEO_NODE_SIZE = { width: 280, height: 200 };
+
+// Video set needs more height for multiple video display
+export const VIDEO_SET_SIZE = { width: 400, height: 360 };
 
 // Text nodes need more height for text display
 export const TEXT_NODE_SIZE = { width: 280, height: 200 };
@@ -16,7 +19,10 @@ export const TEXT_NODE_SIZE = { width: 280, height: 200 };
 export const ACTION_NODE_SIZE = { width: 360, height: 380 };
 
 // Node set needs height to display list of nodes
-export const NODE_SET_SIZE = { width: 280, height: 200 };
+export const NODE_SET_SIZE = { width: 360, height: 280 };
+
+// Media set needs more height for mixed media display (images, videos, text)
+export const MEDIA_SET_SIZE = { width: 400, height: 480 };
 
 export const nodesConfig: Record<AppNodeType, NodeConfig> = {
   'media-set': {
@@ -28,13 +34,13 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
         type: 'target',
         position: Position.Left,
         x: 0,
-        y: IMAGE_NODE_SIZE.height * 0.5,
+        y: MEDIA_SET_SIZE.height * 0.5,
       },
       {
         type: 'source',
         position: Position.Right,
-        x: IMAGE_NODE_SIZE.width,
-        y: IMAGE_NODE_SIZE.height * 0.5,
+        x: MEDIA_SET_SIZE.width,
+        y: MEDIA_SET_SIZE.height * 0.5,
       },
     ],
     icon: 'Clapperboard',
@@ -108,13 +114,13 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
         type: 'target',
         position: Position.Left,
         x: 0,
-        y: VIDEO_NODE_SIZE.height * 0.5,
+        y: VIDEO_SET_SIZE.height * 0.5,
       },
       {
         type: 'source',
         position: Position.Right,
-        x: VIDEO_NODE_SIZE.width,
-        y: VIDEO_NODE_SIZE.height * 0.5,
+        x: VIDEO_SET_SIZE.width,
+        y: VIDEO_SET_SIZE.height * 0.5,
       },
     ],
     icon: 'ListVideo',

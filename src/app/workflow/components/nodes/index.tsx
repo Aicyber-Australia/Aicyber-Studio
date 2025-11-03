@@ -1,7 +1,7 @@
 import { Node, NodeProps, XYPosition } from '@xyflow/react';
 import { nanoid } from 'nanoid';
 
-import { NODE_SIZE, IMAGE_NODE_SIZE, VIDEO_NODE_SIZE, TEXT_NODE_SIZE, ACTION_NODE_SIZE, NODE_SET_SIZE, nodesConfig } from '../../config';
+import { NODE_SIZE, IMAGE_NODE_SIZE, VIDEO_NODE_SIZE, VIDEO_SET_SIZE, TEXT_NODE_SIZE, ACTION_NODE_SIZE, NODE_SET_SIZE, MEDIA_SET_SIZE, nodesConfig } from '../../config';
 import { iconMapping } from '@/app/workflow/utils/icon-mapping';
 import ImageFrame from '@/app/workflow/components/nodes/image/image-frame';
 import ImageSet from '@/app/workflow/components/nodes/image/image-set';
@@ -145,9 +145,13 @@ export const createNodeByType = ({
 
   // Determine the size based on node type
   let nodeSize = NODE_SIZE;
-  if (type === 'image-frame' || type === 'image-set' || type === 'media-set') {
+  if (type === 'media-set') {
+    nodeSize = MEDIA_SET_SIZE;
+  } else if (type === 'video-set') {
+    nodeSize = VIDEO_SET_SIZE;
+  } else if (type === 'image-frame' || type === 'image-set') {
     nodeSize = IMAGE_NODE_SIZE;
-  } else if (type === 'video-frame' || type === 'video-set') {
+  } else if (type === 'video-frame') {
     nodeSize = VIDEO_NODE_SIZE;
   } else if (type === 'text-frame' || type === 'text-set') {
     nodeSize = TEXT_NODE_SIZE;
