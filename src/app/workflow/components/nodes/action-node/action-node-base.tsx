@@ -543,27 +543,9 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
 
           {/* Output and Input Mode Selection - In one row */}
           <div className="flex items-start gap-4 flex-shrink-0 nodrag w-full min-w-0">
-            {/* Output Mode Selection */}
-            <div className="flex flex-col justify-start flex-1 min-w-0">
-              <div className="text-[10px] text-muted-foreground mb-1">Output</div>
-              <Select value={setOutputMode} onValueChange={handleSetOutputModeChange}>
-                <SelectTrigger className="w-full h-9 bg-white dark:bg-white">
-                  <SelectValue placeholder="Output mode:" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="individual">
-                    Separate outputs
-                  </SelectItem>
-                  <SelectItem value="integrated">
-                    Combined output
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
             {/* Execution Mode Selection */}
             <div className="flex flex-col justify-start flex-1 min-w-0">
-              <div className="text-[10px] text-muted-foreground mb-1">Input</div>
+              <div className="text-[10px] text-muted-foreground mb-1">Execution Mode</div>
               <Select
                 value={executionMode}
                 onValueChange={handleExecutionModeChange}
@@ -586,6 +568,24 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
                   {lockReason}
                 </div>
               )}
+            </div>
+
+            {/* Output Mode Selection */}
+            <div className="flex flex-col justify-start flex-1 min-w-0">
+              <div className="text-[10px] text-muted-foreground mb-1">Output</div>
+              <Select value={setOutputMode} onValueChange={handleSetOutputModeChange}>
+                <SelectTrigger className="w-full h-9 bg-white dark:bg-white">
+                  <SelectValue placeholder="Output mode:" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="individual">
+                    Separate outputs
+                  </SelectItem>
+                  <SelectItem value="integrated">
+                    Combined output
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

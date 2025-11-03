@@ -104,8 +104,8 @@ export function ActionNodeSettings({
                   setData('executionMode', 'concurrent');
                 }
               }}
-              left="Separate outputs"
-              right="Combined output"
+              left="Separate"
+              right="Combined"
             />
           </div>
         </div>
