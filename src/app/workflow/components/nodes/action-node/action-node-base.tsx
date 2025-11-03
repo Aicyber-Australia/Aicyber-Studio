@@ -70,6 +70,8 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
   const [hasBreakpoint, setHasBreakpoint] = useState<boolean>(data?.hasBreakpoint || false);
   const [isImageUpActive, setIsImageUpActive] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false); // State for delete confirmation dialog
+  const [isExtensionCollapsed, setIsExtensionCollapsed] = useState<boolean>(true); // Extension panel collapsed state
 
   const containerRef = React.useRef<HTMLDivElement>(null);
 
@@ -192,7 +194,20 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
       runWorkflow(id);
     }
   }, [id, runWorkflow, stopWorkflow, data?.status]);
-  const onRemove = useCallback(() => removeNode(id), [id, removeNode]);
+  
+  const handleDeleteClick = useCallback(() => {
+    setIsDeleteDialogOpen(true); // Open dialog on first click
+  }, []);
+
+  const handleConfirmDelete = useCallback(() => {
+    removeNode(id);
+    setIsDeleteDialogOpen(false); // Close dialog after deleting
+  }, [removeNode, id]);
+
+  const handleCancelDelete = useCallback(() => {
+    setIsDeleteDialogOpen(false); // Close dialog on cancel
+  }, []);
+  
   const updateNodeData = useCallback((newData: Partial<WorkflowNodeData>) => {
     setNodes((nodes) =>
       nodes.map((node) =>
@@ -487,7 +502,7 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
                 variant="ghost"
                 size="icon"
                 className="group nodrag bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700 h-7 w-7 transition-colors"
-                onClick={onRemove}
+                onClick={handleDeleteClick}
                 title="Delete"
               >
                 <Trash className="h-4 w-4 group-hover:hidden" />
@@ -599,6 +614,32 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
             />
           </div>
 
+          {/* Extension Panel - Collapsible */}
+          <div className="flex-shrink-0 nodrag w-full bg-white dark:bg-white border border-gray-200 dark:border-gray-700 rounded-md">
+            {/* Header - Always visible, one line when collapsed */}
+            <button
+              type="button"
+              onClick={() => setIsExtensionCollapsed(!isExtensionCollapsed)}
+              className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors rounded-md"
+            >
+              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Extension</span>
+              {isExtensionCollapsed ? (
+                <ChevronDown className="w-4 h-4 text-gray-500" />
+              ) : (
+                <ChevronUp className="w-4 h-4 text-gray-500" />
+              )}
+            </button>
+
+            {/* Content - Collapsible */}
+            {!isExtensionCollapsed && (
+              <div className="px-3 pb-3 border-t border-gray-200 dark:border-gray-700">
+                <div className="pt-3 text-xs text-gray-600 dark:text-gray-400">
+                  Extension content goes here...
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Execution Results Section - Only show if there are responses to display */}
           {data.apiResponses && data.apiResponses.length > 0 && (
             <div className="flex-shrink-0 nodrag border-t pt-3 space-y-2">
@@ -693,6 +734,34 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
             <NodeSettings nodeId={id} nodeType={nodeType as AppNodeType} data={data} />
           </div>
         </div>
+      )}
+
+      {/* Delete confirmation modal - rendered via portal */}
+      {isDeleteDialogOpen && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center" style={{ pointerEvents: 'auto' }}>
+          <div className="absolute inset-0 bg-black/50" onClick={handleCancelDelete} />
+          <div className="relative z-[100000] w-[320px] rounded-lg border bg-white p-4 shadow-lg dark:bg-gray-900 dark:border-gray-800">
+            <div className="text-sm font-semibold mb-2">Delete node?</div>
+            <div className="text-xs text-gray-600 dark:text-gray-300 mb-4">This action cannot be undone.</div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className="px-2.5 py-1.5 text-xs rounded bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors"
+                onClick={handleCancelDelete}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="px-2.5 py-1.5 text-xs rounded bg-red-600 text-white hover:bg-red-700 transition-colors"
+                onClick={handleConfirmDelete}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -39,7 +39,7 @@ export const BorderLoadingIndicator = ({
 }) => {
   return (
     <>
-      <div className="absolute -left-[1px] -top-[1px] h-[calc(100%+2px)] w-[calc(100%+2px)]">
+      <div className="absolute -left-[1px] -top-[1px] h-[calc(100%+2px)] w-[calc(100%+2px)] rounded-lg pointer-events-none">
         <style>
           {`
         @keyframes spin {
@@ -51,13 +51,17 @@ export const BorderLoadingIndicator = ({
           position: absolute;
           left: 50%;
           top: 50%;
-          width: 140%;
+          width: 200%;
           aspect-ratio: 1;
           transform-origin: center;
         }
+        .spinner-container {
+          overflow: hidden;
+          border-radius: 0.5rem;
+        }
       `}
         </style>
-        <div className="absolute inset-0 overflow-hidden rounded-[7px]">
+        <div className="spinner-container absolute inset-0">
           <div className="spinner rounded-full bg-[conic-gradient(from_0deg_at_50%_50%,_rgb(42,67,233)_0deg,_rgba(42,138,246,0)_360deg)]" />
         </div>
       </div>
