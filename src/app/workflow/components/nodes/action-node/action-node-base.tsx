@@ -2,7 +2,7 @@
 
 import React, { useCallback, useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Play, Trash, Trash2, Square, RotateCcw, CheckCircle2, XCircle, ChevronDown, ChevronUp, Download, OctagonMinus, ImageUp, HelpCircle, Menu, SquareX } from 'lucide-react';
+import { Play, Trash, Trash2, Square, RotateCcw, CheckCircle2, XCircle, ChevronDown, ChevronUp, Download, OctagonMinus, ImageUp, HelpCircle, Menu, SquareX, List } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -393,7 +393,7 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
       />
       <BaseNode style={{ width: '100%', height: '100%', minWidth: 0, overflow: 'visible' }}>
         <BaseNodeHeader className="flex-col gap-0 border-b border-gray-200 dark:border-gray-700 min-w-0">
-          {/* First layer: Icon, Node Name */}
+          {/* First layer: Icon, Node Name, Model Selection */}
           <div className="flex items-center justify-between w-full px-0.5 pt-0 pb-0.5 min-h-[20px]">
             <div className="flex items-center gap-1 flex-1 min-w-0">
               {IconComponent ? <IconComponent aria-label={data?.icon} className="h-5 w-5 flex-shrink-0" /> : null}
@@ -417,6 +417,22 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
                   )}
                 </BaseNodeHeaderTitle>
               </div>
+            </div>
+            {/* Model Selection */}
+            <div className="nodrag flex-shrink-0 ml-2">
+              <Select value={selectedModel} onValueChange={handleModelChange}>
+                <SelectTrigger className="h-3 w-26 rounded-sm bg-gray-200 dark:bg-gray-700 border-0 shadow-sm text-[10px] [&>svg:last-child]:hidden">
+                  <span className="flex-1 text-left">{selectedModel || 'Model'}</span>
+                  <List className="w-3 h-3 opacity-50 flex-shrink-0" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableModels.map((model) => (
+                    <SelectItem key={model.value} value={model.value}>
+                      {model.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div className="w-2/3 h-px bg-gray-200 dark:bg-gray-700 ml-1 self-start"></div>
@@ -539,23 +555,6 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
         </BaseNodeHeader>
 
         <BaseNodeContent className="flex-1 flex flex-col space-y-4 min-w-0 bg-gray-50 dark:bg-gray-900 rounded-b-lg border-b border-gray-200 dark:border-gray-700 shadow-sm">
-          {/* Model Selection - Small expandable box */}
-          <div className="flex flex-col justify-start flex-shrink-0 nodrag w-full min-w-0">
-            <div className="text-[10px] text-muted-foreground mb-1">Model</div>
-            <Select value={selectedModel} onValueChange={handleModelChange}>
-              <SelectTrigger className="w-1/2 h-9 rounded-full bg-white dark:bg-white">
-                <SelectValue placeholder="Select model:" />
-              </SelectTrigger>
-              <SelectContent>
-                {availableModels.map((model) => (
-                  <SelectItem key={model.value} value={model.value}>
-                    {model.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           {/* Output and Input Mode Selection - In one row */}
           <div className="flex items-start gap-4 flex-shrink-0 nodrag w-full min-w-0">
             {/* Execution Mode Selection */}
