@@ -203,10 +203,12 @@ export function ImageEditDialog({ imageUrl, onClose, onSave }: ImageEditDialogPr
       className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 backdrop-blur-sm"
       style={{ pointerEvents: 'auto' }}
     >
-      <div className="relative w-[95vw] h-[95vh] bg-white rounded-lg shadow-2xl flex flex-col">
+      <div className="relative w-[90vw] max-w-[1400px] h-[95vh] bg-white rounded-lg shadow-2xl flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-lg font-semibold">Edit Image</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold">Edit Image</h2>
+          </div>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -222,6 +224,7 @@ export function ImageEditDialog({ imageUrl, onClose, onSave }: ImageEditDialogPr
               size="sm"
               onClick={onClose}
               className="h-8 w-8 p-0"
+              title="Close"
             >
               <X className="w-4 h-4" />
             </Button>
