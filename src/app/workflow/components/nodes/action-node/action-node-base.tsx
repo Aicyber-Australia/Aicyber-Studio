@@ -745,19 +745,28 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
           {/* Second layer: Toolbar buttons */}
           <div className="flex items-center justify-between w-full px-0.5 pt-1 min-h-[10px]" style={{ visibility: isTitleEditing ? 'hidden' : 'visible' }}>
             <div className="flex items-center gap-2 flex-shrink-0">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="nodrag bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700 h-7 w-7 transition-colors"
-                onClick={onPlay}
-                title={isNodeRunning ? "Stop node execution" : "Run node"}
-              >
-                {isNodeRunning ? (
-                  <Square className="h-4 w-4" />
-                ) : (
-                  <Play className="h-4 w-4" />
+              <div className="relative inline-block">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn(
+                    "nodrag h-7 w-7 transition-colors relative z-10",
+                    "bg-white dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
+                  )}
+                  onClick={onPlay}
+                  title={isNodeRunning ? "Stop node execution" : "Run node"}
+                >
+                  {isNodeRunning ? (
+                    <Square className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <Play className="h-4 w-4" />
+                  )}
+                </Button>
+                {/* Rotating green border animation when running */}
+                {isNodeRunning && (
+                  <div className="run-icon-border-animation" />
                 )}
-              </Button>
+              </div>
               <Button
                 variant="ghost"
                 size="icon"

@@ -617,17 +617,20 @@ export default function Workflow() {
           {isRunning ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
         </Button>
 
-        {hasBreakpoint && !isRunning && (
-          <Button
-            onClick={() => resumeWorkflow()}
-            variant="ghost"
-            size="icon"
-            title="Resume Workflow (from breakpoint)"
-            className="text-orange-500 hover:text-orange-600"
-          >
-            <PlayCircle className="h-5 w-5" />
-          </Button>
-        )}
+        <Button
+          onClick={() => resumeWorkflow()}
+          variant="ghost"
+          size="icon"
+          title="Resume Workflow (from breakpoint)"
+          disabled={!hasBreakpoint || isRunning}
+          className={cn(
+            hasBreakpoint && !isRunning 
+              ? "text-orange-500 hover:text-orange-600" 
+              : "text-gray-400 cursor-not-allowed"
+          )}
+        >
+          <PlayCircle className="h-5 w-5" />
+        </Button>
 
         <Button
           onClick={onRequestClear}
