@@ -66,7 +66,7 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
         y: IMAGE_NODE_SIZE.height * 0.5,
       },
     ],
-    icon: 'ImagePlay',
+    icon: 'Image',
   },
   'image-set': {
     id: 'image-set',
@@ -186,7 +186,7 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
         y: ACTION_NODE_SIZE.height * 0.5,
       },
     ],
-    icon: 'Workflow',
+    icon: 'TextToImage',
   },
   'image-to-image-node': {
     id: 'image-to-image-node',
@@ -206,7 +206,7 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
         y: ACTION_NODE_SIZE.height * 0.5,
       },
     ],
-    icon: 'Workflow',
+    icon: 'ImageToImage',
   },
   'image-to-text-node': {
     id: 'image-to-text-node',
@@ -226,7 +226,7 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
         y: ACTION_NODE_SIZE.height * 0.5,
       },
     ],
-    icon: 'Workflow',
+    icon: 'ImageToText',
   },
   'edit-image-node': {
     id: 'edit-image-node',
@@ -246,7 +246,7 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
         y: ACTION_NODE_SIZE.height * 0.5,
       },
     ],
-    icon: 'Workflow',
+    icon: 'FilePen',
     // Output: Single edited image (imageList[0])
   },
   'node-set': {
