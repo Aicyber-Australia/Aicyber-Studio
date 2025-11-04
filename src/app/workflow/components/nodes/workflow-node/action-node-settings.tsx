@@ -33,6 +33,9 @@ export function ActionNodeSettings({
 }) {
   const { setNodes } = useReactFlow();
   const nodes = useStore((state) => state.nodes);
+  const modelListRef = React.useRef<HTMLDivElement>(null);
+  const [modelTrackTop, setModelTrackTop] = React.useState<number>(0);
+  const [modelTrackHeight, setModelTrackHeight] = React.useState<number>(0);
 
   const setData = (k: string, v: any) => {
     setNodes((ns) => ns.map((n) => (n.id === nodeId ? { ...n, data: { ...n.data, [k]: v } } : n)));
@@ -58,6 +61,21 @@ export function ActionNodeSettings({
   const executionMode = (data?.executionMode || 'concurrent') as 'concurrent' | 'progressive';
   const selectedModel = data?.selectedModel || (nodeType === 'image-to-image-node' ? 'qwen' : 'default');
 
+  // Update sliding track position to align with the selected model
+  React.useLayoutEffect(() => {
+    const container = modelListRef.current;
+    if (!container) return;
+    const buttons = Array.from(container.querySelectorAll('button[data-model-item="true"]')) as HTMLButtonElement[];
+    const index = availableModels.findIndex((m) => m.value === selectedModel);
+    const target = index >= 0 ? buttons[index] : buttons[0];
+    if (!target) return;
+    const containerRect = container.getBoundingClientRect();
+    const itemRect = target.getBoundingClientRect();
+    const inset = 4; // avoid spilling into inter-item spacing
+    setModelTrackTop(itemRect.top - containerRect.top + inset / 2);
+    setModelTrackHeight(Math.max(0, itemRect.height - inset));
+  }, [availableModels, selectedModel]);
+
   return (
     <div className="space-y-4">
       {/* Model Selection */}
@@ -65,7 +83,12 @@ export function ActionNodeSettings({
         <div className="flex flex-col gap-1 w-full">
           <div className="rounded-2xl bg-white dark:bg-gray-800 p-3 shadow-sm">
             <div className="text-[10px] text-muted-foreground mb-2">Model</div>
-            <div className="space-y-1">
+            <div className="relative space-y-1 rounded-md overflow-hidden" ref={modelListRef}>
+              {/* Sliding highlight track */}
+              <div
+                className="model-slider-track"
+                style={{ top: modelTrackTop, height: modelTrackHeight || 0 }}
+              />
               {availableModels.map((model) => {
                 const isSelected = model.value === selectedModel;
                 return (
@@ -73,10 +96,11 @@ export function ActionNodeSettings({
                     key={model.value}
                     type="button"
                     onClick={() => setData('selectedModel', model.value)}
+                    data-model-item
                     className={cn(
-                      "w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors font-medium",
+                      "relative z-10 w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors font-medium",
                       isSelected
-                        ? "bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-gray-100"
+                        ? "text-gray-900 dark:text-gray-100"
                         : "bg-transparent hover:bg-gray-100 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-300"
                     )}
                   >

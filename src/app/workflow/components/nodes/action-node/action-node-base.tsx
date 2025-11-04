@@ -2,7 +2,7 @@
 
 import React, { useCallback, useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Play, Trash, Trash2, Square, RotateCcw, CheckCircle2, XCircle, ChevronDown, ChevronUp, Download, OctagonMinus, ImageUp, HelpCircle, Menu, SquareX, List } from 'lucide-react';
+import { Play, Trash, Trash2, Square, RotateCcw, CheckCircle2, XCircle, ChevronDown, ChevronUp, Download, OctagonMinus, ImageUp, HelpCircle, Menu, SquareX, List, ArrowRightFromLine, ArrowBigRightDash, GalleryHorizontalEnd, BetweenHorizontalStart } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -606,26 +606,33 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
         <BaseNodeContent className="flex-1 flex flex-col space-y-4 min-w-0 min-h-0 bg-gray-50 dark:bg-gray-900 rounded-b-lg border-b border-gray-200 dark:border-gray-700 shadow-sm overflow-y-auto">
           {/* Output and Input Mode Selection - In one row */}
           <div className="flex items-start gap-4 flex-shrink-0 nodrag w-full min-w-0">
-            {/* Execution Mode Selection */}
+            {/* Execution Mode Selection - Icon Slider */}
             <div className="flex flex-col justify-start flex-1 min-w-0">
               <div className="text-[10px] text-muted-foreground mb-1">Execution Mode</div>
-              <Select
-                value={executionMode}
-                onValueChange={handleExecutionModeChange}
-                disabled={setOutputMode === 'integrated' || isExecutionModeLocked}
-              >
-                <SelectTrigger className="w-full h-9 bg-white dark:bg-white">
-                  <SelectValue placeholder="Execution mode:" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="concurrent">
-                    All at once
-                  </SelectItem>
-                  <SelectItem value="progressive" disabled={setOutputMode === 'integrated' || isExecutionModeLocked}>
-                    One-by-one
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+              <div className={cn(
+                "relative flex w-[84px] items-center rounded-md border p-1 box-border overflow-hidden bg-white dark:bg-gray-800",
+                (setOutputMode === 'integrated' || isExecutionModeLocked) && "opacity-50 cursor-not-allowed"
+              )}>
+                <div className={`icon-slider-track ${executionMode === 'concurrent' ? 'left' : 'right'}`} />
+                <button
+                  type="button"
+                  className={`relative z-10 flex-1 flex items-center justify-center h-7 w-7 rounded-md nodrag ${executionMode === 'concurrent' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}
+                  title="All at once"
+                  onClick={() => !(setOutputMode === 'integrated' || isExecutionModeLocked) && handleExecutionModeChange('concurrent')}
+                  disabled={setOutputMode === 'integrated' || isExecutionModeLocked}
+                >
+                  <GalleryHorizontalEnd className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  className={`relative z-10 flex-1 flex items-center justify-center h-7 w-7 rounded-md nodrag ${executionMode === 'progressive' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}
+                  title="One-by-one"
+                  onClick={() => !(setOutputMode === 'integrated' || isExecutionModeLocked) && handleExecutionModeChange('progressive')}
+                  disabled={setOutputMode === 'integrated' || isExecutionModeLocked}
+                >
+                  <BetweenHorizontalStart className="h-3.5 w-3.5" />
+                </button>
+              </div>
               {isExecutionModeLocked && (
                 <div className="text-[10px] text-amber-600 dark:text-amber-400 leading-tight mt-1">
                   {lockReason}
@@ -633,22 +640,28 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
               )}
             </div>
 
-            {/* Output Mode Selection */}
+            {/* Output Mode Selection - Icon Slider */}
             <div className="flex flex-col justify-start flex-1 min-w-0">
               <div className="text-[10px] text-muted-foreground mb-1">Output</div>
-              <Select value={setOutputMode} onValueChange={handleSetOutputModeChange}>
-                <SelectTrigger className="w-full h-9 bg-white dark:bg-white">
-                  <SelectValue placeholder="Output mode:" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="individual">
-                    Separate outputs
-                  </SelectItem>
-                  <SelectItem value="integrated">
-                    Combined output
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="relative flex w-[84px] items-center rounded-md border p-1 box-border overflow-hidden bg-white dark:bg-gray-800">
+                <div className={`icon-slider-track ${setOutputMode === 'individual' ? 'left' : 'right'}`} />
+                <button
+                  type="button"
+                  className={`relative z-10 flex-1 flex items-center justify-center h-7 w-7 rounded-md nodrag ${setOutputMode === 'individual' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}
+                  title="Separate outputs"
+                  onClick={() => handleSetOutputModeChange('individual')}
+                >
+                  <ArrowRightFromLine className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  className={`relative z-10 flex-1 flex items-center justify-center h-7 w-7 rounded-md nodrag ${setOutputMode === 'integrated' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}
+                  title="Combined output"
+                  onClick={() => handleSetOutputModeChange('integrated')}
+                >
+                  <ArrowBigRightDash className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </div>
 
