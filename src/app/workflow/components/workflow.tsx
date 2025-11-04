@@ -19,7 +19,7 @@ import {
 } from '@xyflow/react';
 import { useShallow } from 'zustand/react/shallow';
 import { useTheme } from 'next-themes';
-import { MousePointer2, Hand, Play, Pause, Trash, Trash2, Divide, PlayCircle, Share2, Save } from 'lucide-react';
+import { MousePointer2, Hand, Play, Pause, Trash, Trash2, Divide, PlayCircle, Share2, Save, HardDrive } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { useCopilotReadable } from '@copilotkit/react-core';
 
@@ -76,6 +76,7 @@ export default function Workflow() {
   const [isSelectMode, setIsSelectMode] = useState(true);
   const { runWorkflow, stopWorkflow, resumeWorkflow, isRunning, isStopping, hasBreakpoint } = useWorkflowRunner();
   const [selectedNodes, setSelectedNodes] = useState<any[]>([]);
+  const [isHardDriveActive, setIsHardDriveActive] = useState(false);
   const runLayout = useLayout();
   const { showToast } = useToast();
 
@@ -653,6 +654,18 @@ export default function Workflow() {
           title="Share"
         >
           <Share2 className="h-5 w-5" />
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          title="Hard Drive"
+          onClick={() => setIsHardDriveActive(!isHardDriveActive)}
+          className={cn(
+            isHardDriveActive ? 'bg-black text-white hover:bg-black hover:text-white' : ''
+          )}
+        >
+          <HardDrive className="h-5 w-5" />
         </Button>
       </div>
 
