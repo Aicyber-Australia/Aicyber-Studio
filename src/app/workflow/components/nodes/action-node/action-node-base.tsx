@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useState, useMemo, useEffect } from 'react';
+import React, { useCallback, useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Play, Trash, Trash2, Square, RotateCcw, CheckCircle2, XCircle, ChevronDown, ChevronUp, Download, OctagonMinus, ImageUp, HelpCircle, Menu, SquareX, List, ArrowRightFromLine, ArrowBigRightDash, GalleryHorizontalEnd, BetweenHorizontalStart } from 'lucide-react';
 
@@ -73,6 +73,15 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
   const [isSettingsClosing, setIsSettingsClosing] = useState(false); // Track closing animation
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false); // State for delete confirmation dialog
   const [isExtensionCollapsed, setIsExtensionCollapsed] = useState<boolean>(true); // Extension panel collapsed state
+
+  // Progress animation states
+  const [animatedProgress, setAnimatedProgress] = useState(0);
+  const [showCompleteAnimation, setShowCompleteAnimation] = useState(false);
+  const microAnimationRef = useRef<NodeJS.Timeout | null>(null);
+  const completeAnimationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastCompletedCountRef = useRef(0);
+  const hasShownCompleteAnimationRef = useRef(false);
+  const previousStatusRef = useRef<string | undefined>(data?.status);
 
   const containerRef = React.useRef<HTMLDivElement>(null);
 
@@ -427,9 +436,257 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
     return {
       current: currentStep,
       total: totalExecutions,
-      percentage: Math.min(percentage, 100)
+      percentage: Math.min(percentage, 100),
+      completedCount
     };
   }, [executionCount, data?.status, data?.executionMetadata, isNodeRunning]);
+
+  // Start micro animation for current step (random small increments)
+  const startMicroAnimation = useCallback((step: number, total: number) => {
+    if (microAnimationRef.current) {
+      clearInterval(microAnimationRef.current);
+    }
+
+    if (total === 0) return;
+
+    const stepSize = 100 / total;
+    const stepStart = step * stepSize;
+    const stepEnd = (step + 1) * stepSize;
+    const currentEnd = step >= total ? 100 : stepEnd;
+
+    // Animate to the start of current step first
+    setAnimatedProgress(stepStart);
+
+    // Then add micro animation with random small increments
+    let currentMicro = stepStart;
+    const microInterval = setInterval(() => {
+      // Random increment between 0.1% and 0.5% of the step size
+      const increment = (Math.random() * 0.004 + 0.001) * stepSize;
+      currentMicro = Math.min(currentMicro + increment, currentEnd * 0.95); // Don't exceed 95% of step end
+      setAnimatedProgress(currentMicro);
+    }, 100 + Math.random() * 200); // Random interval between 100-300ms
+
+    microAnimationRef.current = microInterval;
+  }, []);
+
+  // Stop micro animation and animate to step completion
+  const stopMicroAnimation = useCallback((step: number, total: number, forceSmooth: boolean = false) => {
+    if (microAnimationRef.current) {
+      clearInterval(microAnimationRef.current);
+      microAnimationRef.current = null;
+    }
+
+    if (total === 0) return;
+
+    const stepSize = 100 / total;
+    const stepEnd = (step + 1) * stepSize;
+    const targetProgress = step >= total ? 100 : stepEnd;
+    
+    // If forceSmooth is true, use setTimeout to ensure CSS transition works
+    // This is important when status changes to success
+    if (forceSmooth) {
+      setTimeout(() => {
+        setAnimatedProgress(targetProgress);
+      }, 0);
+    } else {
+      setAnimatedProgress(targetProgress);
+    }
+  }, []);
+
+  // Animate progress based on execution state
+  useEffect(() => {
+    const total = progressInfo.total;
+    const completed = progressInfo.completedCount || 0;
+    const currentStep = progressInfo.current;
+    const currentStatus = data?.status;
+    const previousStatus = previousStatusRef.current;
+    
+    // Detect status change from loading to success
+    const statusChangedToSuccess = previousStatus === 'loading' && currentStatus === 'success';
+    
+    // Update previous status ref
+    previousStatusRef.current = currentStatus;
+    
+    if (total === 0) {
+      setAnimatedProgress(0);
+      setShowCompleteAnimation(false);
+      hasShownCompleteAnimationRef.current = false;
+      lastCompletedCountRef.current = 0;
+      if (microAnimationRef.current) {
+        clearInterval(microAnimationRef.current);
+        microAnimationRef.current = null;
+      }
+      return;
+    }
+
+    const stepSize = 100 / total;
+    
+    // Check if a new execution completed or node just started running
+    const newCompletion = completed > lastCompletedCountRef.current;
+    const justStarted = isNodeRunning && lastCompletedCountRef.current === 0 && completed === 0;
+    
+    if (newCompletion) {
+      const previousCompleted = lastCompletedCountRef.current;
+      lastCompletedCountRef.current = completed;
+      
+      // Stop micro animation for previous step and animate to completion
+      if (previousCompleted >= 0) {
+        stopMicroAnimation(previousCompleted, total);
+      }
+      
+      // Start micro animation for current step if still running
+      if (isNodeRunning && currentStep <= total && currentStep > 0) {
+        setTimeout(() => {
+          startMicroAnimation(currentStep - 1, total);
+        }, 100);
+      }
+    }
+
+    // Calculate target progress
+    let targetProgress: number;
+    
+    // If not running and status is initial, show 0% progress
+    if (!isNodeRunning && data?.status === 'initial') {
+      targetProgress = 0;
+    } else if (total === 1) {
+      // Single execution: use 50% logic
+      if (isNodeRunning) {
+        targetProgress = 50;
+        // Start micro animation if not already running (on first run or after reset)
+        if (!microAnimationRef.current && (justStarted || completed === 0)) {
+          startMicroAnimation(0, total);
+        }
+      } else {
+        // Only show 100% if status is success
+        targetProgress = data?.status === 'success' ? 100 : completed * stepSize;
+        // Stop micro animation first to ensure smooth transition
+        if (microAnimationRef.current) {
+          stopMicroAnimation(0, total, statusChangedToSuccess);
+        }
+        // If status just changed to success, ensure smooth transition from current progress to 100%
+        if (statusChangedToSuccess && !microAnimationRef.current) {
+          // Don't set progress immediately, let CSS transition handle it
+          // The stopMicroAnimation above or the update below will handle it
+        }
+        // Wait for the progress bar to animate to 100% before showing green animation
+        if (!hasShownCompleteAnimationRef.current && data?.status === 'success') {
+          if (completeAnimationTimeoutRef.current) {
+            clearTimeout(completeAnimationTimeoutRef.current);
+          }
+          // Use a longer delay to ensure the progress animation completes (700ms transition + buffer)
+          const delay = statusChangedToSuccess ? 800 : 800;
+          completeAnimationTimeoutRef.current = setTimeout(() => {
+            if (!hasShownCompleteAnimationRef.current) {
+              hasShownCompleteAnimationRef.current = true;
+              setShowCompleteAnimation(true);
+            }
+            completeAnimationTimeoutRef.current = null;
+          }, delay);
+        }
+      }
+    } else {
+      // Multiple executions: use original logic with micro animations
+      if (isNodeRunning) {
+        // Currently processing: show progress to 50% of current step
+        const currentStepStart = completed * stepSize;
+        const currentStepMid = currentStepStart + stepSize * 0.5;
+        targetProgress = currentStepMid;
+        
+        // Start micro animation if not already running (on first run or when starting new step)
+        if (!microAnimationRef.current && currentStep > 0 && completed < total) {
+          // Small delay to ensure smooth transition from previous step
+          const delay = (newCompletion || justStarted) ? 100 : 0;
+          setTimeout(() => {
+            startMicroAnimation(currentStep - 1, total);
+          }, delay);
+        }
+      } else {
+        // Only show 100% if status is success, otherwise show progress based on completed
+        targetProgress = data?.status === 'success' ? 100 : completed * stepSize;
+        // Stop micro animation first to ensure smooth transition
+        if (microAnimationRef.current) {
+          stopMicroAnimation(completed - 1, total, statusChangedToSuccess);
+        }
+        // If status just changed to success, ensure smooth transition from current progress to 100%
+        if (statusChangedToSuccess && !microAnimationRef.current) {
+          // Don't set progress immediately, let CSS transition handle it
+          // The stopMicroAnimation above or the update below will handle it
+        }
+        // Wait for the progress bar to animate to 100% before showing green animation
+        if (!hasShownCompleteAnimationRef.current && data?.status === 'success') {
+          if (completeAnimationTimeoutRef.current) {
+            clearTimeout(completeAnimationTimeoutRef.current);
+          }
+          // Use a longer delay to ensure the progress animation completes (700ms transition + buffer)
+          const delay = statusChangedToSuccess ? 800 : 800;
+          completeAnimationTimeoutRef.current = setTimeout(() => {
+            if (!hasShownCompleteAnimationRef.current) {
+              hasShownCompleteAnimationRef.current = true;
+              setShowCompleteAnimation(true);
+            }
+            completeAnimationTimeoutRef.current = null;
+          }, delay);
+        }
+      }
+    }
+
+    // Update animated progress if not using micro animation
+    // When micro animation stops, it already sets the progress, so we only update if:
+    // 1. No micro animation was running (normal case)
+    // 2. We need to ensure smooth transition to 100% on completion
+    if (!microAnimationRef.current) {
+      // If status just changed to success, we need to ensure smooth transition
+      // from current animatedProgress value to 100%
+      if (statusChangedToSuccess && targetProgress === 100) {
+        // Get current animated progress value
+        // Use a small delay to ensure the DOM has updated and CSS transition can work
+        setTimeout(() => {
+          setAnimatedProgress(100);
+        }, 0);
+      } else {
+        // Always update to target progress when micro animation is not running
+        // This ensures smooth transitions in all cases
+        setAnimatedProgress(targetProgress);
+      }
+    } else if (!isNodeRunning && data?.status === 'success' && targetProgress === 100) {
+      // Special case: if node just completed and micro animation is still running,
+      // stop it first and let it handle the transition to 100%
+      // The stopMicroAnimation call above will handle this
+    }
+  }, [progressInfo, isNodeRunning, data?.status, startMicroAnimation, stopMicroAnimation]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (microAnimationRef.current) {
+        clearInterval(microAnimationRef.current);
+        microAnimationRef.current = null;
+      }
+      if (completeAnimationTimeoutRef.current) {
+        clearTimeout(completeAnimationTimeoutRef.current);
+        completeAnimationTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
+  // Reset animation states when status changes to initial
+  useEffect(() => {
+    if (data?.status === 'initial') {
+      setAnimatedProgress(0);
+      setShowCompleteAnimation(false);
+      hasShownCompleteAnimationRef.current = false;
+      lastCompletedCountRef.current = 0;
+      previousStatusRef.current = data?.status;
+      if (microAnimationRef.current) {
+        clearInterval(microAnimationRef.current);
+        microAnimationRef.current = null;
+      }
+      if (completeAnimationTimeoutRef.current) {
+        clearTimeout(completeAnimationTimeoutRef.current);
+        completeAnimationTimeoutRef.current = null;
+      }
+    }
+  }, [data?.status]);
 
   return (
     <div className="relative w-full h-full" ref={containerRef}>
@@ -782,21 +1039,21 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
                     {/* Progress bar with smooth animation */}
                     <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full progress-bar-container">
                       <div
-                        className={`h-full bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 dark:from-gray-600 dark:via-gray-500 dark:to-gray-600 relative progress-bar-fill ${progressInfo.percentage === 100 ? 'rounded-full' : 'rounded-l-full rounded-r-full'}`}
+                        className={`h-full bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 dark:from-gray-600 dark:via-gray-500 dark:to-gray-600 relative progress-bar-fill ${animatedProgress >= 100 ? 'rounded-full' : 'rounded-l-full rounded-r-full'}`}
                         style={{ 
-                          width: `${progressInfo.percentage}%`,
+                          width: `${animatedProgress}%`,
                           transition: 'width 0.7s cubic-bezier(0.4, 0, 0.2, 1)'
                         }}
                       >
                         {/* Shimmer effect - only show when progressing */}
-                        {isNodeRunning && progressInfo.percentage > 0 && progressInfo.percentage < 100 && (
+                        {isNodeRunning && animatedProgress > 0 && animatedProgress < 100 && (
                           <div 
                             className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent progress-bar-shimmer rounded-l-full rounded-r-full"
                           />
                         )}
                       </div>
                       {/* Completion animation - green sweep from left to right */}
-                      {progressInfo.percentage === 100 && data?.status === 'success' && (
+                      {showCompleteAnimation && animatedProgress >= 100 && data?.status === 'success' && (
                         <div 
                           className="absolute inset-0 bg-gradient-to-r from-green-400 to-green-500 dark:from-green-500 dark:to-green-400 progress-bar-complete rounded-full"
                         />
