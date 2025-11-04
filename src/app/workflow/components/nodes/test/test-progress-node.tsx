@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useReactFlow } from '@xyflow/react';
 import { WorkflowNodeProps } from '@/app/workflow/components/nodes';
 import { nodesConfig } from '@/app/workflow/config';
@@ -13,11 +13,29 @@ function TestProgressNode({ id, data, selected }: WorkflowNodeProps) {
   const { setNodes } = useReactFlow();
   const [isRunning, setIsRunning] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
-  const totalSteps = 5;
+  const [totalSteps, setTotalSteps] = useState(5); // Make it configurable
+  const [animatedProgress, setAnimatedProgress] = useState(0); // Animated progress for smooth transitions
+  const [showCompleteAnimation, setShowCompleteAnimation] = useState(false); // Control when to show green completion animation
+  const microAnimationRef = useRef<NodeJS.Timeout | null>(null);
+  const completeAnimationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastStepRef = useRef(0);
+  const hasShownCompleteAnimationRef = useRef(false); // Flag to prevent duplicate animations
 
   const handleRefresh = useCallback(() => {
     setCurrentStep(0);
     setIsRunning(false);
+    setAnimatedProgress(0);
+    setShowCompleteAnimation(false);
+    hasShownCompleteAnimationRef.current = false;
+    lastStepRef.current = 0;
+    if (microAnimationRef.current) {
+      clearInterval(microAnimationRef.current);
+      microAnimationRef.current = null;
+    }
+    if (completeAnimationTimeoutRef.current) {
+      clearTimeout(completeAnimationTimeoutRef.current);
+      completeAnimationTimeoutRef.current = null;
+    }
     setNodes(nodes => nodes.map(node =>
       node.id === id
         ? {
@@ -32,12 +50,55 @@ function TestProgressNode({ id, data, selected }: WorkflowNodeProps) {
     ));
   }, [id, setNodes]);
 
+  // Start micro animation for current step (random small increments)
+  const startMicroAnimation = useCallback((step: number) => {
+    if (microAnimationRef.current) {
+      clearInterval(microAnimationRef.current);
+    }
+
+    const stepSize = 100 / totalSteps;
+    const stepStart = step * stepSize;
+    const stepEnd = (step + 1) * stepSize;
+    const currentEnd = step === totalSteps ? 100 : stepEnd;
+
+    // Animate to the start of current step first
+    setAnimatedProgress(stepStart);
+
+    // Then add micro animation with random small increments
+    let currentMicro = stepStart;
+    const microInterval = setInterval(() => {
+      // Random increment between 0.1% and 0.5% of the step size
+      const increment = (Math.random() * 0.004 + 0.001) * stepSize;
+      currentMicro = Math.min(currentMicro + increment, currentEnd * 0.95); // Don't exceed 95% of step end
+      setAnimatedProgress(currentMicro);
+    }, 100 + Math.random() * 200); // Random interval between 100-300ms
+
+    microAnimationRef.current = microInterval;
+  }, [totalSteps]);
+
+  // Stop micro animation and animate to step completion
+  const stopMicroAnimation = useCallback((step: number) => {
+    if (microAnimationRef.current) {
+      clearInterval(microAnimationRef.current);
+      microAnimationRef.current = null;
+    }
+
+    const stepSize = 100 / totalSteps;
+    const stepEnd = (step + 1) * stepSize;
+    const targetProgress = step >= totalSteps ? 100 : stepEnd;
+    setAnimatedProgress(targetProgress);
+  }, [totalSteps]);
+
   // 模拟运行过程
   const handleStart = useCallback(() => {
     if (isRunning) return;
 
     setIsRunning(true);
     setCurrentStep(0);
+    setAnimatedProgress(0);
+    setShowCompleteAnimation(false);
+    hasShownCompleteAnimationRef.current = false;
+    lastStepRef.current = 0;
 
     // 设置 loading 状态
     setNodes(nodes => nodes.map(node =>
@@ -58,19 +119,34 @@ function TestProgressNode({ id, data, selected }: WorkflowNodeProps) {
         : node
     ));
 
+    // Start micro animation for step 0
+    startMicroAnimation(0);
+
     // 模拟逐步执行
     let step = 0;
     const interval = setInterval(() => {
       step++;
       setCurrentStep(step);
+      lastStepRef.current = step;
 
+      // Stop micro animation for previous step and animate to completion
+      stopMicroAnimation(step - 1);
+
+      // Start micro animation for current step
+      if (step < totalSteps) {
+        setTimeout(() => {
+          startMicroAnimation(step);
+        }, 100); // Small delay to ensure smooth transition
+      }
+
+      // Update status - keep as 'loading' until animation completes (will be set to 'success' in setTimeout)
       setNodes(nodes => nodes.map(node =>
         node.id === id
           ? {
               ...node,
               data: {
                 ...node.data,
-                status: step >= totalSteps ? 'success' : 'loading',
+                status: 'loading', // Keep loading until animation completes
                 executionMetadata: {
                   totalExecutions: totalSteps,
                   successCount: step,
@@ -83,26 +159,94 @@ function TestProgressNode({ id, data, selected }: WorkflowNodeProps) {
       ));
 
       if (step >= totalSteps) {
+        if (microAnimationRef.current) {
+          clearInterval(microAnimationRef.current);
+          microAnimationRef.current = null;
+        }
+        
+        // Clear any existing completion timeout to prevent duplicates
+        if (completeAnimationTimeoutRef.current) {
+          clearTimeout(completeAnimationTimeoutRef.current);
+          completeAnimationTimeoutRef.current = null;
+        }
+        
+        // Stop micro animation and animate to 100%
+        stopMicroAnimation(step - 1);
+        
         clearInterval(interval);
         setIsRunning(false);
+        
+        // Wait for progress bar animation to complete (0.7s transition) before showing green animation and setting success
+        // Use a flag to ensure this only runs once
+        if (!hasShownCompleteAnimationRef.current) {
+          completeAnimationTimeoutRef.current = setTimeout(() => {
+            if (!hasShownCompleteAnimationRef.current) {
+              hasShownCompleteAnimationRef.current = true;
+              setShowCompleteAnimation(true);
+              // Set status to success after animation completes
+              setNodes(nodes => nodes.map(node =>
+                node.id === id
+                  ? {
+                      ...node,
+                      data: {
+                        ...node.data,
+                        status: 'success',
+                      }
+                    }
+                  : node
+              ));
+            }
+            completeAnimationTimeoutRef.current = null;
+          }, 750); // Slightly longer than transition duration to ensure it completes
+        }
       }
     }, 1000); // 每秒执行一步
-  }, [id, isRunning, setNodes, totalSteps]);
+  }, [id, isRunning, setNodes, totalSteps, startMicroAnimation, stopMicroAnimation]);
 
   const handleStop = useCallback(() => {
     setIsRunning(false);
+    if (microAnimationRef.current) {
+      clearInterval(microAnimationRef.current);
+      microAnimationRef.current = null;
+    }
+    if (completeAnimationTimeoutRef.current) {
+      clearTimeout(completeAnimationTimeoutRef.current);
+      completeAnimationTimeoutRef.current = null;
+    }
+    setShowCompleteAnimation(false);
+    hasShownCompleteAnimationRef.current = false;
   }, []);
 
   // 手动设置进度
   const handleSetProgress = useCallback((step: number) => {
     setCurrentStep(step);
+    lastStepRef.current = step;
+    
+    // Update animated progress
+    const stepSize = 100 / totalSteps;
+    const targetProgress = step * stepSize;
+    setAnimatedProgress(targetProgress);
+    
+    // Reset completion animation state
+    setShowCompleteAnimation(false);
+    hasShownCompleteAnimationRef.current = false;
+    
+    if (microAnimationRef.current) {
+      clearInterval(microAnimationRef.current);
+      microAnimationRef.current = null;
+    }
+    if (completeAnimationTimeoutRef.current) {
+      clearTimeout(completeAnimationTimeoutRef.current);
+      completeAnimationTimeoutRef.current = null;
+    }
+
     setNodes(nodes => nodes.map(node =>
       node.id === id
         ? {
             ...node,
             data: {
               ...node.data,
-              status: step > 0 ? 'loading' : 'initial',
+              status: step > 0 ? (step >= totalSteps ? 'success' : 'loading') : 'initial',
               executionMetadata: step > 0 ? {
                 totalExecutions: totalSteps,
                 successCount: step,
@@ -113,7 +257,30 @@ function TestProgressNode({ id, data, selected }: WorkflowNodeProps) {
           }
         : node
     ));
+    
+    // If manually set to complete, wait for animation then show green
+    if (step >= totalSteps && !hasShownCompleteAnimationRef.current) {
+      completeAnimationTimeoutRef.current = setTimeout(() => {
+        if (!hasShownCompleteAnimationRef.current) {
+          hasShownCompleteAnimationRef.current = true;
+          setShowCompleteAnimation(true);
+        }
+        completeAnimationTimeoutRef.current = null;
+      }, 750);
+    }
   }, [id, setNodes, totalSteps]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (microAnimationRef.current) {
+        clearInterval(microAnimationRef.current);
+      }
+      if (completeAnimationTimeoutRef.current) {
+        clearTimeout(completeAnimationTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const percentage = totalSteps > 0 ? (currentStep / totalSteps) * 100 : 0;
 
@@ -133,21 +300,21 @@ function TestProgressNode({ id, data, selected }: WorkflowNodeProps) {
           {/* Progress bar with enhanced animations */}
           <div className="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full progress-bar-container">
             <div
-              className={`h-full bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 dark:from-gray-600 dark:via-gray-500 dark:to-gray-600 relative progress-bar-fill ${percentage === 100 ? 'rounded-full' : 'rounded-l-full rounded-r-full'}`}
+              className={`h-full bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 dark:from-gray-600 dark:via-gray-500 dark:to-gray-600 relative progress-bar-fill ${animatedProgress >= 100 ? 'rounded-full' : 'rounded-l-full rounded-r-full'}`}
               style={{ 
-                width: `${percentage}%`,
+                width: `${animatedProgress}%`,
                 transition: 'width 0.7s cubic-bezier(0.4, 0, 0.2, 1)'
               }}
             >
               {/* Shimmer effect - only show when progressing */}
-              {isRunning && percentage > 0 && percentage < 100 && (
+              {isRunning && animatedProgress > 0 && animatedProgress < 100 && (
                 <div 
                   className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent progress-bar-shimmer rounded-l-full rounded-r-full"
                 />
               )}
             </div>
             {/* Completion animation - green sweep from left to right */}
-            {percentage === 100 && (
+            {showCompleteAnimation && animatedProgress >= 100 && (
               <div 
                 className="absolute inset-0 bg-gradient-to-r from-green-400 to-green-500 dark:from-green-500 dark:to-green-400 progress-bar-complete rounded-full"
               />
@@ -190,11 +357,34 @@ function TestProgressNode({ id, data, selected }: WorkflowNodeProps) {
           </div>
         </div>
 
+        {/* Configuration */}
+        <div className="flex-shrink-0">
+          <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Configuration</div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs">Total Steps:</label>
+            <input
+              type="number"
+              min="1"
+              max="100"
+              value={totalSteps}
+              onChange={(e) => {
+                const newTotal = Math.max(1, Math.min(100, parseInt(e.target.value) || 1));
+                setTotalSteps(newTotal);
+                if (currentStep > newTotal) {
+                  handleSetProgress(newTotal);
+                }
+              }}
+              disabled={isRunning}
+              className="w-16 px-2 py-1 text-xs border rounded"
+            />
+          </div>
+        </div>
+
         {/* Manual Progress Control */}
         <div className="flex-shrink-0">
           <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Manual Control</div>
-          <div className="grid grid-cols-5 gap-1">
-            {[0, 1, 2, 3, 4, 5].map((step) => (
+          <div className="grid grid-cols-5 gap-1 max-h-32 overflow-y-auto">
+            {Array.from({ length: Math.min(totalSteps + 1, 20) }, (_, i) => i).map((step) => (
               <Button
                 key={step}
                 size="sm"
@@ -218,6 +408,7 @@ function TestProgressNode({ id, data, selected }: WorkflowNodeProps) {
               <div>Current: <span className="font-mono">{currentStep}</span></div>
               <div>Total: <span className="font-mono">{totalSteps}</span></div>
               <div>Percentage: <span className="font-mono">{percentage.toFixed(1)}%</span></div>
+              <div>Animated: <span className="font-mono">{animatedProgress.toFixed(1)}%</span></div>
               <div>Running: <span className="font-mono">{isRunning ? 'true' : 'false'}</span></div>
             </div>
           </div>
