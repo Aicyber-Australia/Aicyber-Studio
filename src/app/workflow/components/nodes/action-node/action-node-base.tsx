@@ -837,7 +837,7 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
                 title="Delete"
               >
                 <Trash className="h-4 w-4 group-hover:hidden" />
-                <Trash2 className="h-4 w-4 hidden group-hover:block" />
+                <Trash2 className="h-4 w-4 hidden group-hover:block text-red-500" />
               </Button>
             </div>
             <div className="flex items-center gap-2">
