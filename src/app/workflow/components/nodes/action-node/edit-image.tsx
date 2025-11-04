@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useCallback, useState } from 'react';
-import { Play, Trash, RotateCcw, Pencil } from 'lucide-react';
+import { Play, Trash, Trash2, RotateCcw, Pencil } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { WorkflowNodeProps } from '@/app/workflow/components/nodes';
 import { nodesConfig } from '@/app/workflow/config';
@@ -18,6 +19,7 @@ import {
 import { NodeStatusIndicator } from '@/components/node-status-indicator';
 import { ACTION_NODE_SIZE } from '@/app/workflow/config';
 import { ImageEditDialog } from '../image/image-edit-dialog';
+import { iconMapping } from '@/app/workflow/utils/icon-mapping';
 
 export function EditImageNode({ id, data, selected }: WorkflowNodeProps) {
   const { runWorkflow } = useWorkflowRunner();
@@ -26,6 +28,9 @@ export function EditImageNode({ id, data, selected }: WorkflowNodeProps) {
 
   const [isTitleEditing, setIsTitleEditing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+
+  // Get icon component
+  const IconComponent = data?.icon ? iconMapping[data.icon] : undefined;
 
   // Load image from upstream node or from saved edits
   const imageData = data?.media?.imageList?.[0];
@@ -102,34 +107,61 @@ export function EditImageNode({ id, data, selected }: WorkflowNodeProps) {
           minWidth={ACTION_NODE_SIZE.width}
           minHeight={ACTION_NODE_SIZE.height}
         />
-        <BaseNode style={{ width: '100%', height: '100%' }}>
-          <BaseNodeHeader>
-            <BaseNodeHeaderTitle
-              editable
-              onTitleChange={handleTitleChange}
-              onEditingChange={setIsTitleEditing}
-            >
-              {data?.title || 'Edit Image'}
-            </BaseNodeHeaderTitle>
-            <div className="flex items-center gap-1" style={{ visibility: isTitleEditing ? 'hidden' : 'visible' }}>
-              <Button
-                variant="ghost"
-                className="nodrag px-1!"
-                onClick={onReset}
-                title="Reset"
-              >
-                <RotateCcw className="w-4 h-4" />
-              </Button>
-              <Button variant="ghost" className="nodrag px-1!" onClick={onPlay}>
-                <Play className="stroke-blue-500 fill-blue-500" />
-              </Button>
-              <Button variant="ghost" className="nodrag px-1!" onClick={onRemove}>
-                <Trash />
-              </Button>
+        <BaseNode>
+          <BaseNodeHeader className="flex-col gap-0 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+            {/* First layer: Icon, Node Name */}
+            <div className="flex items-center justify-between w-full px-0.5 pt-0 pb-0.5 min-h-[28px]">
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                {IconComponent ? <IconComponent aria-label={data?.icon} className="h-5 w-5 flex-shrink-0" /> : null}
+                <div className="relative flex-1 min-w-0">
+                  <BaseNodeHeaderTitle
+                    editable
+                    onTitleChange={handleTitleChange}
+                    onEditingChange={setIsTitleEditing}
+                    className="flex-1 min-w-0"
+                  >
+                    {data?.title || 'Edit Image'}
+                  </BaseNodeHeaderTitle>
+                </div>
+              </div>
+            </div>
+            <div className="w-2/3 h-px bg-gray-200 dark:bg-gray-700 ml-1 self-start"></div>
+            {/* Second layer: Toolbar buttons */}
+            <div className="flex items-center justify-between w-full px-0.5 pt-1 min-h-[10px]">
+              <div className="flex items-center gap-2 flex-shrink-0" style={{ visibility: isTitleEditing ? 'hidden' : 'visible' }}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="nodrag bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700 h-7 w-7 transition-colors"
+                  onClick={onPlay}
+                  title="Run node"
+                >
+                  <Play className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="nodrag bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700 h-7 w-7 transition-colors"
+                  onClick={onReset}
+                  title="Reset"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="group nodrag bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700 h-7 w-7 transition-colors"
+                  onClick={onRemove}
+                  title="Delete"
+                >
+                  <Trash className="h-4 w-4 group-hover:hidden" />
+                  <Trash2 className="h-4 w-4 hidden group-hover:block" />
+                </Button>
+              </div>
             </div>
           </BaseNodeHeader>
 
-          <BaseNodeContent className="flex-1 flex flex-col p-3">
+          <BaseNodeContent className="flex-1 flex flex-col p-3 min-h-0 overflow-y-auto bg-gray-50 dark:bg-gray-900 rounded-b-lg border-b border-gray-200 dark:border-gray-700 shadow-sm">
             {/* Image Preview and Edit Button */}
             <div className="flex-1 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg overflow-hidden min-h-0 relative">
               {imageUrl ? (
@@ -137,17 +169,16 @@ export function EditImageNode({ id, data, selected }: WorkflowNodeProps) {
                   <img
                     src={imageUrl}
                     alt="Image to edit"
-                    className="max-w-full max-h-full object-contain"
+                    className="w-full h-full object-contain"
                   />
                   {/* Edit button overlay */}
                   <div className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/40 transition-colors group">
                     <Button
-                      className="nodrag opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="nodrag opacity-0 group-hover:opacity-100 transition-opacity w-1/3"
                       onClick={handleEdit}
-                      size="lg"
                     >
-                      <Pencil className="w-4 h-4 mr-2" />
-                      Edit Image
+                      <Pencil className="w-4 h-4 mr-1" />
+                      <span className="text-sm">Edit</span>
                     </Button>
                   </div>
                 </>

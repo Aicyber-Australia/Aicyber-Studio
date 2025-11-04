@@ -84,7 +84,7 @@ export const EditableTitle = forwardRef<HTMLHeadingElement, EditableTitleProps>(
           ref={ref}
           data-slot="base-node-title"
           className={cn(
-            'nodrag flex-1 min-w-0',
+            'nodrag min-w-0',
             'user-select-none cursor-text',
             'hover:bg-muted/50 hover:ring-1 hover:ring-border transition-all',
             // Text truncation
@@ -98,6 +98,7 @@ export const EditableTitle = forwardRef<HTMLHeadingElement, EditableTitleProps>(
           style={{
             ...sharedStyle,
             visibility: isEditing ? 'hidden' : 'visible',
+            width: '66.67%',
           }}
           {...props}
         >
@@ -105,9 +106,10 @@ export const EditableTitle = forwardRef<HTMLHeadingElement, EditableTitleProps>(
         </h3>
         {isEditing && (
           <div
-            className="absolute inset-0 flex items-center gap-1 px-3 z-10"
+            className="absolute left-0 top-0 bottom-0 flex items-center gap-1 z-10"
             style={{
               pointerEvents: 'auto',
+              width: '66.67%', // 2/3 width
             }}
           >
             <input

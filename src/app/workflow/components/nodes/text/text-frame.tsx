@@ -82,10 +82,10 @@ function TextFrame({ id, data, selected }: WorkflowNodeProps) {
   return (
     <>
       <WorkflowNode id={id} data={data} type="text-frame" onRefresh={handleRefresh} selected={selected}>
-        <div className="w-full flex-1 flex items-center justify-center p-3 min-h-0 nodrag">
+        <div className="w-full h-full flex flex-col p-3 min-h-0 nodrag">
           {/* 文本输入区域 - 简洁设计 */}
           <div
-            className="nodrag nopan nowheel w-full h-full border-2 border-blue-200 bg-white rounded-lg overflow-hidden hover:border-blue-300 transition-colors relative"
+            className="nodrag nopan nowheel w-full flex-1 min-h-0 border-2 border-blue-200 bg-white rounded-lg overflow-hidden hover:border-blue-300 transition-colors relative"
             onWheel={(e) => e.stopPropagation()}
           >
             {textError ? (
@@ -98,7 +98,7 @@ function TextFrame({ id, data, selected }: WorkflowNodeProps) {
                   value={textContent}
                   onChange={handleTextChange}
                   className="nodrag w-full h-full resize-none border-none outline-none p-3 text-sm text-gray-800 placeholder-gray-400 leading-relaxed"
-                  placeholder="输入文本..."
+                  placeholder="Enter text..."
                   draggable={false}
                 />
 

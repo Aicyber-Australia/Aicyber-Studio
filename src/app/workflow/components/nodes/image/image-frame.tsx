@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useReactFlow } from '@xyflow/react';
+import { ImagePlus } from 'lucide-react';
 import { WorkflowNodeProps } from '@/app/workflow/components/nodes';
 import { nodesConfig } from '@/app/workflow/config';
 import { NodeHandle } from '@/app/workflow/components/nodes/workflow-node/node-handle';
@@ -128,11 +129,12 @@ function ImageFrame({ id, data, selected }: WorkflowNodeProps) {
 
   return (
     <WorkflowNode id={id} data={data} type="image-frame" onRefresh={handleRefresh} selected={selected}>
-      <div className="w-full flex-1 flex items-center justify-center p-3 min-h-0">
-        {/* 图片显示区域 - 正方形，随节点缩放 */}
+      <div className="w-full h-full flex flex-col p-3 min-h-0">
+        {/* 图片显示区域 - 长方形，随节点缩放 */}
         <div
-          className="aspect-square w-full border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center overflow-auto cursor-pointer hover:border-gray-400 transition-colors relative"
-          style={{ maxHeight: '100%' }}
+          className={`w-full flex-1 min-h-0 border-2 rounded-2xl flex items-center justify-center overflow-auto cursor-pointer hover:border-gray-400 transition-colors relative ${
+            imageUrl && !imageError ? 'border-solid border-gray-300' : 'border-dashed border-gray-300'
+          }`}
           onClick={() => document.getElementById(`image-upload-${id}`)?.click()}
         >
           {imageUrl && !imageError ? (
@@ -140,12 +142,12 @@ function ImageFrame({ id, data, selected }: WorkflowNodeProps) {
               <img
                 src={imageUrl}
                 alt="Display"
-                className="w-full h-full object-cover rounded-md"
+                className="w-full h-full object-cover rounded-2xl"
                 onError={handleImageError}
               />
               {/* 节点处理时的加载动画 - 在图片区域正中间 */}
               {isProcessing && (
-                <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-10 rounded-md">
+                <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-10 rounded-2xl">
                   <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div>
                 </div>
               )}
@@ -153,7 +155,10 @@ function ImageFrame({ id, data, selected }: WorkflowNodeProps) {
           ) : imageError ? (
             <div className="text-red-500 text-xs text-center">加载失败</div>
           ) : (
-            <div className="text-gray-500 text-xs text-center">点击上传</div>
+            <div className="flex flex-col items-center justify-center gap-2" title="click to add image">
+              <ImagePlus className="w-8 h-8 text-gray-400" />
+              <span className="text-gray-500 text-xs">click to add image</span>
+            </div>
           )}
         </div>
         

@@ -9,10 +9,12 @@ export const BaseNode = forwardRef<
   <div
     ref={ref}
     className={cn(
-      'relative rounded-md border bg-card text-card-foreground',
+      'relative rounded-lg border bg-card text-card-foreground',
       'hover:ring-1',
       'overflow-visible',
       'flex flex-col',
+      'shadow-md',
+      'w-full h-full',
       // React Flow displays node elements inside of a `NodeWrapper` component,
       // which compiles down to a div with the class `react-flow__node`.
       // When a node is selected, the class `selected` is added to the
@@ -40,7 +42,7 @@ export const BaseNodeHeader = forwardRef<
     ref={ref}
     {...props}
     className={cn(
-      'relative mx-0 my-0 -mb-1 flex flex-row items-center justify-between gap-2 px-3 py-2 min-h-[44px]',
+      'relative mx-0 my-0 flex flex-row items-center justify-between gap-2 px-3 py-2 min-h-[44px] border-b border-gray-200 dark:border-gray-700',
       // Remove or modify these classes if you modify the padding in the
       // `<BaseNode />` component.
       className,

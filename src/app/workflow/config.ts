@@ -1,22 +1,31 @@
 import { Position } from '@xyflow/react';
 import { AppNodeType, NodeConfig } from './components/nodes';
 
-export const NODE_SIZE = { width: 260, height: 50 };
+export const NODE_SIZE = { width: 260, height: 120 };
 
-// Image nodes need square dimensions for image display
-export const IMAGE_NODE_SIZE = { width: 280, height: 280 };
+// Image nodes use rectangular dimensions for image display
+export const IMAGE_NODE_SIZE = { width: 400, height: 360 };
 
 // Video nodes need 16:9 aspect ratio for video display
 export const VIDEO_NODE_SIZE = { width: 280, height: 200 };
 
+// Video set needs more height for multiple video display
+export const VIDEO_SET_SIZE = { width: 400, height: 360 };
+
 // Text nodes need more height for text display
 export const TEXT_NODE_SIZE = { width: 280, height: 200 };
 
+// Text set needs more height for multiple text display
+export const TEXT_SET_SIZE = { width: 400, height: 360 };
+
 // Action node needs more height for the UI elements and results display
-export const ACTION_NODE_SIZE = { width: 280, height: 280 };
+export const ACTION_NODE_SIZE = { width: 360, height: 380 };
 
 // Node set needs height to display list of nodes
-export const NODE_SET_SIZE = { width: 280, height: 200 };
+export const NODE_SET_SIZE = { width: 360, height: 280 };
+
+// Media set needs more height for mixed media display (images, videos, text)
+export const MEDIA_SET_SIZE = { width: 400, height: 480 };
 
 export const nodesConfig: Record<AppNodeType, NodeConfig> = {
   'media-set': {
@@ -28,13 +37,13 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
         type: 'target',
         position: Position.Left,
         x: 0,
-        y: IMAGE_NODE_SIZE.height * 0.5,
+        y: MEDIA_SET_SIZE.height * 0.5,
       },
       {
         type: 'source',
         position: Position.Right,
-        x: IMAGE_NODE_SIZE.width,
-        y: IMAGE_NODE_SIZE.height * 0.5,
+        x: MEDIA_SET_SIZE.width,
+        y: MEDIA_SET_SIZE.height * 0.5,
       },
     ],
     icon: 'Clapperboard',
@@ -57,7 +66,7 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
         y: IMAGE_NODE_SIZE.height * 0.5,
       },
     ],
-    icon: 'FileImage',
+    icon: 'Image',
   },
   'image-set': {
     id: 'image-set',
@@ -108,13 +117,13 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
         type: 'target',
         position: Position.Left,
         x: 0,
-        y: VIDEO_NODE_SIZE.height * 0.5,
+        y: VIDEO_SET_SIZE.height * 0.5,
       },
       {
         type: 'source',
         position: Position.Right,
-        x: VIDEO_NODE_SIZE.width,
-        y: VIDEO_NODE_SIZE.height * 0.5,
+        x: VIDEO_SET_SIZE.width,
+        y: VIDEO_SET_SIZE.height * 0.5,
       },
     ],
     icon: 'ListVideo',
@@ -148,13 +157,13 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
         type: 'target',
         position: Position.Left,
         x: 0,
-        y: TEXT_NODE_SIZE.height * 0.5,
+        y: TEXT_SET_SIZE.height * 0.5,
       },
       {
         type: 'source',
         position: Position.Right,
-        x: TEXT_NODE_SIZE.width,
-        y: TEXT_NODE_SIZE.height * 0.5,
+        x: TEXT_SET_SIZE.width,
+        y: TEXT_SET_SIZE.height * 0.5,
       },
     ],
     icon: 'NotebookText',
@@ -177,7 +186,7 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
         y: ACTION_NODE_SIZE.height * 0.5,
       },
     ],
-    icon: 'Workflow',
+    icon: 'TextToImage',
   },
   'image-to-image-node': {
     id: 'image-to-image-node',
@@ -197,7 +206,7 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
         y: ACTION_NODE_SIZE.height * 0.5,
       },
     ],
-    icon: 'Workflow',
+    icon: 'ImageToImage',
   },
   'image-to-text-node': {
     id: 'image-to-text-node',
@@ -217,7 +226,7 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
         y: ACTION_NODE_SIZE.height * 0.5,
       },
     ],
-    icon: 'Workflow',
+    icon: 'ImageToText',
   },
   'edit-image-node': {
     id: 'edit-image-node',
@@ -237,7 +246,7 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
         y: ACTION_NODE_SIZE.height * 0.5,
       },
     ],
-    icon: 'Workflow',
+    icon: 'FilePen',
     // Output: Single edited image (imageList[0])
   },
   'node-set': {
@@ -259,5 +268,25 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
       },
     ],
     icon: 'Layers',
+  },
+  'test-progress-node': {
+    id: 'test-progress-node',
+    title: 'Test Progress',
+    status: 'initial',
+    handles: [
+      {
+        type: 'target',
+        position: Position.Left,
+        x: 0,
+        y: ACTION_NODE_SIZE.height * 0.5,
+      },
+      {
+        type: 'source',
+        position: Position.Right,
+        x: ACTION_NODE_SIZE.width,
+        y: ACTION_NODE_SIZE.height * 0.5,
+      },
+    ],
+    icon: 'Workflow',
   },
 };

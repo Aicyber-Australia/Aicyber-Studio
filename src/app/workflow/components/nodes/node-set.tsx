@@ -6,7 +6,7 @@ import { WorkflowNodeProps, AppNode, NodeSetData } from '@/app/workflow/componen
 import { nodesConfig } from '../../config';
 import { NodeHandle } from './workflow-node/node-handle';
 import WorkflowNode from './workflow-node';
-import { Trash2 } from 'lucide-react';
+import { Trash2, FolderOpen } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/toast-provider';
 
@@ -300,9 +300,9 @@ function NodeSet({ id, data, selected }: WorkflowNodeProps) {
                 )}
               </>
             ) : (
-              <div className="text-gray-500 text-xs text-center flex flex-col items-center justify-center h-full">
-                <div>No nodes collected yet</div>
-                <div className="text-xs mt-1">Nodes will be added here</div>
+              <div className="text-gray-500 text-xs text-center flex flex-col items-center justify-center h-full gap-2" title="click to add nodes">
+                <FolderOpen className="w-8 h-8 text-gray-400" />
+                <div>click to add nodes</div>
               </div>
             )}
           </div>

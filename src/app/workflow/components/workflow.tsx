@@ -19,7 +19,8 @@ import {
 } from '@xyflow/react';
 import { useShallow } from 'zustand/react/shallow';
 import { useTheme } from 'next-themes';
-import { MousePointer2, Hand, Play, Pause, Trash2, Divide, PlayCircle, Share2, Save } from 'lucide-react';
+import { MousePointer2, Hand, Play, Pause, Trash, Trash2, Divide, PlayCircle, Share2, Save, HardDrive } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { useCopilotReadable } from '@copilotkit/react-core';
 
 import { nodeTypes } from '@/app/workflow/components/nodes';
@@ -38,11 +39,13 @@ import { useCopilotWorkflowActions } from '@/app/workflow/hooks/useCopilotWorkfl
 import { useLayout } from '@/app/workflow/hooks/use-layout';
 import { registerAllServices } from '@/app/api/services/service-registrar';
 import { useToast } from '@/components/toast-provider';
+import { cn } from '@/lib/utils';
 
 const MIN_DISTANCE = 150;
 
 const defaultEdgeOptions = {
   type: 'default',
+  animated: true,
   markerEnd: {
     type: MarkerType.Arrow,
   },
@@ -73,6 +76,7 @@ export default function Workflow() {
   const [isSelectMode, setIsSelectMode] = useState(true);
   const { runWorkflow, stopWorkflow, resumeWorkflow, isRunning, isStopping, hasBreakpoint } = useWorkflowRunner();
   const [selectedNodes, setSelectedNodes] = useState<any[]>([]);
+  const [isHardDriveActive, setIsHardDriveActive] = useState(false);
   const runLayout = useLayout();
   const { showToast } = useToast();
 
@@ -182,6 +186,15 @@ export default function Workflow() {
     store.setNodes([]);
     store.setEdges([]);
   }, [takeSnapshot, store]);
+
+  // Clear canvas confirmation
+  const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
+  const onRequestClear = useCallback(() => setIsClearDialogOpen(true), []);
+  const onConfirmClear = useCallback(() => {
+    handleClearCanvas();
+    setIsClearDialogOpen(false);
+  }, [handleClearCanvas]);
+  const onCancelClear = useCallback(() => setIsClearDialogOpen(false), []);
 
   // Register Copilot actions for workflow manipulation
   useCopilotWorkflowActions({
@@ -545,7 +558,7 @@ export default function Workflow() {
         <WorkflowControls />
         <FlowContextMenu />
         {/* <DebugPanel /> */}
-        <MiniMap  />
+        <MiniMap nodeStrokeWidth={3} />
       </ReactFlow>
 
       {/* Floating Mode Toolbar */}
@@ -596,7 +609,10 @@ export default function Workflow() {
           size="icon"
           title={isRunning ? 'Stop Workflow' : 'Run Workflow'}
           disabled={isStopping}
-          className={isStopping ? 'opacity-50 cursor-not-allowed' : ''}
+          className={cn(
+            isStopping ? 'opacity-50 cursor-not-allowed' : '',
+            isRunning ? 'bg-black text-white hover:bg-black hover:text-white' : ''
+          )}
         >
           {isRunning ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
         </Button>
@@ -614,12 +630,14 @@ export default function Workflow() {
         )}
 
         <Button
-          onClick={handleClearCanvas}
+          onClick={onRequestClear}
           variant="ghost"
           size="icon"
           title="Clear Canvas"
+          className="group"
         >
-          <Trash2 className="h-5 w-5" />
+          <Trash className="h-5 w-5 block group-hover:hidden" />
+          <Trash2 className="h-5 w-5 hidden group-hover:block" />
         </Button>
 
         <Button
@@ -637,7 +655,47 @@ export default function Workflow() {
         >
           <Share2 className="h-5 w-5" />
         </Button>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          title="Hard Drive"
+          onClick={() => setIsHardDriveActive(!isHardDriveActive)}
+          className={cn(
+            isHardDriveActive ? 'bg-black text-white hover:bg-black hover:text-white' : ''
+          )}
+        >
+          <HardDrive className="h-5 w-5" />
+        </Button>
       </div>
+
+      {/* Clear Canvas confirmation modal */}
+      {isClearDialogOpen && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center" style={{ pointerEvents: 'auto' }}>
+          <div className="absolute inset-0 bg-black/50" onClick={onCancelClear} />
+          <div className="relative z-[100000] w-[360px] rounded-lg border bg-white p-4 shadow-lg dark:bg-gray-900 dark:border-gray-800">
+            <div className="text-sm font-semibold mb-2">Clear canvas?</div>
+            <div className="text-xs text-gray-600 dark:text-gray-300 mb-4">This will remove all nodes and edges. This action cannot be undone.</div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className="px-2.5 py-1.5 text-xs rounded bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors"
+                onClick={onCancelClear}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="px-2.5 py-1.5 text-xs rounded bg-red-600 text-white hover:bg-red-700 transition-colors"
+                onClick={onConfirmClear}
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </>
   );
 }

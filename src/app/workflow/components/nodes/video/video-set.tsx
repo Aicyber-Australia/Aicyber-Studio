@@ -6,7 +6,7 @@ import { WorkflowNodeProps } from '@/app/workflow/components/nodes';
 import { nodesConfig } from '@/app/workflow/config';
 import { NodeHandle } from '@/app/workflow/components/nodes/workflow-node/node-handle';
 import WorkflowNode from '@/app/workflow/components/nodes/workflow-node';
-import { Eye, Trash2 } from 'lucide-react';
+import { Eye, Trash2, FolderOpen, ArrowRightFromLine, ArrowBigRightDash, GalleryHorizontalEnd, BetweenHorizontalStart } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { uploadFileToStorage } from '@/app/workflow/utils/upload-to-storage';
@@ -230,57 +230,94 @@ function VideoSet({ id, data, selected }: WorkflowNodeProps) {
   return (
     <>
       <WorkflowNode id={id} data={data} type="video-set" onRefresh={handleRefresh} selected={selected}>
-        <div className="w-full flex-1 flex flex-col p-3 min-h-0 nodrag space-y-2">
-          {/* Output Mode Selection */}
-          <div className="nodrag flex-shrink-0">
-            <div className="text-[10px] text-muted-foreground mb-1">Output Mode</div>
-            <Select value={setOutputMode} onValueChange={handleSetOutputModeChange}>
-              <SelectTrigger className="h-7 text-xs nodrag">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="nodrag">
-                <SelectItem value="individual" className="text-xs">Individual</SelectItem>
-                <SelectItem value="integrated" className="text-xs">Integrated</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Process Limit Selection - Only shown when no input edges */}
-          {!hasInputEdges && (
-            <div className="nodrag flex-shrink-0 space-y-1.5">
-              <div className="text-[10px] text-muted-foreground">Process Items</div>
-              <Select value={processLimitMode} onValueChange={handleProcessLimitModeChange}>
-                <SelectTrigger className="h-7 text-xs nodrag">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="nodrag">
-                  <SelectItem value="all" className="text-xs">Process All</SelectItem>
-                  <SelectItem value="limited" className="text-xs">Process First N</SelectItem>
-                </SelectContent>
-              </Select>
-              {processLimitMode === 'limited' && (
-                <div className="flex items-center gap-2">
-                  <label htmlFor={`process-limit-${id}`} className="text-[10px] text-muted-foreground whitespace-nowrap">
-                    Limit:
-                  </label>
-                  <Input
-                    id={`process-limit-${id}`}
-                    type="number"
-                    min="1"
-                    max={maxLimit}
-                    value={processLimit}
-                    onChange={(e) => handleProcessLimitChange(parseInt(e.target.value) || 1)}
-                    className="h-7 text-xs nodrag"
-                  />
-                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">/ {maxLimit}</span>
-                </div>
-              )}
+        <div className="w-full h-full flex flex-col p-3 min-h-0 nodrag space-y-2">
+          {/* Output + Process + Limit aligned */}
+          <div className="nodrag grid grid-cols-3 items-start gap-4 flex-shrink-0">
+            {/* Output Mode - icon segmented */}
+            <div className="nodrag flex-shrink-0 w-[120px]">
+              <div className="text-[10px] text-muted-foreground mb-1">Output Mode</div>
+              <div className="relative flex w-[84px] items-center rounded-md border p-1 box-border overflow-hidden bg-white dark:bg-gray-800">
+                <div className={`icon-slider-track ${setOutputMode === 'individual' ? 'left' : 'right'}`} />
+                <button
+                  type="button"
+                  className={`relative z-10 flex-1 flex items-center justify-center h-7 w-7 rounded-md ${setOutputMode === 'individual' ? 'text-gray-900' : 'text-gray-500'}`}
+                  title="Individual"
+                  onClick={() => handleSetOutputModeChange('individual')}
+                >
+                  <ArrowRightFromLine className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  className={`relative z-10 flex-1 flex items-center justify-center h-7 w-7 rounded-md ${setOutputMode === 'integrated' ? 'text-gray-900' : 'text-gray-500'}`}
+                  title="Integrated"
+                  onClick={() => handleSetOutputModeChange('integrated')}
+                >
+                  <ArrowBigRightDash className="h-4 w-4" />
+                </button>
+              </div>
             </div>
-          )}
+
+            {/* Process Items - Only shown when no input edges */}
+            {!hasInputEdges && (
+              <div className="nodrag flex-shrink-0 w-[120px]">
+                <div className="text-[10px] text-muted-foreground mb-1">Process Items</div>
+                <div className="relative flex w-[84px] items-center rounded-md border p-1 box-border overflow-hidden bg-white dark:bg-gray-800">
+                  <div className={`icon-slider-track ${processLimitMode === 'all' ? 'left' : 'right'}`} />
+                  <button
+                    type="button"
+                    className={`relative z-10 flex-1 flex items-center justify-center h-7 w-7 rounded-md ${processLimitMode === 'all' ? 'text-gray-900' : 'text-gray-500'}`}
+                    title="Process All"
+                    onClick={() => handleProcessLimitModeChange('all')}
+                  >
+                    <GalleryHorizontalEnd className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    className={`relative z-10 flex-1 flex items-center justify-center h-7 w-7 rounded-md ${processLimitMode === 'limited' ? 'text-gray-900' : 'text-gray-500'}`}
+                    title="First N"
+                    onClick={() => handleProcessLimitModeChange('limited')}
+                  >
+                    <BetweenHorizontalStart className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Limit column - always visible; disabled when Process All */}
+            {!hasInputEdges && (
+              <div className="nodrag flex-shrink-0 w-[84px]">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="text-[10px] text-muted-foreground">Limit</div>
+                  <span className="text-[10px] text-muted-foreground">/ {maxLimit}</span>
+                </div>
+                <div className={`inline-flex items-center justify-between gap-1 w-[84px] h-7 border rounded bg-white dark:bg-gray-800 px-1 ${processLimitMode !== 'limited' ? 'opacity-50' : ''}`}>
+                  <button
+                    type="button"
+                    className={`w-5 h-5 flex items-center justify-center rounded ${processLimitMode === 'limited' ? 'hover:bg-gray-100 dark:hover:bg-gray-700' : 'cursor-not-allowed'}`}
+                    onClick={() => processLimitMode === 'limited' && handleProcessLimitChange(Math.max(1, (processLimit || 1) - 1))}
+                    title="Decrease"
+                    disabled={processLimitMode !== 'limited'}
+                  >
+                    −
+                  </button>
+                  <span className="text-xs w-6 text-center select-none">{processLimit}</span>
+                  <button
+                    type="button"
+                    className={`w-5 h-5 flex items-center justify-center rounded ${processLimitMode === 'limited' ? 'hover:bg-gray-100 dark:hover:bg-gray-700' : 'cursor-not-allowed'}`}
+                    onClick={() => processLimitMode === 'limited' && handleProcessLimitChange(Math.min(maxLimit, (processLimit || 1) + 1))}
+                    title="Increase"
+                    disabled={processLimitMode !== 'limited'}
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* 多视频网格显示区域 - 自适应节点尺寸 */}
           <div
-            className="nodrag nopan nowheel w-full h-full border-2 border-dashed border-gray-300 rounded-lg overflow-auto cursor-pointer hover:border-gray-400 transition-colors relative"
+            className={`nodrag nopan nowheel w-full flex-1 min-h-0 border-2 border-dashed border-gray-300 rounded-lg overflow-auto cursor-pointer hover:border-gray-400 transition-colors relative ${videoList.length === 0 && !videoError ? 'flex items-center justify-center' : ''}`}
             onClick={() => document.getElementById(`video-upload-${id}`)?.click()}
             onWheel={(e) => e.stopPropagation()}
           >
@@ -288,7 +325,7 @@ function VideoSet({ id, data, selected }: WorkflowNodeProps) {
               <>
                 {/* 网格布局显示多个视频 - 视频保持16:9比例 */}
                 <div
-                  className={`nodrag grid ${getGridLayout(videoList.length)} gap-1 p-2`}
+                  className={`nodrag grid ${getGridLayout(videoList.length)} gap-1 p-2 w-full`}
                   style={{
                     minWidth: '100%',
                     minHeight: 'fit-content',
@@ -359,11 +396,13 @@ function VideoSet({ id, data, selected }: WorkflowNodeProps) {
                 )}
               </>
             ) : videoError ? (
-              <div className="text-red-500 text-xs text-center">加载失败</div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-red-500 text-xs text-center">加载失败</div>
+              </div>
             ) : (
-              <div className="text-gray-500 text-xs text-center">
-                <div>点击上传多个视频</div>
-                <div className="text-xs mt-1">支持拖拽多文件</div>
+              <div className="flex flex-col items-center justify-center gap-2 text-center" title="click to add files">
+                <FolderOpen className="w-8 h-8 text-gray-400" />
+                <span className="text-gray-500 text-xs">click to add files</span>
               </div>
             )}
           </div>

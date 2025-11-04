@@ -6,10 +6,10 @@ import { WorkflowNodeProps } from '@/app/workflow/components/nodes';
 import { nodesConfig } from '@/app/workflow/config';
 import { NodeHandle } from '@/app/workflow/components/nodes/workflow-node/node-handle';
 import WorkflowNode from '@/app/workflow/components/nodes/workflow-node';
-import { Eye, Trash2, FileText, Image as ImageIcon, Video as VideoIcon, Plus } from 'lucide-react';
+import { Eye, Trash2, FileText, Image as ImageIcon, Video as VideoIcon, Plus, ArrowRightFromLine, ArrowBigRightDash, ImagePlus, FileVideo, FileVideo2, FileType2 } from 'lucide-react';
 import { ImagePreviewDialog } from '@/app/workflow/components/nodes/image/image-preview-dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { uploadFileToStorage } from '@/app/workflow/utils/upload-to-storage';
+import { cn } from '@/lib/utils';
 
 type MediaItem = {
   id: string;
@@ -393,14 +393,14 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
   const textCount = mediaList.filter(m => m.type === 'text').length;
 
   // Handle set output mode change
-  const handleSetOutputModeChange = useCallback((value: string) => {
+  const handleSetOutputModeChange = useCallback((value: 'individual' | 'integrated') => {
     setNodes(nodes => nodes.map(node =>
       node.id === id
         ? {
             ...node,
             data: {
               ...node.data,
-              setOutputMode: value as 'individual' | 'integrated',
+              setOutputMode: value,
             },
           }
         : node
@@ -412,9 +412,9 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
   return (
     <>
       <WorkflowNode id={id} data={data} type="media-set" onRefresh={handleRefresh} selected={selected}>
-        <div className="w-full flex-1 flex flex-col p-3 min-h-0 nodrag space-y-2">
-          {/* Output Mode Selection */}
-          <div className="nodrag flex-shrink-0">
+        <div className="w-full h-full flex flex-col p-3 min-h-0 nodrag space-y-2">
+          {/* Output Mode Selection - icon segmented slider */}
+          <div className="nodrag flex-shrink-0 w-[120px]">
             <div className="text-[10px] text-muted-foreground mb-1">
               Output Mode
               {connectionRestriction.isRestricted && (
@@ -423,26 +423,38 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
                 </span>
               )}
             </div>
-            <Select
-              value={setOutputMode}
-              onValueChange={handleSetOutputModeChange}
-              disabled={connectionRestriction.isRestricted}
-            >
-              <SelectTrigger className="h-7 text-xs nodrag" disabled={connectionRestriction.isRestricted}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="nodrag">
-                <SelectItem value="individual" className="text-xs" disabled={connectionRestriction.isRestricted}>
-                  Individual
-                </SelectItem>
-                <SelectItem value="integrated" className="text-xs">Integrated</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="relative flex w-[84px] items-center rounded-md border p-1 box-border overflow-hidden bg-white dark:bg-gray-800">
+              <div className={`icon-slider-track ${setOutputMode === 'individual' ? 'left' : 'right'}`} />
+              <button
+                type="button"
+                className={cn(
+                  `relative z-10 flex-1 flex items-center justify-center h-7 w-7 rounded-md transition-colors`,
+                  setOutputMode === 'individual' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400',
+                  connectionRestriction.isRestricted && 'opacity-50 cursor-not-allowed'
+                )}
+                onClick={() => !connectionRestriction.isRestricted && handleSetOutputModeChange('individual')}
+                disabled={connectionRestriction.isRestricted}
+                title="Individual"
+              >
+                <ArrowRightFromLine className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  `relative z-10 flex-1 flex items-center justify-center h-7 w-7 rounded-md transition-colors`,
+                  setOutputMode === 'integrated' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'
+                )}
+                onClick={() => handleSetOutputModeChange('integrated')}
+                title="Integrated"
+              >
+                <ArrowBigRightDash className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
           {/* 混合媒体显示区域 */}
           <div
-            className="nodrag nopan nowheel w-full h-full border-2 border-dashed border-gray-300 rounded-lg overflow-auto hover:border-gray-400 transition-colors relative"
+            className="nodrag nopan nowheel w-full flex-1 min-h-0 border-2 border-dashed border-gray-300 rounded-lg overflow-auto hover:border-gray-400 transition-colors relative"
             onWheel={(e) => e.stopPropagation()}
           >
             {mediaList.length > 0 ? (
@@ -607,32 +619,38 @@ function MediaSet({ id, data, selected }: WorkflowNodeProps) {
                 )}
               </>
             ) : (
-              <div className="text-gray-500 text-xs text-center flex flex-col items-center justify-center h-full gap-2">
-                <Plus className="w-8 h-8 text-gray-400" />
-                <div>Add images, videos or text</div>
-                <div className="text-xs mt-1">Mixed media support</div>
-                <div className="flex gap-2 mt-2">
-                  <button
-                    onClick={() => document.getElementById(`image-upload-${id}`)?.click()}
-                    className="nodrag px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-xs"
-                    draggable={false}
-                  >
-                    Add Image
-                  </button>
-                  <button
-                    onClick={() => document.getElementById(`video-upload-${id}`)?.click()}
-                    className="nodrag px-3 py-1 bg-purple-500 text-white rounded-md hover:bg-purple-600 transition-colors text-xs"
-                    draggable={false}
-                  >
-                    Add Video
-                  </button>
-                  <button
-                    onClick={handleAddText}
-                    className="nodrag px-3 py-1 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors text-xs"
-                    draggable={false}
-                  >
-                    Add Text
-                  </button>
+              <div className="absolute inset-0 flex justify-center items-start pt-16">
+                <div className="text-gray-500 text-xs text-center flex flex-col items-center justify-center gap-3">
+                  <div className="flex items-center gap-0">
+                    <button
+                      onClick={() => document.getElementById(`image-upload-${id}`)?.click()}
+                      className="nodrag p-4 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors rounded-md group"
+                      title="Add Image"
+                      draggable={false}
+                    >
+                      <ImagePlus className="w-12 h-12 text-gray-500 dark:text-gray-400 transition-colors group-hover:text-gray-800 dark:group-hover:text-gray-200" />
+                    </button>
+                    <div className="w-px h-10 bg-gray-300 dark:bg-gray-600"></div>
+                    <button
+                      onClick={() => document.getElementById(`video-upload-${id}`)?.click()}
+                      className="nodrag p-4 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors rounded-md group"
+                      title="Add Video"
+                      draggable={false}
+                    >
+                      <FileVideo2 className="w-12 h-12 text-gray-500 dark:text-gray-400 transition-colors group-hover:text-gray-800 dark:group-hover:text-gray-200" />
+                    </button>
+                    <div className="w-px h-10 bg-gray-300 dark:bg-gray-600"></div>
+                    <button
+                      onClick={handleAddText}
+                      className="nodrag p-4 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors rounded-md group"
+                      title="Add Text"
+                      draggable={false}
+                    >
+                      <FileType2 className="w-12 h-12 text-gray-500 dark:text-gray-400 transition-colors group-hover:text-gray-800 dark:group-hover:text-gray-200" />
+                    </button>
+                  </div>
+                  <div>Add images, videos or text</div>
+                  <div className="text-[10px] text-gray-400">Mixed media support</div>
                 </div>
               </div>
             )}
