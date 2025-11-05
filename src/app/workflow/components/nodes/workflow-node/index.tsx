@@ -43,6 +43,7 @@ function WorkflowNode({
   const [hasBreakpoint, setHasBreakpoint] = useState<boolean>(data?.hasBreakpoint || false);
   const [isImageUpActive, setIsImageUpActive] = useState<boolean>(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false); // State for delete confirmation dialog
+  const [dontShowAgain, setDontShowAgain] = useState(false); // State for "don't show again" checkbox
 
   // Settings open state for menu button style
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -59,16 +60,30 @@ function WorkflowNode({
   }, [id, runWorkflow, stopWorkflow, isNodeRunning]);
 
   const handleDeleteClick = useCallback(() => {
-    setIsDeleteDialogOpen(true); // Open dialog on first click
-  }, []);
+    // Check if user has selected "don't show again"
+    const skipDialog = localStorage.getItem('node-delete-skip-dialog') === 'true';
+    if (skipDialog) {
+      // Directly delete without showing dialog
+      removeNode(id);
+    } else {
+      // Show confirmation dialog
+      setIsDeleteDialogOpen(true);
+    }
+  }, [id, removeNode]);
 
   const handleConfirmDelete = useCallback(() => {
+    // Save "don't show again" preference if checked
+    if (dontShowAgain) {
+      localStorage.setItem('node-delete-skip-dialog', 'true');
+    }
     removeNode(id);
     setIsDeleteDialogOpen(false); // Close dialog after deleting
-  }, [removeNode, id]);
+    setDontShowAgain(false); // Reset checkbox state
+  }, [removeNode, id, dontShowAgain]);
 
   const handleCancelDelete = useCallback(() => {
     setIsDeleteDialogOpen(false); // Close dialog on cancel
+    setDontShowAgain(false); // Reset checkbox state when canceling
   }, []);
 
   const handleTitleChange = useCallback((newTitle: string) => {
@@ -325,6 +340,18 @@ function WorkflowNode({
           <div className="relative z-[100000] w-[320px] rounded-lg border bg-white p-4 shadow-lg dark:bg-gray-900 dark:border-gray-800">
             <div className="text-sm font-semibold mb-2">Delete node?</div>
             <div className="text-xs text-gray-600 dark:text-gray-300 mb-4">This action cannot be undone.</div>
+            <div className="flex items-center gap-2 mb-4">
+              <input
+                type="checkbox"
+                id="dont-show-again"
+                checked={dontShowAgain}
+                onChange={(e) => setDontShowAgain(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500 dark:border-gray-600 dark:bg-gray-700"
+              />
+              <label htmlFor="dont-show-again" className="text-xs text-gray-600 dark:text-gray-300 cursor-pointer">
+                Don't show again
+              </label>
+            </div>
             <div className="flex justify-end gap-2">
               <button
                 type="button"
