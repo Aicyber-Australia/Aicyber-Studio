@@ -85,6 +85,8 @@ export function useWorkflowRunner() {
   const [isStoppingState, setIsStoppingState] = useState(false); // State for UI
   const breakpointNodeIdRef = useRef<string | null>(null); // Track which node hit a breakpoint
   const [breakpointNodeId, setBreakpointNodeId] = useState<string | null>(null); // State for UI updates
+  // When true, ignore pausing at breakpoints (used to allow resume to complete all downstream without stopping again)
+  const suppressBreakpointsRef = useRef<boolean>(false);
   const { getNodes, setNodes, getEdges } = useAppStore(useShallow(selector));
   const { getNode, setNodes: setReactFlowNodes, getEdges: getReactFlowEdges } = useReactFlow();
   const { showToast } = useToast();
@@ -1111,7 +1113,7 @@ export function useWorkflowRunner() {
         const latestNode = getNode(node.id);
         const nodeData = (latestNode?.data || updatedNode?.data || node.data) as any;
         
-        if (nodeData?.hasBreakpoint) {
+        if (nodeData?.hasBreakpoint && !suppressBreakpointsRef.current) {
           console.log(`🔴 Breakpoint hit at node ${node.id} (${node.data.title})`);
           
           // Double-check and ensure node status is 'success' before setting breakpoint
@@ -1741,6 +1743,8 @@ export function useWorkflowRunner() {
       // This ensures that each new run can properly set breakpoints
       breakpointNodeIdRef.current = null;
       setBreakpointNodeId(null);
+      // Ensure breakpoint pausing is enabled for a fresh run
+      suppressBreakpointsRef.current = false;
       
       isRunning.current = true;
       setIsRunningState(true);
@@ -2192,6 +2196,8 @@ export function useWorkflowRunner() {
       return;
     }
 
+    // During resume, ignore all further breakpoints so execution runs through
+    suppressBreakpointsRef.current = true;
     // Start execution from downstream nodes
     isRunning.current = true;
     setIsRunningState(true);
@@ -2365,6 +2371,8 @@ export function useWorkflowRunner() {
     } finally {
       isRunning.current = false;
       setIsRunningState(false);
+      // Re-enable breakpoint pausing for future runs
+      suppressBreakpointsRef.current = false;
     }
   }, [breakpointNodeId, getNode, getNodes, getEdges, getReactFlowEdges, showToast, areAllUpstreamNodesCompleted, executeUpstreamNodesIfNeeded, collectInputData, selfCheckNode, processNode, updateNodeStatus, clearNodeState]);
 

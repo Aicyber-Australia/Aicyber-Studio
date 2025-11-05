@@ -21,6 +21,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useTheme } from 'next-themes';
 import { MousePointer2, Hand, Play, Pause, Trash2, Divide, PlayCircle } from 'lucide-react';
 import { useCopilotReadable } from '@copilotkit/react-core';
+import { cn } from '@/lib/utils';
 
 import { nodeTypes } from '@/app/workflow/components/nodes';
 import { useAppStore } from '@/app/workflow/store';
