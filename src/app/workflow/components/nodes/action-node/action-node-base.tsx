@@ -2,7 +2,7 @@
 
 import React, { useCallback, useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Play, Trash, Trash2, Square, RotateCcw, CheckCircle2, XCircle, ChevronDown, ChevronUp, Download, OctagonMinus, ImageUp, HelpCircle, Menu, SquareX, List, ArrowRightFromLine, ArrowBigRightDash, GalleryHorizontalEnd, BetweenHorizontalStart } from 'lucide-react';
+import { Play, Trash, Trash2, Square, RotateCcw, CheckCircle2, XCircle, ChevronDown, ChevronUp, Download, OctagonMinus, ImageUp, HelpCircle, Menu, SquareX, List, ArrowRightFromLine, ArrowBigRightDash, GalleryHorizontalEnd, BetweenHorizontalStart, StepForward } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -51,7 +51,7 @@ interface ActionNodeBaseProps {
 }
 
 function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeBaseProps) {
-  const { runWorkflow, stopWorkflow } = useWorkflowRunner();
+  const { runWorkflow, stopWorkflow, resumeWorkflow, hasBreakpoint: globalHasBreakpoint, isRunning, breakpointNodeId } = useWorkflowRunner();
   const removeNode = useAppStore((s) => s.removeNode);
   const addNode = useAppStore((s) => s.addNode);
   const { setNodes, getNode } = useReactFlow();
@@ -805,6 +805,49 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
               >
                 <OctagonMinus className={`h-4 w-4 ${hasBreakpoint ? 'text-red-500' : 'text-black dark:text-black'}`} />
               </Button>
+              {/* Resume button - always visible, enabled only when breakpoint is hit and node is completed */}
+              {(() => {
+                const currentNode = getNode(id);
+                const nodeData = (currentNode?.data as any) || {};
+                const nodeStatus = nodeData?.status;
+                const nodeHasBreakpoint = nodeData?.hasBreakpoint === true; // Read directly from node data
+                const isNodeCompleted = nodeStatus === 'success';
+                const isBreakpointActive = nodeData?.isBreakpointActive === true;
+                const isBreakpointNode = isBreakpointActive || breakpointNodeId === id;
+                // Button is enabled only when: node has breakpoint, node is completed, and this is the breakpoint node
+                const canResume = nodeHasBreakpoint && isNodeCompleted && isBreakpointNode && !isRunning;
+                
+                // Debug logging (can be removed in production)
+                if (nodeHasBreakpoint && isNodeCompleted) {
+                  console.log(`[Resume Button Debug] Node ${id}:`, {
+                    nodeHasBreakpoint,
+                    isNodeCompleted,
+                    isBreakpointActive,
+                    isBreakpointNode,
+                    breakpointNodeId,
+                    isRunning,
+                    canResume
+                  });
+                }
+                
+                return (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      "nodrag h-7 w-7 transition-colors",
+                      canResume
+                        ? "text-orange-500 hover:text-orange-600"
+                        : "text-gray-400 hover:text-gray-400 cursor-not-allowed"
+                    )}
+                    onClick={() => resumeWorkflow()}
+                    disabled={!canResume}
+                    title={canResume ? "Resume workflow from breakpoint" : `Set breakpoint and complete execution to resume (hasBreakpoint: ${nodeHasBreakpoint}, completed: ${isNodeCompleted}, isBreakpoint: ${isBreakpointNode})`}
+                  >
+                    <StepForward className="h-4 w-4" />
+                  </Button>
+                );
+              })()}
               <Button
                 variant="ghost"
                 size="icon"
