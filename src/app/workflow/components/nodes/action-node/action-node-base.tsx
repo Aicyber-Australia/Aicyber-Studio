@@ -701,7 +701,7 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
         <BaseNodeHeader className="flex-col gap-0 border-b border-gray-200 dark:border-gray-700 min-w-0 flex-shrink-0">
           {/* First layer: Icon, Node Name, Model Selection */}
           <div className="flex items-center justify-between w-full px-0.5 pt-0 pb-0.5 min-h-[28px]">
-            <div className="flex items-center gap-1 flex-1 min-w-0">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
               {IconComponent ? <IconComponent aria-label={data?.icon} className="h-5 w-5 flex-shrink-0" /> : null}
               <div className="relative flex-1 min-w-0">
                 <BaseNodeHeaderTitle
