@@ -69,11 +69,15 @@ export function ActionNodeSettings({
     const index = availableModels.findIndex((m) => m.value === selectedModel);
     const target = index >= 0 ? buttons[index] : buttons[0];
     if (!target) return;
-    const containerRect = container.getBoundingClientRect();
-    const itemRect = target.getBoundingClientRect();
+    
+    // Calculate position relative to container using offsetTop/offsetHeight
+    // This works correctly at all zoom levels
+    const containerOffsetTop = container.offsetTop;
+    const targetOffsetTop = target.offsetTop;
     const inset = 4; // avoid spilling into inter-item spacing
-    setModelTrackTop(itemRect.top - containerRect.top + inset / 2);
-    setModelTrackHeight(Math.max(0, itemRect.height - inset));
+    
+    setModelTrackTop(targetOffsetTop - containerOffsetTop + inset / 2);
+    setModelTrackHeight(Math.max(0, target.offsetHeight - inset));
   }, [availableModels, selectedModel]);
 
   return (
@@ -81,14 +85,9 @@ export function ActionNodeSettings({
       {/* Model Selection */}
       <div className="flex items-start gap-4">
         <div className="flex flex-col gap-1 w-full">
-          <div className="rounded-2xl bg-white dark:bg-gray-800 p-3 shadow-sm">
+          <div className="rounded-2xl bg-white dark:bg-gray-800 p-3 shadow-sm model-select-container-no-animation">
             <div className="text-[10px] text-muted-foreground mb-2">Model</div>
-            <div className="relative space-y-1 rounded-md overflow-hidden" ref={modelListRef}>
-              {/* Sliding highlight track */}
-              <div
-                className="model-slider-track"
-                style={{ top: modelTrackTop, height: modelTrackHeight || 0 }}
-              />
+            <div className="relative space-y-1 rounded-md overflow-hidden">
               {availableModels.map((model) => {
                 const isSelected = model.value === selectedModel;
                 return (
@@ -98,9 +97,9 @@ export function ActionNodeSettings({
                     onClick={() => setData('selectedModel', model.value)}
                     data-model-item
                     className={cn(
-                      "relative z-10 w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors font-medium",
+                      "relative z-10 w-full flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-colors",
                       isSelected
-                        ? "text-gray-900 dark:text-gray-100"
+                        ? "text-gray-900 dark:text-gray-100 bg-gray-200 dark:bg-gray-600"
                         : "bg-transparent hover:bg-gray-100 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-300"
                     )}
                   >

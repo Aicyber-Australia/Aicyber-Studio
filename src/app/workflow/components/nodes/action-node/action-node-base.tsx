@@ -727,13 +727,22 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
             {/* Model Selection */}
             <div className="nodrag flex-shrink-0 ml-2">
               <Select value={selectedModel} onValueChange={handleModelChange}>
-                <SelectTrigger className="!h-5 w-26 !py-0 !px-2 rounded-sm bg-gray-200 dark:bg-gray-700 border-0 shadow-sm text-[10px] [&>svg:last-child]:hidden">
-                  <span className="flex-1 text-left">{selectedModel || 'Model'}</span>
-                  <List className="w-1.5 h-1.5 opacity-50 flex-shrink-0" />
+                <SelectTrigger className="!h-5 w-26 !py-0 !px-2 rounded-sm bg-gray-200 dark:bg-gray-700 border-0 shadow-sm text-[10px] [&>svg:last-child]:hidden flex items-center gap-1 min-w-0 max-w-full overflow-hidden">
+                  <span className="flex-1 text-left truncate min-w-0">{selectedModel || 'Model'}</span>
+                  <List className="w-1.5 h-1.5 opacity-50 flex-shrink-0 ml-0.5" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="model-select-content-no-animation [&>div:nth-child(2)]:p-0">
                   {availableModels.map((model) => (
-                    <SelectItem key={model.value} value={model.value}>
+                    <SelectItem 
+                      key={model.value} 
+                      value={model.value}
+                      className={cn(
+                        "rounded-none -mx-1",
+                        model.value === selectedModel 
+                          ? "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100" 
+                          : "bg-transparent hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                      )}
+                    >
                       {model.label}
                     </SelectItem>
                   ))}
