@@ -320,7 +320,6 @@ export function ImageEditDialog({ imageUrl, onClose, onSave }: ImageEditDialogPr
         {/* Canvas Area */}
         <div className="flex-1 flex items-center justify-center p-4 overflow-auto bg-gray-100">
           <div className="bg-white shadow-lg">
-            {/* @ts-expect-error - react-konva Stage does support children but types are incorrect */}
             <Stage
               ref={stageRef}
               width={stageSize.width}
@@ -330,7 +329,6 @@ export function ImageEditDialog({ imageUrl, onClose, onSave }: ImageEditDialogPr
               onMouseup={handleMouseUp}
               style={{ cursor: 'crosshair' }}
             >
-              {/* @ts-expect-error - react-konva Layer does support children but types are incorrect */}
               <Layer>
                 {/* Background Image */}
                 <ImageLayer imageUrl={imageUrl} />

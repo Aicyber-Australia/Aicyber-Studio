@@ -24,7 +24,14 @@ export const ImageFrameNodeRunner: NodeRunner = {
       }
       // 兼容旧格式 mediaList（从 action node 返回）
       else if (inputData?.media?.mediaList) {
-        const images = inputData.media.mediaList.filter((m: any) => m.type === 'image');
+        const images = inputData.media.mediaList
+          .filter((m: any) => m.type === 'image' && m.url) // 只保留有 url 的图片
+          .map((m: any) => ({
+            url: m.url,
+            data: m.content,
+            fileName: m.fileName,
+            timestamp: m.timestamp,
+          }));
         console.log('🔄 Frame Validate - Found mediaList, filtered images:', images.length);
         allImages.push(...images);
       }

@@ -83,7 +83,10 @@ export function useWorkflowRunner() {
   const isRunning = useRef(false);
   const [isRunningState, setIsRunningState] = useState(false); // State for UI
   const [isStoppingState, setIsStoppingState] = useState(false); // State for UI
-  const breakpointNodeId = useRef<string | null>(null); // Track which node hit a breakpoint
+  const breakpointNodeIdRef = useRef<string | null>(null); // Track which node hit a breakpoint
+  const [breakpointNodeId, setBreakpointNodeId] = useState<string | null>(null); // State for UI updates
+  // When true, ignore pausing at breakpoints (used to allow resume to complete all downstream without stopping again)
+  const suppressBreakpointsRef = useRef<boolean>(false);
   const { getNodes, setNodes, getEdges } = useAppStore(useShallow(selector));
   const { getNode, setNodes: setReactFlowNodes, getEdges: getReactFlowEdges } = useReactFlow();
   const { showToast } = useToast();
@@ -204,6 +207,8 @@ export function useWorkflowRunner() {
           processedMediaIds: undefined,
           fileName: undefined,
           timestamp: undefined,
+          // ensure previous breakpoint pause flag is cleared for fresh runs
+          isBreakpointActive: undefined,
         };
 
         // Preserve mode selections if they exist
@@ -216,7 +221,7 @@ export function useWorkflowRunner() {
         if (nodeData.outputMode !== undefined) clearedData.outputMode = nodeData.outputMode;
         if (nodeData.nodeList !== undefined) clearedData.nodeList = [];
         if (nodeData.hasBreakpoint !== undefined) clearedData.hasBreakpoint = nodeData.hasBreakpoint;
-
+        
         return {
           ...node,
           data: clearedData
@@ -240,6 +245,7 @@ export function useWorkflowRunner() {
             processedMediaIds: undefined,
             fileName: undefined,
             timestamp: undefined,
+            isBreakpointActive: undefined,
           };
 
           // Preserve mode selections if they exist
@@ -262,6 +268,58 @@ export function useWorkflowRunner() {
     );
   }, [getNodes, setNodes, getReactFlowEdges, setReactFlowNodes]);
 
+  // Clear a single node's state (for resetting breakpoint nodes on resume)
+  const clearNodeState = useCallback((nodeId: string) => {
+    const node = getNode(nodeId);
+    if (!node) {
+      console.warn(`⚠️ Node ${nodeId} not found for clearing state`);
+      return;
+    }
+
+    const nodeData = node.data as any;
+    // Build cleared data, preserving only mode selections and breakpoint
+    const clearedData: any = {
+      ...node.data,
+      status: 'initial',
+      media: undefined,
+      apiResponses: undefined,
+      executionMetadata: undefined,
+      processedMediaIds: undefined,
+      fileName: undefined,
+      timestamp: undefined,
+      isBreakpointActive: undefined,
+    };
+
+    // Preserve mode selections and breakpoint if they exist
+    if (nodeData.selectedModel !== undefined) clearedData.selectedModel = nodeData.selectedModel;
+    if (nodeData.executionMode !== undefined) clearedData.executionMode = nodeData.executionMode;
+    if (nodeData.setOutputMode !== undefined) clearedData.setOutputMode = nodeData.setOutputMode;
+    if (nodeData.prompt !== undefined) clearedData.prompt = nodeData.prompt;
+    if (nodeData.inputMode !== undefined) clearedData.inputMode = nodeData.inputMode;
+    if (nodeData.collectorMode !== undefined) clearedData.collectorMode = nodeData.collectorMode;
+    if (nodeData.outputMode !== undefined) clearedData.outputMode = nodeData.outputMode;
+    if (nodeData.nodeList !== undefined) clearedData.nodeList = [];
+    if (nodeData.hasBreakpoint !== undefined) clearedData.hasBreakpoint = nodeData.hasBreakpoint;
+
+    // Update ReactFlow nodes
+    setReactFlowNodes(nodes => nodes.map(n => 
+      n.id === nodeId 
+        ? { ...n, data: clearedData }
+        : n
+    ));
+
+    // Also update Zustand store
+    setNodes(
+      getNodes().map((n) =>
+        n.id === nodeId
+          ? ({ ...n, data: clearedData } as AppNode)
+          : n
+      )
+    );
+
+    console.log(`🔄 Cleared state for node ${nodeId}`);
+  }, [getNode, getNodes, setNodes, setReactFlowNodes]);
+
   // Clear all non-initial nodes (nodes that have incoming edges)
   const clearAllDownstreamNodes = useCallback(() => {
     const edges = getReactFlowEdges();
@@ -283,6 +341,7 @@ export function useWorkflowRunner() {
           processedMediaIds: undefined,
           fileName: undefined,
           timestamp: undefined,
+          isBreakpointActive: undefined,
         };
 
         // Preserve mode selections if they exist
@@ -319,6 +378,7 @@ export function useWorkflowRunner() {
             processedMediaIds: undefined,
             fileName: undefined,
             timestamp: undefined,
+            isBreakpointActive: undefined,
           };
 
           // Preserve mode selections if they exist
@@ -1046,16 +1106,50 @@ export function useWorkflowRunner() {
         console.log(`Node ${node.id} processing completed successfully!`);
 
         // Check for breakpoint after node completion
-        const nodeData = (updatedNode?.data || node.data) as any;
-        if (nodeData?.hasBreakpoint) {
+        // Wait a bit to ensure status update propagates to ReactFlow store
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+        // Get the latest node data after status update to check breakpoint
+        const latestNode = getNode(node.id);
+        const nodeData = (latestNode?.data || updatedNode?.data || node.data) as any;
+        
+        if (nodeData?.hasBreakpoint && !suppressBreakpointsRef.current) {
           console.log(`🔴 Breakpoint hit at node ${node.id} (${node.data.title})`);
+          
+          // Double-check and ensure node status is 'success' before setting breakpoint
+          // This is critical for resume button to work correctly
+          const finalNodeCheck = getNode(node.id);
+          if (finalNodeCheck && (finalNodeCheck.data as any)?.status !== 'success') {
+            // Force update to success if not already
+            console.log(`⚠️ Node ${node.id} status not 'success' yet, forcing update...`);
+            updateNodeStatus(node.id, 'success');
+            await new Promise(resolve => setTimeout(resolve, 20));
+          }
+          
           setLogMessages((prev) => [...prev, `🔴 Breakpoint: Paused at ${node.data.title}`]);
           showToast({
             title: "Breakpoint Hit",
             description: `Workflow paused at ${node.data.title}. Click Resume to continue.`,
             variant: "default",
           });
-          breakpointNodeId.current = node.id;
+          
+          // Mark breakpoint active on the node so other hook instances can detect it
+          setReactFlowNodes(nodes => nodes.map(n =>
+            n.id === node.id
+              ? { ...n, data: { ...n.data, isBreakpointActive: true } }
+              : n
+          ));
+          setNodes(
+            getNodes().map((n) =>
+              n.id === node.id
+                ? ({ ...n, data: { ...(n.data as any), isBreakpointActive: true } } as AppNode)
+                : n
+            )
+          );
+
+          // Set breakpoint ID after ensuring status is updated
+          breakpointNodeIdRef.current = node.id;
+          setBreakpointNodeId(node.id);
           isRunning.current = false;
           setIsRunningState(false);
           throw new Error('BREAKPOINT'); // Special error to stop workflow execution
@@ -1071,6 +1165,12 @@ export function useWorkflowRunner() {
       // IMPORTANT: Only do this if NOT in a progressive iteration (isProgressiveIteration = false)
       // If isProgressiveIteration = true, this node is being called from another progressive's callback
       // and hasn't truly completed all work yet - it will be called again with more items
+      // IMPORTANT: Check if breakpoint was hit - if so, don't execute downstream nodes
+      if (breakpointNodeIdRef.current === node.id) {
+        console.log(`⏸️ Breakpoint hit at node ${node.id} - stopping execution, not executing downstream nodes`);
+        return;
+      }
+
       const isProgressiveNode = updatedNode?.data.executionMode === 'progressive' || node.data.executionMode === 'progressive';
       const isConcurrentNode = updatedNode?.data.executionMode === 'concurrent' || node.data.executionMode === 'concurrent';
 
@@ -1638,6 +1738,14 @@ export function useWorkflowRunner() {
       if (isRunning.current) return;
       const nodes = getNodes();
       const edges = getEdges();
+      
+      // Clear breakpoint state when starting a new workflow run
+      // This ensures that each new run can properly set breakpoints
+      breakpointNodeIdRef.current = null;
+      setBreakpointNodeId(null);
+      // Ensure breakpoint pausing is enabled for a fresh run
+      suppressBreakpointsRef.current = false;
+      
       isRunning.current = true;
       setIsRunningState(true);
 
@@ -1675,6 +1783,16 @@ export function useWorkflowRunner() {
       } else {
         // Overall workflow run - clear all downstream nodes (keeping initial nodes)
         clearAllDownstreamNodes();
+      }
+
+      // Clear breakpoint nodes that have breakpoint set (for re-execution)
+      // This ensures breakpoint nodes can be re-executed from scratch
+      const nodesWithBreakpoints = nodes.filter(node => (node.data as any)?.hasBreakpoint === true);
+      for (const node of nodesWithBreakpoints) {
+        clearNodeState(node.id);
+      }
+      if (nodesWithBreakpoints.length > 0) {
+        console.log(`🔄 Cleared state for ${nodesWithBreakpoints.length} breakpoint node(s) for re-execution`);
       }
 
       setLogMessages(['Starting workflow...']);
@@ -1920,16 +2038,19 @@ export function useWorkflowRunner() {
                     await new Promise(resolve => setTimeout(resolve, 50));
 
                   } catch (error) {
-                    console.error(`Node ${node.id} processing failed:`, error);
                     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
                     // Check if this is a breakpoint hit (not a real error)
                     if (errorMessage === 'BREAKPOINT') {
                       console.log(`🔴 Workflow paused at breakpoint in node ${node.id}`);
                       isRunning.current = false;
-                      // Don't throw, just mark as error and stop
+                      setIsRunningState(false);
+                      // Don't mark as error, just stop execution
+                      return;
                     }
 
+                    // Real error - log and mark as error
+                    console.error(`Node ${node.id} processing failed:`, error);
                     // Update node status to error
                     updateNodeStatus(node.id, 'error');
 
@@ -2009,7 +2130,21 @@ export function useWorkflowRunner() {
       return;
     }
 
-    const breakpointNode = breakpointNodeId.current;
+    let breakpointNode = breakpointNodeIdRef.current;
+    // Fallback: if local ref is empty (e.g., resume invoked from another hook instance),
+    // detect active breakpoint by scanning node data in the shared stores
+    if (!breakpointNode) {
+      try {
+        const allNodes = getNodes();
+        const active = allNodes.find(n => (n.data as any)?.isBreakpointActive === true);
+        if (active) {
+          breakpointNode = active.id;
+          // Sync this instance so its UI reflects breakpoint state
+          breakpointNodeIdRef.current = active.id;
+          setBreakpointNodeId(active.id);
+        }
+      } catch {}
+    }
     if (!breakpointNode) {
       console.warn('⚠️ No breakpoint to resume from');
       showToast({
@@ -2023,20 +2158,32 @@ export function useWorkflowRunner() {
     console.log(`▶️ Resuming workflow from breakpoint at node ${breakpointNode}`);
     setLogMessages((prev) => [...prev, `▶️ Resuming workflow from ${getNode(breakpointNode)?.data.title || breakpointNode}...`]);
 
-    // Ensure the breakpoint node shows as completed
-    const breakpointNodeData = getNode(breakpointNode);
-    if (breakpointNodeData) {
-      // Force update the node to ensure UI reflects completion
-      updateNodeStatus(breakpointNode, 'success');
-      console.log(`✅ Breakpoint node ${breakpointNode} marked as completed`);
-    }
+    // Store the breakpoint node ID before clearing the reference
+    const resumeFromNode = breakpointNode;
 
-    // Clear the breakpoint reference
-    breakpointNodeId.current = null;
+    // Clear the breakpoint reference first (so resume button becomes disabled)
+    // Note: We don't clear the node state here because:
+    // 1. The node should remain in 'success' state to show it completed
+    // 2. The state will be cleared when the workflow is run again (in runWorkflow)
+    breakpointNodeIdRef.current = null;
+    setBreakpointNodeId(null);
+    // Also clear the node's active-breakpoint flag so other components disable their Resume buttons
+    setReactFlowNodes(nodes => nodes.map(n =>
+      n.id === resumeFromNode
+        ? { ...n, data: { ...n.data, isBreakpointActive: undefined } }
+        : n
+    ));
+    setNodes(
+      getNodes().map((n) =>
+        n.id === resumeFromNode
+          ? ({ ...n, data: { ...(n.data as any), isBreakpointActive: undefined } } as AppNode)
+          : n
+      )
+    );
 
     // Get downstream nodes to continue execution
     const edges = getReactFlowEdges();
-    const downstreamEdges = edges.filter(edge => edge.source === breakpointNode);
+    const downstreamEdges = edges.filter(edge => edge.source === resumeFromNode);
 
     if (downstreamEdges.length === 0) {
       console.log('✅ No downstream nodes to execute - workflow complete');
@@ -2049,6 +2196,8 @@ export function useWorkflowRunner() {
       return;
     }
 
+    // During resume, ignore all further breakpoints so execution runs through
+    suppressBreakpointsRef.current = true;
     // Start execution from downstream nodes
     isRunning.current = true;
     setIsRunningState(true);
@@ -2222,14 +2371,21 @@ export function useWorkflowRunner() {
     } finally {
       isRunning.current = false;
       setIsRunningState(false);
+      // Re-enable breakpoint pausing for future runs
+      suppressBreakpointsRef.current = false;
     }
-  }, [breakpointNodeId, getNode, getNodes, getEdges, getReactFlowEdges, showToast, areAllUpstreamNodesCompleted, executeUpstreamNodesIfNeeded, collectInputData, selfCheckNode, processNode, updateNodeStatus]);
+  }, [breakpointNodeId, getNode, getNodes, getEdges, getReactFlowEdges, showToast, areAllUpstreamNodesCompleted, executeUpstreamNodesIfNeeded, collectInputData, selfCheckNode, processNode, updateNodeStatus, clearNodeState]);
 
   // Check if there are any nodes with breakpoints enabled
   const hasAnyBreakpoints = useCallback(() => {
     const nodes = getNodes();
     return nodes.some(node => (node.data as any)?.hasBreakpoint === true);
   }, [getNodes]);
+
+  // Get current breakpoint node ID (for UI to check if specific node is breakpoint)
+  const getBreakpointNodeId = useCallback(() => {
+    return breakpointNodeIdRef.current;
+  }, []);
 
   return {
     logMessages,
@@ -2238,7 +2394,9 @@ export function useWorkflowRunner() {
     resumeWorkflow,
     isRunning: isRunningState,
     isStopping: isStoppingState,
-    hasBreakpoint: breakpointNodeId.current !== null && hasAnyBreakpoints(),
+    hasBreakpoint: (breakpointNodeIdRef.current !== null || getNodes().some(n => (n.data as any)?.isBreakpointActive === true)) && hasAnyBreakpoints(),
+    breakpointNodeId: breakpointNodeId,
+    getBreakpointNodeId,
     clearDownstreamNodes,
     clearAllDownstreamNodes,
   };

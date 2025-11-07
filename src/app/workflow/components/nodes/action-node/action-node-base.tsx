@@ -2,7 +2,7 @@
 
 import React, { useCallback, useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Play, Trash, Trash2, Square, RotateCcw, CheckCircle2, XCircle, ChevronDown, ChevronUp, Download, OctagonMinus, ImageUp, HelpCircle, Menu, SquareX, List, ArrowRightFromLine, ArrowBigRightDash, GalleryHorizontalEnd, BetweenHorizontalStart } from 'lucide-react';
+import { Play, Trash, Trash2, Square, RotateCcw, CheckCircle2, XCircle, ChevronDown, ChevronUp, Download, OctagonMinus, ImageUp, HelpCircle, Menu, SquareX, List, ArrowRightFromLine, ArrowBigRightDash, GalleryHorizontalEnd, BetweenHorizontalStart, StepForward } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -51,7 +51,7 @@ interface ActionNodeBaseProps {
 }
 
 function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeBaseProps) {
-  const { runWorkflow, stopWorkflow } = useWorkflowRunner();
+  const { runWorkflow, stopWorkflow, resumeWorkflow, hasBreakpoint: globalHasBreakpoint, isRunning, breakpointNodeId } = useWorkflowRunner();
   const removeNode = useAppStore((s) => s.removeNode);
   const addNode = useAppStore((s) => s.addNode);
   const { setNodes, getNode } = useReactFlow();
@@ -72,6 +72,7 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSettingsClosing, setIsSettingsClosing] = useState(false); // Track closing animation
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false); // State for delete confirmation dialog
+  const [dontShowAgain, setDontShowAgain] = useState(false); // State for "don't show again" checkbox
   const [isExtensionCollapsed, setIsExtensionCollapsed] = useState<boolean>(true); // Extension panel collapsed state
 
   // Progress animation states
@@ -206,16 +207,30 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
   }, [id, runWorkflow, stopWorkflow, data?.status]);
   
   const handleDeleteClick = useCallback(() => {
-    setIsDeleteDialogOpen(true); // Open dialog on first click
-  }, []);
+    // Check if user has selected "don't show again"
+    const skipDialog = localStorage.getItem('node-delete-skip-dialog') === 'true';
+    if (skipDialog) {
+      // Directly delete without showing dialog
+      removeNode(id);
+    } else {
+      // Show confirmation dialog
+      setIsDeleteDialogOpen(true);
+    }
+  }, [id, removeNode]);
 
   const handleConfirmDelete = useCallback(() => {
+    // Save "don't show again" preference if checked
+    if (dontShowAgain) {
+      localStorage.setItem('node-delete-skip-dialog', 'true');
+    }
     removeNode(id);
     setIsDeleteDialogOpen(false); // Close dialog after deleting
-  }, [removeNode, id]);
+    setDontShowAgain(false); // Reset checkbox state
+  }, [removeNode, id, dontShowAgain]);
 
   const handleCancelDelete = useCallback(() => {
     setIsDeleteDialogOpen(false); // Close dialog on cancel
+    setDontShowAgain(false); // Reset checkbox state when canceling
   }, []);
 
   // Toggle extension panel
@@ -701,7 +716,7 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
         <BaseNodeHeader className="flex-col gap-0 border-b border-gray-200 dark:border-gray-700 min-w-0 flex-shrink-0">
           {/* First layer: Icon, Node Name, Model Selection */}
           <div className="flex items-center justify-between w-full px-0.5 pt-0 pb-0.5 min-h-[28px]">
-            <div className="flex items-center gap-1 flex-1 min-w-0">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
               {IconComponent ? <IconComponent aria-label={data?.icon} className="h-5 w-5 flex-shrink-0" /> : null}
               <div className="relative flex-1 min-w-0">
                 <BaseNodeHeaderTitle
@@ -727,13 +742,22 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
             {/* Model Selection */}
             <div className="nodrag flex-shrink-0 ml-2">
               <Select value={selectedModel} onValueChange={handleModelChange}>
-                <SelectTrigger className="!h-5 w-26 !py-0 !px-2 rounded-sm bg-gray-200 dark:bg-gray-700 border-0 shadow-sm text-[10px] [&>svg:last-child]:hidden">
-                  <span className="flex-1 text-left">{selectedModel || 'Model'}</span>
-                  <List className="w-1.5 h-1.5 opacity-50 flex-shrink-0" />
+                <SelectTrigger className="!h-5 w-26 !py-0 !px-2 rounded-sm bg-gray-200 dark:bg-gray-700 border-0 shadow-sm text-[10px] [&>svg:last-child]:hidden flex items-center gap-1 min-w-0 max-w-full overflow-hidden">
+                  <span className="flex-1 text-left truncate min-w-0">{selectedModel || 'Model'}</span>
+                  <List className="w-1.5 h-1.5 opacity-50 flex-shrink-0 ml-0.5" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="model-select-content-no-animation [&>div:nth-child(2)]:p-0">
                   {availableModels.map((model) => (
-                    <SelectItem key={model.value} value={model.value}>
+                    <SelectItem 
+                      key={model.value} 
+                      value={model.value}
+                      className={cn(
+                        "rounded-none -mx-1",
+                        model.value === selectedModel 
+                          ? "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100" 
+                          : "bg-transparent hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                      )}
+                    >
                       {model.label}
                     </SelectItem>
                   ))}
@@ -781,6 +805,49 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
               >
                 <OctagonMinus className={`h-4 w-4 ${hasBreakpoint ? 'text-red-500' : 'text-black dark:text-black'}`} />
               </Button>
+              {/* Resume button - always visible, enabled only when breakpoint is hit and node is completed */}
+              {(() => {
+                const currentNode = getNode(id);
+                const nodeData = (currentNode?.data as any) || {};
+                const nodeStatus = nodeData?.status;
+                const nodeHasBreakpoint = nodeData?.hasBreakpoint === true; // Read directly from node data
+                const isNodeCompleted = nodeStatus === 'success';
+                const isBreakpointActive = nodeData?.isBreakpointActive === true;
+                const isBreakpointNode = isBreakpointActive || breakpointNodeId === id;
+                // Button is enabled only when: node has breakpoint, node is completed, and this is the breakpoint node
+                const canResume = nodeHasBreakpoint && isNodeCompleted && isBreakpointNode && !isRunning;
+                
+                // Debug logging (can be removed in production)
+                if (nodeHasBreakpoint && isNodeCompleted) {
+                  console.log(`[Resume Button Debug] Node ${id}:`, {
+                    nodeHasBreakpoint,
+                    isNodeCompleted,
+                    isBreakpointActive,
+                    isBreakpointNode,
+                    breakpointNodeId,
+                    isRunning,
+                    canResume
+                  });
+                }
+                
+                return (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      "nodrag h-7 w-7 transition-colors",
+                      canResume
+                        ? "text-orange-500 hover:text-orange-600"
+                        : "text-gray-400 hover:text-gray-400 cursor-not-allowed"
+                    )}
+                    onClick={() => resumeWorkflow()}
+                    disabled={!canResume}
+                    title={canResume ? "Resume workflow from breakpoint" : `Set breakpoint and complete execution to resume (hasBreakpoint: ${nodeHasBreakpoint}, completed: ${isNodeCompleted}, isBreakpoint: ${isBreakpointNode})`}
+                  >
+                    <StepForward className="h-4 w-4" />
+                  </Button>
+                );
+              })()}
               <Button
                 variant="ghost"
                 size="icon"
@@ -1100,7 +1167,7 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
               <SquareX className="w-4 h-4" />
             </button>
           </div>
-          <div className="p-4 max-h-[500px] overflow-auto space-y-4 bg-gray-50 dark:bg-gray-900">
+          <div className="p-4 max-h-[500px] overflow-auto space-y-4 bg-gray-50 dark:bg-gray-900 rounded-b-lg">
             <NodeSettings nodeId={id} nodeType={nodeType as AppNodeType} data={data} />
           </div>
         </div>
@@ -1113,6 +1180,18 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
           <div className="relative z-[100000] w-[320px] rounded-lg border bg-white p-4 shadow-lg dark:bg-gray-900 dark:border-gray-800">
             <div className="text-sm font-semibold mb-2">Delete node?</div>
             <div className="text-xs text-gray-600 dark:text-gray-300 mb-4">This action cannot be undone.</div>
+            <div className="flex items-center gap-2 mb-4">
+              <input
+                type="checkbox"
+                id="dont-show-again"
+                checked={dontShowAgain}
+                onChange={(e) => setDontShowAgain(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500 dark:border-gray-600 dark:bg-gray-700"
+              />
+              <label htmlFor="dont-show-again" className="text-xs text-gray-600 dark:text-gray-300 cursor-pointer">
+                Don&apos;t show again
+              </label>
+            </div>
             <div className="flex justify-end gap-2">
               <button
                 type="button"

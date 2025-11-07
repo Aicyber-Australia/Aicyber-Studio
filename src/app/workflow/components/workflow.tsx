@@ -19,7 +19,7 @@ import {
 } from '@xyflow/react';
 import { useShallow } from 'zustand/react/shallow';
 import { useTheme } from 'next-themes';
-import { MousePointer2, Hand, Play, Pause, Trash, Trash2, Divide, PlayCircle, Share2, Save, HardDrive } from 'lucide-react';
+import { MousePointer2, Hand, Play, Pause, Trash, Trash2, Divide, StepForward, Share2, Save, HardDrive } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { useCopilotReadable } from '@copilotkit/react-core';
 
@@ -629,7 +629,7 @@ export default function Workflow() {
               : "text-gray-400 cursor-not-allowed"
           )}
         >
-          <PlayCircle className="h-5 w-5" />
+          <StepForward className="h-5 w-5" />
         </Button>
 
         <Button

@@ -269,24 +269,4 @@ export const nodesConfig: Record<AppNodeType, NodeConfig> = {
     ],
     icon: 'Layers',
   },
-  'test-progress-node': {
-    id: 'test-progress-node',
-    title: 'Test Progress',
-    status: 'initial',
-    handles: [
-      {
-        type: 'target',
-        position: Position.Left,
-        x: 0,
-        y: ACTION_NODE_SIZE.height * 0.5,
-      },
-      {
-        type: 'source',
-        position: Position.Right,
-        x: ACTION_NODE_SIZE.width,
-        y: ACTION_NODE_SIZE.height * 0.5,
-      },
-    ],
-    icon: 'Workflow',
-  },
 };
