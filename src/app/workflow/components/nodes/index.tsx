@@ -15,7 +15,6 @@ import { TextToImageNode } from './action-node/text-to-image';
 import { ImageToImageNode } from './action-node/image-to-image';
 import { ImageToTextNode } from './action-node/image-to-text';
 import { EditImageNode } from './action-node/edit-image';
-import TestProgressNode from './test/test-progress-node';
 
 /* WORKFLOW NODE DATA PROPS ------------------------------------------------------ */
 
@@ -129,7 +128,6 @@ export const nodeTypes = {
   'image-to-image-node': ImageToImageNode,
   'image-to-text-node': ImageToTextNode,
   'edit-image-node': EditImageNode,
-  'test-progress-node': TestProgressNode,
 };
 
 export const createNodeByType = ({
@@ -214,7 +212,6 @@ export type AppNode =
   | Node<WorkflowNodeData, 'text-to-image-node'>
   | Node<WorkflowNodeData, 'image-to-image-node'>
   | Node<WorkflowNodeData, 'image-to-text-node'>
-  | Node<WorkflowNodeData, 'edit-image-node'>
-  | Node<WorkflowNodeData, 'test-progress-node'>;
+  | Node<WorkflowNodeData, 'edit-image-node'>;
 
 export type AppNodeType = NonNullable<AppNode['type']>;

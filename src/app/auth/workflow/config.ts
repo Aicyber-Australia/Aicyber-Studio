@@ -1,5 +1,5 @@
 import { Position } from '@xyflow/react';
-import { AppNodeType, NodeConfig } from './components/nodes';
+import { AppNodeType, NodeConfig } from '@/app/workflow/components/nodes';
 
 export const NODE_SIZE = { width: 260, height: 50 };
 

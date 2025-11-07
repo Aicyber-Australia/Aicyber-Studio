@@ -3,7 +3,7 @@ import { Route } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { useLayout } from '@/app/workflow/hooks/use-layout';
-import { ZoomSlider } from '../../../components/zoom-slider';
+import { ZoomSlider } from '@/components/zoom-slider';
 
 export function WorkflowControls() {
   const { fitView } = useReactFlow();

@@ -1189,7 +1189,7 @@ function ActionNodeBase({ id, data, onRefresh, children, selected }: ActionNodeB
                 className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500 dark:border-gray-600 dark:bg-gray-700"
               />
               <label htmlFor="dont-show-again" className="text-xs text-gray-600 dark:text-gray-300 cursor-pointer">
-                Don't show again
+                Don&apos;t show again
               </label>
             </div>
             <div className="flex justify-end gap-2">

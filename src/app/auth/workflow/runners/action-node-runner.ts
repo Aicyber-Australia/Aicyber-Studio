@@ -1,6 +1,6 @@
 import { NodeRunner } from './types';
 import { AppNode, ApiExecutionResponse, ApiExecutionError } from '../components/nodes';
-import { getApiCallFunction, getRegisteredNodeTypes } from '../../api/services/service-registrar';
+import { getApiCallFunction, getRegisteredNodeTypes } from '@/app/api/services/service-registrar';
 import { normalizeInputsToMediaSets, MediaSet } from './media-set-utils';
 
 /**
