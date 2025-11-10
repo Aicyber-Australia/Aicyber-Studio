@@ -7,9 +7,9 @@ import AgentChat from '@/components/agent-chat';
 import { createClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
-  title: 'React Flow Workflow Template',
+  title: 'AICYBER Studio',
   description:
-    'A Next.js-based React Flow template designed to help you quickly create, manage, and visualize workflows.',
+    'AICYBER Studio - Empowering Creativity with AI-Driven Workflows',
 };
 
 // Force dynamic rendering for this page

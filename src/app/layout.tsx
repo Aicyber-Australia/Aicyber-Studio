@@ -1,3 +1,4 @@
+import { Metadata } from 'next/types';
 import { ReactFlowProvider } from '@xyflow/react';
 import { registerAllServices } from './api/services/service-registrar';
 
@@ -8,7 +9,15 @@ import { AppStoreProvider } from '@/app/workflow/store';
 import './globals.css';
 import "@copilotkit/react-ui/styles.css";
 import { loadData } from '../testdata/mock-data';
-import { CopilotKit } from "@copilotkit/react-core"; 
+import { CopilotKit } from "@copilotkit/react-core";
+
+export const metadata: Metadata = {
+  title: 'AICYBER Studio',
+  description: 'AICYBER Studio - Empowering Creativity with AI-Driven Workflows',
+  icons: {
+    icon: '/icon/aicyber_icon.png',
+  },
+}; 
 
 export default async function WorkflowLayout({
   children,
