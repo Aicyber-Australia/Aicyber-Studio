@@ -2,6 +2,15 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+/** Require a session; extend this list when adding private / persisted features. */
+const PROTECTED_ROUTE_PREFIXES = ['/account', '/history'] as const;
+
+function isProtectedRoute(pathname: string): boolean {
+  return PROTECTED_ROUTE_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
 export async function middleware(req: NextRequest) {
   let response = NextResponse.next({
     request: {
@@ -59,11 +68,12 @@ export async function middleware(req: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession();
 
-  const isAuthPage = req.nextUrl.pathname.startsWith('/auth');
-  const isRootPage = req.nextUrl.pathname === '/';
+  const pathname = req.nextUrl.pathname;
+  const isAuthPage = pathname.startsWith('/auth');
+  const isRootPage = pathname === '/';
 
   // If user is not authenticated and trying to access protected routes
-  if (!session && !isAuthPage) {
+  if (!session && isProtectedRoute(pathname)) {
     return NextResponse.redirect(new URL('/auth/login', req.url));
   }
 
@@ -75,11 +85,6 @@ export async function middleware(req: NextRequest) {
   // If user is authenticated and on root page, redirect to workflow
   if (session && isRootPage) {
     return NextResponse.redirect(new URL('/workflow', req.url));
-  }
-
-  // If user is not authenticated and on root page, redirect to login
-  if (!session && isRootPage) {
-    return NextResponse.redirect(new URL('/auth/login', req.url));
   }
 
   return response;
